@@ -5,7 +5,9 @@
         "title": "Mälarenergi PowerHub",
         "description": "Enter the IP address of your PowerHub device.",
         "data": {
-          "host": "IP address"
+          "flow_url": "Bitvis Flow API URL",
+          "username": "Username",
+          "password": "Password"
         }
       }
     },

@@ -1,10 +1,23 @@
 """DataUpdateCoordinator for Mälarenergi PowerHub.
 
-NOTE: The local API protocol is not yet fully reverse-engineered.
-This coordinator contains placeholder logic that will be updated
-as more information about the device's local endpoints becomes available.
+Architecture
+------------
+The PowerHub device (Espressif ESP32, MAC OUI 94:54:C5) is cloud-only.
+It has no open local TCP ports. Data flows:
 
-See docs/reverse_engineering.md for current findings.
+  Kaifa MA304 meter
+    → (RJ45/P1 IEC62056-21)
+    → PowerHub (ESP32, Bitvis firmware)
+    → HTTPS outbound
+    → Bitvis Flow cloud API
+    → Mälarenergi app / this integration
+
+This coordinator polls the Bitvis Flow REST API using the user's
+credentials. The exact Flow API base URL for Mälarenergi must be
+discovered by capturing mobile app traffic — see docs/reverse_engineering.md.
+
+Once the API URL and energy-data endpoints are known, update
+`_async_update_data` and `_parse_response` accordingly.
 """
 from __future__ import annotations
 
@@ -18,7 +31,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import CONF_HOST, DEFAULT_SCAN_INTERVAL, DOMAIN
+from .const import CONF_FLOW_URL, CONF_USERNAME, CONF_PASSWORD, DEFAULT_SCAN_INTERVAL, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -84,7 +97,9 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
     """Coordinator that polls the PowerHub device for data."""
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
-        self._host = entry.data[CONF_HOST]
+        self._flow_url = entry.data[CONF_FLOW_URL]
+        self._username = entry.data[CONF_USERNAME]
+        self._password = entry.data[CONF_PASSWORD]
         self._session = async_get_clientsession(hass)
         super().__init__(
             hass,
@@ -94,24 +109,37 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
         )
 
     async def _async_update_data(self) -> PowerHubData:
-        """Fetch data from the PowerHub device.
+        """Fetch energy data from the Bitvis Flow cloud API.
 
-        TODO: The actual local API endpoints are not yet known.
-        This method attempts several common ESP32 firmware endpoints.
-        Update once reverse engineering is complete.
+        TODO: The exact Mälarenergi Flow instance URL and energy data
+        endpoints are not yet known. They must be discovered by capturing
+        HTTPS traffic from the Mälarenergi mobile app.
+        See docs/reverse_engineering.md for the investigation plan.
+
+        The Bitvis Flow API uses:
+          GET https://<flow-instance>/api/<app>/<endpoint>
+          Headers: Flow-Auth-Token: <token>
+          OR Basic Auth: Authorization: Basic base64(user:pass)
         """
+        # TODO: Replace with actual Bitvis Flow energy endpoint once discovered.
+        # Candidate patterns based on Bitvis Flow API documentation:
         candidate_paths = [
-            "/status",
-            "/data",
-            "/api/v1/data",
-            "/energy",
-            "/metrics",
+            "/energy/meter/latest",
+            "/powerhub/meter/latest",
+            "/meter/meter/latest",
+            "/energy/reading/latest",
         ]
 
+        auth = aiohttp.BasicAuth(self._username, self._password)
+
         for path in candidate_paths:
-            url = f"http://{self._host}{path}"
+            url = f"{self._flow_url.rstrip('/')}{path}"
             try:
-                async with self._session.get(url, timeout=aiohttp.ClientTimeout(total=5)) as resp:
+                async with self._session.get(
+                    url,
+                    auth=auth,
+                    timeout=aiohttp.ClientTimeout(total=10),
+                ) as resp:
                     if resp.status == 200:
                         try:
                             data = await resp.json(content_type=None)
@@ -119,16 +147,20 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
                             return PowerHubData(self._parse_response(data))
                         except Exception:
                             text = await resp.text()
-                            _LOGGER.debug("Non-JSON response from %s: %s", url, text[:200])
-            except aiohttp.ClientConnectorError:
-                pass
+                            _LOGGER.debug("Unexpected response from %s: %s", url, text[:200])
+                    elif resp.status == 401:
+                        raise UpdateFailed("Authentication failed. Check username/password.")
+            except aiohttp.ClientConnectorError as err:
+                _LOGGER.debug("Connection error for %s: %s", url, err)
+            except UpdateFailed:
+                raise
             except Exception as err:
                 _LOGGER.debug("Error fetching %s: %s", url, err)
 
         raise UpdateFailed(
-            f"Could not fetch data from PowerHub at {self._host}. "
-            "No known local API endpoint responded. "
-            "See docs/reverse_engineering.md — the device may be cloud-only."
+            "Could not fetch data from Bitvis Flow API. "
+            "The cloud API endpoint for Mälarenergi is not yet identified. "
+            "See docs/reverse_engineering.md."
         )
 
     def _parse_response(self, data: dict) -> dict:
