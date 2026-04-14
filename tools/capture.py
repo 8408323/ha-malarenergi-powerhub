@@ -5,9 +5,9 @@ Usage:
   mitmdump -s tools/capture.py --listen-port 8080 --ssl-insecure
 
 Then configure your phone's Wi-Fi proxy to point at this machine:
-  Host: <your PC IP>  Port: 8080
+  Host: <your PC LAN IP, e.g. 192.168.1.147>  Port: 8080
 Install the mitmproxy CA cert on your phone:
-  Open http://mitm.it in the phone browser
+  Open http://mitm.it in the phone browser while proxy is active.
 
 All captured requests/responses are written to:
   tools/captured_traffic.jsonl  (one JSON object per line)
@@ -23,7 +23,7 @@ from mitmproxy import http
 
 # --- configuration -------------------------------------------------------
 
-# Domains to capture (case-insensitive substring match)
+# Domains/keywords to capture — ANY substring match on the host (case-insensitive)
 CAPTURE_DOMAINS = [
     "malarenergi",
     "bitvis",
@@ -31,9 +31,18 @@ CAPTURE_DOMAINS = [
     "powerhub",
     "power-hub",
     "power_hub",
+    "powerflow",
+    "power-flow",
 ]
 
-# Headers to redact in logs (values replaced with ***)
+# Source IPs to capture ALL traffic from (e.g. phone, PowerHub device)
+# Add more IPs here if needed
+CAPTURE_SOURCE_IPS = [
+    "192.168.1.155",   # phone
+    "192.168.1.157",   # PowerHub device (unlikely to use proxy, but just in case)
+]
+
+# Headers whose VALUES should be redacted in logs (never committed to git)
 REDACT_HEADERS = {
     "authorization",
     "flow-auth-token",
@@ -41,6 +50,8 @@ REDACT_HEADERS = {
     "set-cookie",
     "x-auth-token",
     "x-api-key",
+    "x-session-token",
+    "x-access-token",
 }
 
 OUT_JSONL = Path(__file__).parent / "captured_traffic.jsonl"
@@ -51,7 +62,15 @@ OUT_LOG   = Path(__file__).parent / "captured_traffic.log"
 
 def _should_capture(flow: http.HTTPFlow) -> bool:
     host = flow.request.pretty_host.lower()
-    return any(d in host for d in CAPTURE_DOMAINS)
+    client_ip = flow.client_conn.peername[0] if flow.client_conn.peername else ""
+
+    # Capture if host matches known Mälarenergi/Bitvis domains
+    if any(d in host for d in CAPTURE_DOMAINS):
+        return True
+    # Capture ALL traffic from phone/device IPs (broad sweep to find unknown domains)
+    if client_ip in CAPTURE_SOURCE_IPS:
+        return True
+    return False
 
 
 def _redact(headers: dict) -> dict:
@@ -75,9 +94,11 @@ def response(flow: http.HTTPFlow) -> None:
 
     req = flow.request
     resp = flow.response
+    client_ip = flow.client_conn.peername[0] if flow.client_conn.peername else "?"
 
     record = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
+        "client_ip": client_ip,
         "request": {
             "method": req.method,
             "url": req.pretty_url,
@@ -99,22 +120,22 @@ def response(flow: http.HTTPFlow) -> None:
     sep = "─" * 72
     lines = [
         sep,
-        f"[{record['timestamp']}]",
+        f"[{record['timestamp']}]  client: {client_ip}",
         f"▶ {req.method} {req.pretty_url}",
         f"◀ {resp.status_code} {resp.reason}",
     ]
 
-    # Request headers (interesting ones only)
     interesting_req = {k: v for k, v in record["request"]["headers"].items()
-                       if k.lower() not in ("user-agent", "accept-encoding", "accept-language")}
+                       if k.lower() not in ("user-agent", "accept-encoding",
+                                            "accept-language", "accept", "connection")}
     if interesting_req:
         lines.append("  REQ HEADERS: " + json.dumps(interesting_req, ensure_ascii=False))
 
     if record["request"]["body"]:
-        lines.append("  REQ BODY:    " + json.dumps(record["request"]["body"], ensure_ascii=False)[:500])
+        lines.append("  REQ BODY:    " + json.dumps(record["request"]["body"], ensure_ascii=False)[:800])
 
     if record["response"]["body"]:
-        lines.append("  RESP BODY:   " + json.dumps(record["response"]["body"], ensure_ascii=False)[:1000])
+        lines.append("  RESP BODY:   " + json.dumps(record["response"]["body"], ensure_ascii=False)[:1500])
 
     lines.append("")
     text = "\n".join(lines)
@@ -122,5 +143,4 @@ def response(flow: http.HTTPFlow) -> None:
     with OUT_LOG.open("a", encoding="utf-8") as f:
         f.write(text + "\n")
 
-    # Also print to mitmdump stdout
     print(text)
