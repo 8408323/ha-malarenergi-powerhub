@@ -9,6 +9,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 from custom_components.malarenergi_powerhub.api import (
     BASE_URL,
     AuthError,
+    InvitationCreated,
     PowerHubApiClient,
     bankid_start,
     bankid_poll,
@@ -233,3 +234,95 @@ class TestBankIdPoll:
 
         assert results[0][0] == "failed"
         assert results[0][2] is None
+
+
+class TestGetMonthConsumption:
+    async def test_returns_meter_response_with_correct_fields(self):
+        url = (
+            f"{BASE_URL}/facility/{FACILITY_ID}/facility_consumption_meter"
+            f"?interval=MONTH&type=START&timestamp={TS}"
+        )
+        async with aiohttp.ClientSession() as session:
+            client = PowerHubApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.get(url, payload={
+                    "facilityid": FACILITY_ID,
+                    "min": 6.0, "max": 231.0, "avg": 109.25,
+                    "start": TS, "end": TS + 86400000 * 30,
+                    "count": 2,
+                    "data": [
+                        {"timestamp": TS, "value": 100.0},
+                        {"timestamp": TS + 86400000, "value": 231.0},
+                    ],
+                })
+                result = await client.get_month_consumption(FACILITY_ID, TS)
+
+        assert result.facility_id == FACILITY_ID
+        assert result.start_ms == TS
+        assert result.end_ms == TS + 86400000 * 30
+        assert result.value_min == 6.0
+        assert result.value_max == 231.0
+        assert result.avg == 109.25
+        assert len(result.data) == 2
+        assert result.data[1].value_wh == 231.0
+
+
+class TestCreateInvitation:
+    async def test_posts_and_returns_result(self):
+        async with aiohttp.ClientSession() as session:
+            client = PowerHubApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.post(
+                    f"{BASE_URL}/account/invitation",
+                    payload={
+                        "status": 0,
+                        "success": True,
+                        "data": {
+                            "id": "7adfa928-4081-4c3e-a27d-55c3833fd383",
+                            "code": "ELX4CULD",
+                            "created": "2026-04-15T07:58:30+0200",
+                            "expires": "2026-04-18T07:58:30+0200",
+                            "accessedFacilities": [],
+                        },
+                        "dataType": "JSON",
+                    },
+                )
+                result = await client.create_invitation(FACILITY_ID)
+
+        assert isinstance(result, InvitationCreated)
+        assert result.invitation_id == "7adfa928-4081-4c3e-a27d-55c3833fd383"
+        assert result.code == "ELX4CULD"
+        assert result.expires == "2026-04-18T07:58:30+0200"
+
+    async def test_raises_auth_error_on_401(self):
+        async with aiohttp.ClientSession() as session:
+            client = PowerHubApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.post(f"{BASE_URL}/account/invitation", status=401)
+                with pytest.raises(AuthError):
+                    await client.create_invitation(FACILITY_ID)
+
+
+class TestDeleteInvitation:
+    INVITATION_ID = "7adfa928-4081-4c3e-a27d-55c3833fd383"
+
+    async def test_deletes_without_error(self):
+        async with aiohttp.ClientSession() as session:
+            client = PowerHubApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.delete(
+                    f"{BASE_URL}/account/invitation/{self.INVITATION_ID}",
+                    status=204,
+                )
+                await client.delete_invitation(self.INVITATION_ID)  # must not raise
+
+    async def test_raises_auth_error_on_401(self):
+        async with aiohttp.ClientSession() as session:
+            client = PowerHubApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.delete(
+                    f"{BASE_URL}/account/invitation/{self.INVITATION_ID}",
+                    status=401,
+                )
+                with pytest.raises(AuthError):
+                    await client.delete_invitation(self.INVITATION_ID)

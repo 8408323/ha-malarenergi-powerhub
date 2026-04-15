@@ -67,8 +67,8 @@ class MeterResponse:
     start_ms: int
     end_ms: int
     count: int
-    min: float
-    max: float
+    value_min: float
+    value_max: float
     avg: float
     data: list[MeterData]
 
@@ -117,6 +117,16 @@ class Invitation:
 
 
 @dataclass
+class InvitationCreated:
+    """Result returned when a sharing invitation is created."""
+    invitation_id: str
+    code: str             # Short alphanumeric code for manual entry (e.g. "ELX4CULD")
+    created: str          # ISO 8601 timestamp
+    expires: str          # ISO 8601 timestamp
+    accessed_facilities: list[dict]
+
+
+@dataclass
 class Invitee:
     """Person who has been granted access to a facility."""
     invitee_id: str
@@ -130,20 +140,20 @@ class MonthlyInsights:
     """Monthly energy insights comparison."""
     facility_id: str
     month_timestamp_ms: int
-    your_average_price: float      # öre/kWh
-    monthly_average_price: float   # öre/kWh — market average
-    price_trend: str               # e.g. "UP" / "DOWN" / "FLAT"
-    current_year_value: float      # kWh year-to-date
-    previous_year_value: float     # kWh same period last year
-    year_percentage_change: float
-    year_trend: str                # e.g. "UP" / "DOWN"
+    your_average_price: float | None      # öre/kWh or kr/kWh; None for production meter
+    monthly_average_price: float | None   # öre/kWh or kr/kWh - market average; None for production
+    price_trend: str | None               # "ABOVE" / "BELOW"; None for production
+    current_year_value: float             # kWh year-to-date
+    previous_year_value: float | None     # kWh same period last year
+    year_percentage_change: float | None
+    year_trend: str | None
     daily_peaks: list[dict]
     baseload_kw: float
     baseload_kwh: float
     baseload_percentage: float
     total_kwh: float
-    off_peak_score: float
-    off_peak_rating: str           # e.g. "GOOD" / "AVERAGE" / "POOR"
+    off_peak_score: float | None          # None for production meter
+    off_peak_rating: str | None           # e.g. "GOOD" / "AVERAGE" / "POOR"
 
 
 class PowerHubApiClient:
@@ -169,6 +179,30 @@ class PowerHubApiClient:
                 raise AuthError("Token expired or invalid")
             resp.raise_for_status()
             return await resp.json(content_type=None)
+
+    async def _post(self, path: str, body: dict) -> object:
+        url = f"{BASE_URL}{path}"
+        async with self._session.post(
+            url,
+            headers=self._headers,
+            json=body,
+            timeout=aiohttp.ClientTimeout(total=15),
+        ) as resp:
+            if resp.status == 401:
+                raise AuthError("Token expired or invalid")
+            resp.raise_for_status()
+            return await resp.json(content_type=None)
+
+    async def _delete(self, path: str) -> None:
+        url = f"{BASE_URL}{path}"
+        async with self._session.delete(
+            url,
+            headers=self._headers,
+            timeout=aiohttp.ClientTimeout(total=15),
+        ) as resp:
+            if resp.status == 401:
+                raise AuthError("Token expired or invalid")
+            resp.raise_for_status()
 
     # ------------------------------------------------------------------
     # Account / setup
@@ -213,9 +247,9 @@ class PowerHubApiClient:
                 agreement_number=a.get("agreementNumber", ""),
                 supply_service_name=a.get("supplyServiceName", ""),
                 supply_start_date_ms=a.get("supplyStartDate", 0),
-                price_model=a.get("priceModel", ""),
-                utility=a.get("utility", ""),
-                facility_id=a.get("facilityId", ""),
+                price_model=(a.get("attributes") or {}).get("agreementPriceModel", ""),
+                utility=(a.get("attributes") or {}).get("utility", ""),
+                facility_id=(a.get("facility") or {}).get("facilityid", ""),
             )
             for a in (data if isinstance(data, list) else [])
         ]
@@ -233,6 +267,35 @@ class PowerHubApiClient:
             )
             for inv in (data if isinstance(data, list) else [])
         ]
+
+    async def create_invitation(
+        self,
+        facility_id: str,
+        share_all_devices: bool = True,
+    ) -> InvitationCreated:
+        """Create a sharing invitation for a facility.
+
+        Returns the new invitation including a short alphanumeric code
+        that the recipient can use for manual entry.
+        """
+        body = {
+            "accessedFacilities": [
+                {"facilityId": facility_id, "shareAllDevices": share_all_devices}
+            ]
+        }
+        resp = await self._post("/account/invitation", body)
+        data = resp.get("data", {})
+        return InvitationCreated(
+            invitation_id=data.get("id", ""),
+            code=data.get("code", ""),
+            created=data.get("created", ""),
+            expires=data.get("expires", ""),
+            accessed_facilities=data.get("accessedFacilities", []),
+        )
+
+    async def delete_invitation(self, invitation_id: str) -> None:
+        """Delete a sharing invitation by its ID."""
+        await self._delete(f"/account/invitation/{invitation_id}")
 
     # ------------------------------------------------------------------
     # Facility
@@ -290,7 +353,7 @@ class PowerHubApiClient:
         return [MeterData(d["timestamp"], d["value"]) for d in data.get("data", [])]
 
     async def get_spot_price_today(self, facility_id: str, timestamp_ms: int) -> list[dict]:
-        """Get Nordpool spot price for a day (15-min buckets, öre/kWh)."""
+        """Get Nordpool spot price for a day (15-min buckets, öre/kWh or kr/kWh)."""
         data = await self._get(
             f"/facility/{facility_id}/nordpool_spot_price",
             interval="DAY",
@@ -336,23 +399,28 @@ class PowerHubApiClient:
             meterType=meter_type,
             region=region,
         )
+        price = data.get("priceComparison") or {}
+        year = data.get("yearComparison") or {}
+        peaks = data.get("powerPeaks") or {}
+        baseload_obj = data.get("baseload") or {}
+        off_peak = data.get("offPeakScore")  # dict or None
         return MonthlyInsights(
-            facility_id=facility_id,
-            month_timestamp_ms=month_start_ms,
-            your_average_price=data.get("yourAveragePrice", 0.0),
-            monthly_average_price=data.get("monthlyAveragePrice", 0.0),
-            price_trend=data.get("priceTrend", ""),
-            current_year_value=data.get("currentYearValue", 0.0),
-            previous_year_value=data.get("previousYearValue", 0.0),
-            year_percentage_change=data.get("yearPercentageChange", 0.0),
-            year_trend=data.get("yearTrend", ""),
-            daily_peaks=data.get("dailyPeaks", []),
-            baseload_kw=data.get("baseloadKw", 0.0),
-            baseload_kwh=data.get("baseloadKwh", 0.0),
-            baseload_percentage=data.get("baseloadPercentage", 0.0),
-            total_kwh=data.get("totalKwh", 0.0),
-            off_peak_score=data.get("offPeakScore", 0.0),
-            off_peak_rating=data.get("offPeakRating", ""),
+            facility_id=data.get("facilityId", facility_id),
+            month_timestamp_ms=data.get("monthTimestamp", month_start_ms),
+            your_average_price=price.get("yourAveragePrice"),
+            monthly_average_price=price.get("monthlyAveragePrice"),
+            price_trend=price.get("trend"),
+            current_year_value=year.get("currentYearValue", 0.0),
+            previous_year_value=year.get("previousYearValue"),
+            year_percentage_change=year.get("percentageChange"),
+            year_trend=year.get("trend"),
+            daily_peaks=(peaks.get("dailyPeaks") or []),
+            baseload_kw=baseload_obj.get("baseload", 0.0),
+            baseload_kwh=baseload_obj.get("baseloadKwh", 0.0),
+            baseload_percentage=baseload_obj.get("baseloadPercentage", 0.0),
+            total_kwh=baseload_obj.get("totalKwh", 0.0),
+            off_peak_score=off_peak.get("offPeakScore") if off_peak else None,
+            off_peak_rating=off_peak.get("rating") if off_peak else None,
         )
 
     # ------------------------------------------------------------------
@@ -362,12 +430,12 @@ class PowerHubApiClient:
     async def _get_meter(self, path: str, interval: str, timestamp_ms: int) -> MeterResponse:
         data = await self._get(path, interval=interval, type="START", timestamp=timestamp_ms)
         return MeterResponse(
-            facility_id=data.get("facilityId", ""),
-            start_ms=data.get("startTimestamp", 0),
-            end_ms=data.get("endTimestamp", 0),
+            facility_id=data.get("facilityid", ""),
+            start_ms=data.get("start", 0),
+            end_ms=data.get("end", 0),
             count=data.get("count", 0),
-            min=data.get("min", 0.0),
-            max=data.get("max", 0.0),
+            value_min=data.get("min", 0.0),
+            value_max=data.get("max", 0.0),
             avg=data.get("avg", 0.0),
             data=[MeterData(d["timestamp"], d["value"]) for d in data.get("data", [])],
         )
