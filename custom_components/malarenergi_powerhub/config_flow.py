@@ -12,7 +12,7 @@ from homeassistant import config_entries
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import AuthError, bankid_poll, bankid_start
-from .const import CONF_FACILITY_ID, CONF_TOKEN, DOMAIN
+from .const import CONF_FACILITY_ID, CONF_TOKEN, DOMAIN, STATIC_URL
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ def _write_qr_png(hass_config_path: str, qr_code: str) -> str:
     with open(os.path.join(www_dir, fname), "wb") as f:
         f.write(buf.getvalue())
 
-    return f"/malarenergi_powerhub/{fname}"
+    return f"{STATIC_URL}/{fname}"
 
 
 def _qr_placeholders(hass_config_path: str, qr_code: str) -> dict:
@@ -59,10 +59,21 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._token: str | None = None
         self._poll_task: asyncio.Task | None = None
 
+    def _ensure_static_path(self) -> None:
+        """Register static path for QR images (idempotent)."""
+        www_dir = self.hass.config.path("custom_components", DOMAIN, "www")
+        try:
+            self.hass.http.register_static_path(
+                STATIC_URL, www_dir, cache_headers=False
+            )
+        except RuntimeError:
+            _LOGGER.debug("Static path %s already registered", STATIC_URL)
+
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.FlowResult:
         """Show QR code and start BankID polling."""
+        self._ensure_static_path()
         session = async_get_clientsession(self.hass)
 
         try:
