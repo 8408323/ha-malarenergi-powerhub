@@ -7,7 +7,7 @@
       },
       "bankid_qr": {
         "title": "Scan QR code with BankID",
-        "description": "Open the BankID app and scan the code below:\n\n`{qr_code}`\n\nThe code updates automatically. Waiting for login..."
+        "description": "Open the BankID app and scan the QR code.\n\n<malarenergi-qr data=\"{qr_code}\"></malarenergi-qr>\n\nThe code updates automatically. Waiting for login..."
       }
     },
     "error": {
