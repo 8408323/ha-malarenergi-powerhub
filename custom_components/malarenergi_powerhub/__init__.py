@@ -62,6 +62,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             result.code,
             result.expires,
         )
+        # Show a persistent notification so the user can share the code
+        hass.components.persistent_notification.async_create(
+            message=(
+                f"**Invitation code:** `{result.code}`\n\n"
+                f"Invitation ID: `{result.invitation_id}`\n"
+                f"Expires: {result.expires}\n\n"
+                "Share this code with the person you want to invite. "
+                "Use the `delete_invitation` service with the invitation ID to revoke access."
+            ),
+            title="PowerHub — Invitation Created",
+            notification_id=f"powerhub_invitation_{result.invitation_id}",
+        )
 
     async def handle_delete_invitation(call: ServiceCall) -> None:
         # Invitations are account-wide; any config entry's token is valid.
