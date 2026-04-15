@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import logging
+import os
 
 import voluptuous as vol
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
@@ -43,11 +45,12 @@ def _get_client(hass: HomeAssistant, facility_id: str | None) -> tuple[PowerHubA
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Register static path for QR images served during config flow."""
-    import os
     qr_dir = hass.config.path("custom_components", DOMAIN, "www")
     os.makedirs(qr_dir, exist_ok=True)
     try:
-        hass.http.register_static_path(STATIC_URL, qr_dir, cache_headers=False)
+        hass.http.async_register_static_paths(
+            [StaticPathConfig(STATIC_URL, qr_dir, cache_headers=False)]
+        )
     except RuntimeError:
         _LOGGER.debug("Static path %s already registered", STATIC_URL)
     return True
