@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import asyncio
+import base64
+import io
 import logging
 from typing import Any
 
@@ -12,6 +14,17 @@ from .api import AuthError, bankid_poll, bankid_start
 from .const import CONF_FACILITY_ID, CONF_TOKEN, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _qr_data_uri(data: str) -> str:
+    """Generate a base64 PNG data URI for the given QR code content."""
+    import qrcode  # noqa: PLC0415 — optional dep, loaded lazily
+
+    img = qrcode.make(data)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    b64 = base64.b64encode(buf.getvalue()).decode()
+    return f"data:image/png;base64,{b64}"
 
 
 class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -55,9 +68,13 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     errors={"base": "bankid_failed"},
                 )
 
+        qr_img = _qr_data_uri(self._qr_code) if self._qr_code else ""
         return self.async_show_form(
             step_id="bankid_qr",
-            description_placeholders={"qr_code": self._qr_code or ""},
+            description_placeholders={
+                "qr_code": self._qr_code or "",
+                "qr_image": qr_img,
+            },
         )
 
     async def async_step_bankid_qr(
@@ -72,10 +89,12 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         async for status, qr, token in bankid_poll(session, self._transaction_id):
             if status == "pending" and qr:
                 self._qr_code = qr
-                # Return updated QR for frontend to re-render
                 return self.async_show_form(
                     step_id="bankid_qr",
-                    description_placeholders={"qr_code": qr},
+                    description_placeholders={
+                        "qr_code": qr,
+                        "qr_image": _qr_data_uri(qr),
+                    },
                 )
             if status == "complete" and token:
                 return await self._async_finish(token)
