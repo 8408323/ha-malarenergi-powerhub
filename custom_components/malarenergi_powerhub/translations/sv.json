@@ -7,7 +7,7 @@
       },
       "bankid_qr": {
         "title": "Skanna QR-kod med BankID",
-        "description": "Öppna BankID-appen och skanna QR-koden.\n\n<malarenergi-qr data=\"{qr_code}\"></malarenergi-qr>\n\nKoden uppdateras automatiskt. Väntar på inloggning..."
+        "description": "Öppna BankID-appen och skanna QR-koden.\n\n{qr_image}\n\nKoden uppdateras automatiskt. Tryck Skicka för att uppdatera koden."
       }
     },
     "error": {
