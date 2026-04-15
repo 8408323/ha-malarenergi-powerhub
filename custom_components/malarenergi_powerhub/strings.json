@@ -7,7 +7,7 @@
       },
       "bankid_qr": {
         "title": "Skanna QR-kod med BankID",
-        "description": "Öppna BankID-appen och skanna QR-koden nedan.\n\n![QR-kod]({qr_image})\n\nKoden uppdateras automatiskt. Väntar på inloggning..."
+        "description": "Öppna BankID-appen och skanna koden nedan:\n\n`{qr_code}`\n\nKoden uppdateras automatiskt. Väntar på inloggning..."
       }
     },
     "error": {
