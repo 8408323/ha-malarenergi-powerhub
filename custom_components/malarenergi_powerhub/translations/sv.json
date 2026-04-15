@@ -7,7 +7,7 @@
       },
       "bankid_qr": {
         "title": "Skanna QR-kod med BankID",
-        "description": "1. Öppna BankID-appen\n2. Tryck **Skicka** nedan för att ladda en ny QR-kod\n3. Skanna den omedelbart\n\nQR-koden löper ut inom några sekunder — tryck alltid Skicka precis innan du skannar för att få en färsk kod."
+        "description": "Logga in med Mobilt BankID:\n1. Öppna BankID-appen på din telefon\n2. Tryck **Skicka** för att generera en ny QR-kod\n3. Skanna QR-koden omedelbart med BankID\n4. Efter godkännande i BankID, tryck **Skicka** igen för att slutföra inloggningen\n\nQR-koden roterar varje sekund — tryck Skicka precis innan du skannar."
       }
     },
     "error": {

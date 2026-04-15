@@ -27,8 +27,8 @@ class PowerHubSensorDescription(SensorEntityDescription):
 
 SENSORS: tuple[PowerHubSensorDescription, ...] = (
     PowerHubSensorDescription(
-        key="consumption_today",
-        name="Consumption Today",
+        key="import_today",
+        name="Import Today",
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL,
         native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
@@ -36,8 +36,8 @@ SENSORS: tuple[PowerHubSensorDescription, ...] = (
         value_fn=lambda d: d.consumption_today_wh,
     ),
     PowerHubSensorDescription(
-        key="production_today",
-        name="Production Today",
+        key="export_today",
+        name="Export Today",
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL,
         native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,

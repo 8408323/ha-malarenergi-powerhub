@@ -7,7 +7,7 @@
       },
       "bankid_qr": {
         "title": "Scan QR code with BankID",
-        "description": "1. Open the BankID app\n2. Click **Submit** below to load a fresh QR code\n3. Scan it immediately\n\nThe QR code expires within seconds — always click Submit right before scanning to get a fresh one."
+        "description": "Sign in with Mobile BankID:\n1. Open the BankID app on your phone\n2. Click **Submit** to generate a fresh QR code\n3. Scan the QR code immediately with BankID\n4. After approving in BankID, click **Submit** again to complete sign-in\n\nThe QR rotates every second — click Submit right before scanning."
       }
     },
     "error": {
