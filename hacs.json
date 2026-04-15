@@ -1,0 +1,5 @@
+{
+  "name": "Mälarenergi PowerHub",
+  "domains": ["sensor"],
+  "iot_class": "cloud_polling"
+}
