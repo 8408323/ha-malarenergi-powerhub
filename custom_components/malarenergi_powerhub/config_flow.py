@@ -33,6 +33,10 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._poll_task.cancel()
         self._poll_task = None
 
+    async def async_remove(self) -> None:
+        """Cancel background polling when the flow is discarded."""
+        self._cancel_task()
+
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.FlowResult:

@@ -30,7 +30,7 @@ SENSORS: tuple[PowerHubSensorDescription, ...] = (
         key="consumption_today",
         name="Consumption Today",
         device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.MEASUREMENT,
+        state_class=SensorStateClass.TOTAL,
         native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
         suggested_display_precision=0,
         value_fn=lambda d: d.consumption_today_wh,
@@ -39,7 +39,7 @@ SENSORS: tuple[PowerHubSensorDescription, ...] = (
         key="production_today",
         name="Production Today",
         device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.MEASUREMENT,
+        state_class=SensorStateClass.TOTAL,
         native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
         suggested_display_precision=0,
         value_fn=lambda d: d.production_today_wh,
@@ -69,6 +69,7 @@ async def async_setup_entry(
 
 class PowerHubSensor(CoordinatorEntity[PowerHubCoordinator], SensorEntity):
     _attr_has_entity_name = True
+    _attr_force_update = True
     entity_description: PowerHubSensorDescription
 
     def __init__(
