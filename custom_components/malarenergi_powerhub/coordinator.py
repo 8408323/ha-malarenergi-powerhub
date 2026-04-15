@@ -10,7 +10,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import AuthError, PowerHubApiClient
+from .api import AuthError, FacilityAttributes, PowerHubApiClient
 from .const import CONF_FACILITY_ID, CONF_TOKEN, DEFAULT_SCAN_INTERVAL, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -22,6 +22,7 @@ class PowerHubData:
     consumption_today_kwh: float | None    # kWh imported from grid today so far
     production_today_kwh: float | None     # kWh exported to grid today so far
     spot_price_now: float | None           # Current Nordpool spot price (öre/kWh)
+    attributes: FacilityAttributes | None  # Static facility attributes (solar, battery, etc.)
 
 
 def _day_start_ms() -> int:
@@ -44,6 +45,7 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
         self._token = entry.data[CONF_TOKEN]
         self._facility_id = entry.data[CONF_FACILITY_ID]
         self._entry = entry
+        self._cached_attributes: FacilityAttributes | None = None
         super().__init__(
             hass,
             _LOGGER,
@@ -61,6 +63,12 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
         now_ms = _now_ms()
 
         try:
+            # Fetch facility attributes once (static data — cache after first successful fetch)
+            if self._cached_attributes is None:
+                self._cached_attributes = await client.get_facility_attributes(
+                    self._facility_id
+                )
+
             # Consumption today — API returns kWh per 15-min bucket
             consumption_points = await client.get_today_consumption(
                 self._facility_id, day_ms
@@ -101,4 +109,5 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
             consumption_today_kwh=consumption_kwh,
             production_today_kwh=production_kwh,
             spot_price_now=spot_now,
+            attributes=self._cached_attributes,
         )
