@@ -80,19 +80,19 @@ Response (array):
 [
   {
     "facilityid": "uuid",
-    "street": "ÖSTER RÅBY",
-    "houseNumber": 11,
-    "city": "VÄSTERÅS",
-    "postcode": "72222",
+    "street": "EXAMPLE STREET",
+    "houseNumber": 1,
+    "city": "EXAMPLE CITY",
+    "postcode": "00000",
     "countrycode": "SE",
-    "latitude": 59.6099,
-    "longitude": 16.54481,
-    "utilityid": "fb71138f",
-    "utilityName": "735999",
+    "latitude": 59.0000,
+    "longitude": 18.0000,
+    "utilityid": "example-utility-id",
+    "utilityName": "example-utility",
     "metadata": {
-      "netId": "VLS",
+      "netId": "EXAMPLE",
       "region": "SE3",
-      "meterId": "735999137910044285"
+      "meterId": "example-meter-id"
     },
     "facilityOwnerName": "...",
     "facilityOwnerId": "uuid"
@@ -133,7 +133,7 @@ Same structure as consumption. Returns 0 or empty `data` if no solar/production.
 ```
 GET /facility/{facilityId}/nordpool_spot_price?interval=DAY&type=START&timestamp={ms}
 ```
-Returns hourly Nordpool spot prices (öre/kWh) for the facility's price region (SE1–SE4).
+Returns Nordpool spot prices (öre/kWh) for the facility's price region (SE1–SE4) in 15-minute buckets.
 
 Response:
 ```json
@@ -210,7 +210,7 @@ Set your phone's Wi-Fi proxy to your PC's LAN IP on port 8080. Install the mitmp
 ## Integration Strategy
 
 The integration uses **cloud polling** (HA `iot_class: cloud_polling`):
-- Polls `/facility/{id}/facility_consumption_meter` and `/nordpool_spot_price` every 60 seconds
+- Polls `/facility/{id}/facility_consumption_meter`, `/facility/{id}/facility_production_meter`, and `/nordpool_spot_price` every 60 seconds
 - Sums 15-minute Wh buckets from midnight up to the current time for today's totals
 - On HTTP 401, triggers HA's built-in re-auth flow (re-scan BankID QR)
 
