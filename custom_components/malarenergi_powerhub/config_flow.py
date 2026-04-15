@@ -9,6 +9,7 @@ import os
 from typing import Any
 
 from homeassistant import config_entries
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import AuthError, bankid_poll, bankid_start
@@ -63,8 +64,8 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Register static path for QR images (idempotent)."""
         www_dir = self.hass.config.path("custom_components", DOMAIN, "www")
         try:
-            self.hass.http.register_static_path(
-                STATIC_URL, www_dir, cache_headers=False
+            self.hass.http.async_register_static_paths(
+                [StaticPathConfig(STATIC_URL, www_dir, cache_headers=False)]
             )
         except RuntimeError:
             _LOGGER.debug("Static path %s already registered", STATIC_URL)
