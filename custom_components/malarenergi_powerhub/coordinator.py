@@ -19,9 +19,9 @@ _LOGGER = logging.getLogger(__name__)
 @dataclass
 class PowerHubData:
     """Snapshot of data from the PowerHub API."""
-    consumption_today_wh: float | None    # Wh consumed today so far
-    production_today_wh: float | None     # Wh produced (solar) today so far
-    spot_price_now: float | None          # Current Nordpool spot price (öre/kWh)
+    consumption_today_kwh: float | None    # kWh imported from grid today so far
+    production_today_kwh: float | None     # kWh exported to grid today so far
+    spot_price_now: float | None           # Current Nordpool spot price (öre/kWh)
 
 
 def _day_start_ms() -> int:
@@ -61,21 +61,20 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
         now_ms = _now_ms()
 
         try:
-            # Consumption today
+            # Consumption today — API returns kWh per 15-min bucket
             consumption_points = await client.get_today_consumption(
                 self._facility_id, day_ms
             )
-            # Sum all 15-min buckets up to now
-            consumption_wh = sum(
+            consumption_kwh = sum(
                 p.value_wh for p in consumption_points
                 if p.timestamp_ms <= now_ms
             ) or None
 
-            # Production today (solar)
+            # Production (export) today — API returns kWh per 15-min bucket
             production_points = await client.get_today_production(
                 self._facility_id, day_ms
             )
-            production_wh = sum(
+            production_kwh = sum(
                 p.value_wh for p in production_points
                 if p.timestamp_ms <= now_ms
             ) or None
@@ -99,7 +98,7 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
             raise UpdateFailed(f"API error: {err}") from err
 
         return PowerHubData(
-            consumption_today_wh=consumption_wh,
-            production_today_wh=production_wh,
+            consumption_today_kwh=consumption_kwh,
+            production_today_kwh=production_kwh,
             spot_price_now=spot_now,
         )
