@@ -1,0 +1,24 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Mälarenergi PowerHub",
+        "description": "Logga in med BankID. Tryck Nästa för att visa QR-kod."
+      },
+      "bankid_qr": {
+        "title": "Skanna QR-kod med BankID",
+        "description": "Öppna BankID-appen och skanna koden:\n\n`{qr_code}`\n\nKoden uppdateras automatiskt. Väntar på inloggning..."
+      }
+    },
+    "error": {
+      "cannot_connect": "Kunde inte ansluta till Mälarenergi. Kontrollera internetanslutningen.",
+      "bankid_failed": "BankID-inloggning misslyckades. Försök igen.",
+      "invalid_auth": "Ogiltig autentisering.",
+      "no_facilities": "Inga anläggningar hittades för detta konto."
+    },
+    "abort": {
+      "already_configured": "Denna anläggning är redan konfigurerad.",
+      "reauth_successful": "Omautentisering lyckades."
+    }
+  }
+}
