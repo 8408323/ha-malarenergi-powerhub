@@ -1,44 +1,89 @@
 # ha-malarenergi-powerhub
 
-Home Assistant custom integration for [Mälarenergi PowerHub](https://www.malarenergi.se/el/elavtal/powerhub/) — a local real-time energy monitor manufactured by [Bitvis](https://bitvis.se/power-flow/power-hub/).
+Home Assistant custom integration for [Mälarenergi PowerHub](https://www.malarenergi.se/el/elavtal/powerhub/) — a cloud-connected energy monitor manufactured by [Bitvis AB](https://bitvis.se/).
 
-> **Status**: Early development / reverse engineering in progress.
+> **Status**: Working prototype — BankID auth + cloud API implemented.
 
 ## Hardware
 
 | Property | Value |
 |---|---|
-| Manufacturer | Bitvis (OEM for Mälarenergi) |
+| Manufacturer | Bitvis AB (OEM for Mälarenergi) |
 | SoC | Espressif ESP32 (OUI `94:54:C5`) |
-| Connectivity | Wi-Fi 2.4 GHz + Bluetooth |
-| HAN port | RJ45 (Norwegian standard) |
+| Connectivity | Wi-Fi 2.4 GHz |
+| HAN port | RJ45 (Norwegian standard, P1/IEC 62056-21) |
 | Meter | Kaifa MA304 |
-| Meter protocol | DLMS/COSEM over M-Bus (IEC 62056) |
-| Poll interval | ~10 seconds |
+| Cloud backend | Bitvis "Flow" platform — `malarenergi.prod.flow.bitv.is` |
 
-## Features (planned)
+The device has **no local API** — all communication goes through Bitvis's cloud (confirmed by full TCP port scan: 0 open ports). This integration uses the same REST API as the Mälarenergi iPhone/Android app.
 
-- Local polling — no cloud dependency
-- Real-time power consumption (W)
-- Cumulative energy (kWh)
-- Per-phase voltage and current (if exposed)
+## Features
+
+- Today's energy consumption (Wh, summed from 15-minute buckets)
+- Today's energy production (Wh, if applicable)
+- Current spot price (öre/kWh, from Nordpool via Bitvis)
 - HA Energy dashboard compatible sensors
+- Automatic token re-auth when JWT expires
 
-## Reverse Engineering Notes
+## Authentication
 
-See [docs/reverse_engineering.md](docs/reverse_engineering.md) for findings on the device's local network API.
+Login uses **Swedish BankID** (same as the Mälarenergi app). During setup a QR code is displayed in the HA config flow — scan it with the BankID app on your phone.
+
+The integration stores the JWT Bearer token in the HA config entry. When the token expires, HA triggers a re-auth flow automatically.
 
 ## Installation
 
-> Not yet available. Work in progress.
+### HACS (recommended — once listed)
 
-Manual installation via HACS or by copying the `custom_components/malarenergi_powerhub/` folder to your HA config directory.
+1. Add this repo as a custom repository in HACS.
+2. Install *Mälarenergi PowerHub*.
+3. Restart Home Assistant.
+
+### Manual
+
+1. Copy `custom_components/malarenergi_powerhub/` to your HA `config/custom_components/` directory.
+2. Restart Home Assistant.
 
 ## Configuration
 
-After installation, go to **Settings → Devices & Services → Add Integration** and search for *Mälarenergi PowerHub*.
+1. Go to **Settings → Devices & Services → Add Integration**.
+2. Search for *Mälarenergi PowerHub*.
+3. Scan the BankID QR code that appears.
+4. Select which facility to monitor (if you have multiple).
 
-The integration discovers the device automatically via mDNS, or you can enter the IP address manually.
+## Sensors
+
+| Entity | Unit | Description |
+|---|---|---|
+| `sensor.malarenergi_consumption_today` | Wh | Cumulative consumption since midnight |
+| `sensor.malarenergi_production_today` | Wh | Cumulative production since midnight |
+| `sensor.malarenergi_spot_price` | öre/kWh | Current Nordpool spot price |
+
+## Development
+
+### Requirements
+
+```
+pip install pytest pytest-asyncio aioresponses aiohttp
+```
+
+### Run tests
+
+```bash
+python3 -m pytest tests/ -v
+```
+
+### Traffic capture (for further reverse engineering)
+
+```bash
+# Install mitmproxy
+pip install mitmproxy
+
+# Start capture proxy (optionally filter by device/phone IP)
+CAPTURE_PHONE_IP=192.168.1.x mitmdump -s tools/capture.py --listen-port 8080 --ssl-insecure
+```
+
+See [docs/reverse_engineering.md](docs/reverse_engineering.md) for full findings on the cloud API.
 
 ## Contributing
 
