@@ -10,6 +10,7 @@ from custom_components.malarenergi_powerhub.api import (
     BASE_URL,
     AuthError,
     InvitationCreated,
+    MonthlyInsights,
     PowerHubApiClient,
     bankid_start,
     bankid_poll,
@@ -326,3 +327,144 @@ class TestDeleteInvitation:
                 )
                 with pytest.raises(AuthError):
                     await client.delete_invitation(self.INVITATION_ID)
+
+
+class TestGetMonthProduction:
+    async def test_returns_meter_response_for_production(self):
+        url = (
+            f"{BASE_URL}/facility/{FACILITY_ID}/facility_production_meter"
+            f"?interval=MONTH&type=START&timestamp={TS}"
+        )
+        async with aiohttp.ClientSession() as session:
+            client = PowerHubApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.get(url, payload={
+                    "facilityid": FACILITY_ID,
+                    "min": 0.0, "max": 55.0, "avg": 22.5,
+                    "start": TS, "end": TS + 86400000 * 30,
+                    "count": 2,
+                    "data": [
+                        {"timestamp": TS, "value": 0.0},
+                        {"timestamp": TS + 86400000, "value": 55.0},
+                    ],
+                })
+                result = await client.get_month_production(FACILITY_ID, TS)
+
+        assert result.facility_id == FACILITY_ID
+        assert result.value_min == 0.0
+        assert result.value_max == 55.0
+        assert len(result.data) == 2
+
+
+class TestGetYearConsumption:
+    async def test_returns_meter_response_for_year(self):
+        year_ts = 1735686000000  # 2025-01-01T00:00:00+01:00
+        url = (
+            f"{BASE_URL}/facility/{FACILITY_ID}/facility_consumption_meter"
+            f"?interval=YEAR&type=START&timestamp={year_ts}"
+        )
+        async with aiohttp.ClientSession() as session:
+            client = PowerHubApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.get(url, payload={
+                    "facilityid": FACILITY_ID,
+                    "min": 800.0, "max": 3200.0, "avg": 1800.0,
+                    "start": year_ts, "end": year_ts + 86400000 * 365,
+                    "count": 12,
+                    "data": [{"timestamp": year_ts + i * 2_592_000_000, "value": 1000.0 + i * 100}
+                             for i in range(12)],
+                })
+                result = await client.get_year_consumption(FACILITY_ID, year_ts)
+
+        assert result.facility_id == FACILITY_ID
+        assert result.count == 12
+        assert result.value_min == pytest.approx(800.0)
+        assert result.value_max == pytest.approx(3200.0)
+        assert len(result.data) == 12
+
+
+class TestGetMonthlyInsights:
+    def _full_payload(self):
+        return {
+            "facilityId": FACILITY_ID,
+            "monthTimestamp": TS,
+            "priceComparison": {
+                "yourAveragePrice": 0.85,
+                "monthlyAveragePrice": 0.92,
+                "trend": "BELOW",
+            },
+            "yearComparison": {
+                "currentYearValue": 1200.0,
+                "previousYearValue": 1100.0,
+                "percentageChange": 9.09,
+                "trend": "UP",
+            },
+            "powerPeaks": {
+                "dailyPeaks": [
+                    {"timestamp": TS, "value": 5.5},
+                    {"timestamp": TS + 86400000, "value": 4.2},
+                ],
+            },
+            "baseload": {
+                "baseload": 0.8,
+                "baseloadKwh": 580.0,
+                "baseloadPercentage": 48.3,
+                "totalKwh": 1200.0,
+            },
+            "offPeakScore": {
+                "offPeakScore": 72.0,
+                "rating": "GOOD",
+            },
+        }
+
+    async def test_returns_full_insights(self):
+        url = (
+            f"{BASE_URL}/facility/{FACILITY_ID}/insights/monthly/{TS}"
+            f"?meterType=consumption&region=SE3"
+        )
+        async with aiohttp.ClientSession() as session:
+            client = PowerHubApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.get(url, payload=self._full_payload())
+                result = await client.get_monthly_insights(FACILITY_ID, TS)
+
+        assert isinstance(result, MonthlyInsights)
+        assert result.facility_id == FACILITY_ID
+        assert result.month_timestamp_ms == TS
+        assert result.your_average_price == pytest.approx(0.85)
+        assert result.monthly_average_price == pytest.approx(0.92)
+        assert result.price_trend == "BELOW"
+        assert result.current_year_value == pytest.approx(1200.0)
+        assert result.previous_year_value == pytest.approx(1100.0)
+        assert result.year_percentage_change == pytest.approx(9.09)
+        assert result.year_trend == "UP"
+        assert len(result.daily_peaks) == 2
+        assert result.baseload_kw == pytest.approx(0.8)
+        assert result.baseload_kwh == pytest.approx(580.0)
+        assert result.baseload_percentage == pytest.approx(48.3)
+        assert result.total_kwh == pytest.approx(1200.0)
+        assert result.off_peak_score == pytest.approx(72.0)
+        assert result.off_peak_rating == "GOOD"
+
+    async def test_handles_null_optional_sections(self):
+        """priceComparison and offPeakScore can be null (e.g. production meters)."""
+        url = (
+            f"{BASE_URL}/facility/{FACILITY_ID}/insights/monthly/{TS}"
+            f"?meterType=consumption&region=SE3"
+        )
+        payload = self._full_payload()
+        payload["priceComparison"] = None
+        payload["offPeakScore"] = None
+        async with aiohttp.ClientSession() as session:
+            client = PowerHubApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.get(url, payload=payload)
+                result = await client.get_monthly_insights(FACILITY_ID, TS)
+
+        assert result.your_average_price is None
+        assert result.monthly_average_price is None
+        assert result.price_trend is None
+        assert result.off_peak_score is None
+        assert result.off_peak_rating is None
+        # non-nullable fields still populated
+        assert result.current_year_value == pytest.approx(1200.0)

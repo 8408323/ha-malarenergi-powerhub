@@ -62,7 +62,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def handle_create_invitation(call: ServiceCall) -> None:
         facility_id = call.data.get(CONF_FACILITY_ID)
         share_all_devices = call.data.get("share_all_devices", True)
-        client, fid = _get_client(hass, facility_id)
+        try:
+            client, fid = _get_client(hass, facility_id)
+        except ValueError as err:
+            _LOGGER.error("create_invitation service failed: %s", err)
+            return
         result = await client.create_invitation(fid, share_all_devices=share_all_devices)
         _LOGGER.info(
             "Created invitation %s (code=%s, expires=%s)",
@@ -72,8 +76,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
 
     async def handle_delete_invitation(call: ServiceCall) -> None:
+        # Invitations are account-wide; any config entry's token is valid.
         invitation_id = call.data["invitation_id"]
-        client, _ = _get_client(hass, None)
+        try:
+            client, _ = _get_client(hass, None)
+        except ValueError as err:
+            _LOGGER.error("delete_invitation service failed: %s", err)
+            return
         await client.delete_invitation(invitation_id)
         _LOGGER.info("Deleted invitation %s", invitation_id)
 
