@@ -3,22 +3,22 @@
     "step": {
       "user": {
         "title": "Mälarenergi PowerHub",
-        "description": "Logga in med BankID. Tryck Nästa för att visa QR-kod."
+        "description": "Sign in with BankID. Click Next to show the QR code."
       },
       "bankid_qr": {
-        "title": "Skanna QR-kod med BankID",
-        "description": "Öppna BankID-appen och skanna koden nedan:\n\n`{qr_code}`\n\nKoden uppdateras automatiskt. Väntar på inloggning..."
+        "title": "Scan QR code with BankID",
+        "description": "Open the BankID app and scan the code below:\n\n`{qr_code}`\n\nThe code updates automatically. Waiting for login..."
       }
     },
     "error": {
-      "cannot_connect": "Kunde inte ansluta till Mälarenergi. Kontrollera internetanslutningen.",
-      "bankid_failed": "BankID-inloggning misslyckades. Försök igen.",
-      "invalid_auth": "Ogiltig autentisering.",
-      "no_facilities": "Inga anläggningar hittades för detta konto."
+      "cannot_connect": "Could not connect to Mälarenergi. Check your internet connection.",
+      "bankid_failed": "BankID login failed. Please try again.",
+      "invalid_auth": "Invalid authentication.",
+      "no_facilities": "No facilities found for this account."
     },
     "abort": {
-      "already_configured": "Denna anläggning är redan konfigurerad.",
-      "reauth_successful": "Omautentisering lyckades."
+      "already_configured": "This facility is already configured.",
+      "reauth_successful": "Re-authentication successful."
     }
   }
 }
