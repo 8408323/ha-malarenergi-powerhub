@@ -59,10 +59,22 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._token: str | None = None
         self._poll_task: asyncio.Task | None = None
 
+    def _ensure_static_path(self) -> None:
+        """Register static path for QR images (idempotent)."""
+        www_dir = self.hass.config.path("custom_components", DOMAIN, "www")
+        os.makedirs(www_dir, exist_ok=True)
+        try:
+            self.hass.http.register_static_path(
+                "/malarenergi_powerhub", www_dir, cache_headers=False
+            )
+        except RuntimeError:
+            pass  # Already registered
+
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.FlowResult:
         """Show QR code and start BankID polling."""
+        self._ensure_static_path()
         session = async_get_clientsession(self.hass)
 
         try:
