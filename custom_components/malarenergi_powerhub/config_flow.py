@@ -1,52 +1,18 @@
 """Config flow for Mälarenergi PowerHub — BankID QR authentication."""
 from __future__ import annotations
 
-import asyncio
-import io
 import logging
-import os
-import time
 from typing import Any
 
+import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.selector import QrCodeSelector, QrCodeSelectorConfig
 
 from .api import AuthError, bankid_poll, bankid_start
 from .const import CONF_FACILITY_ID, CONF_TOKEN, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
-
-
-def _write_qr_png(hass_config_path: str, qr_code: str) -> str:
-    """Write a QR code PNG to the /local/ dir and return the URL path."""
-    try:
-        import qrcode  # noqa: PLC0415
-    except ImportError:
-        return ""
-
-    img = qrcode.make(qr_code)
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-
-    # Use a stable filename so old QR images don't accumulate.
-    # A timestamp query parameter prevents browser caching across rotations.
-    # HA always serves <config>/www/ at /local/ — no custom registration needed.
-    www_dir = os.path.join(hass_config_path, "www", DOMAIN)
-    os.makedirs(www_dir, exist_ok=True)
-    with open(os.path.join(www_dir, "qr.png"), "wb") as f:
-        f.write(buf.getvalue())
-
-    return f"/local/{DOMAIN}/qr.png?t={int(time.time())}"
-
-
-def _qr_placeholders(hass_config_path: str, qr_code: str) -> dict:
-    url = _write_qr_png(hass_config_path, qr_code)
-    if url:
-        return {
-            "qr_code": qr_code,
-            "qr_image": f"![]({url})",
-        }
-    return {"qr_code": qr_code, "qr_image": f"`{qr_code}`"}
 
 
 class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -57,8 +23,6 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def __init__(self) -> None:
         self._transaction_id: str | None = None
         self._qr_code: str | None = None
-        self._token: str | None = None
-        self._poll_task: asyncio.Task | None = None
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -87,12 +51,13 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     errors={"base": "bankid_failed"},
                 )
 
-        placeholders = await self.hass.async_add_executor_job(
-            _qr_placeholders, self.hass.config.config_dir, self._qr_code or ""
-        )
         return self.async_show_form(
             step_id="bankid_qr",
-            description_placeholders=placeholders,
+            data_schema=vol.Schema({
+                vol.Optional("qr"): QrCodeSelector(
+                    QrCodeSelectorConfig(data=self._qr_code or "")
+                ),
+            }),
         )
 
     async def async_step_bankid_qr(
@@ -107,12 +72,13 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         async for status, qr, token in bankid_poll(session, self._transaction_id):
             if status == "pending" and qr:
                 self._qr_code = qr
-                placeholders = await self.hass.async_add_executor_job(
-                    _qr_placeholders, self.hass.config.config_dir, qr
-                )
                 return self.async_show_form(
                     step_id="bankid_qr",
-                    description_placeholders=placeholders,
+                    data_schema=vol.Schema({
+                        vol.Optional("qr"): QrCodeSelector(
+                            QrCodeSelectorConfig(data=qr)
+                        ),
+                    }),
                 )
             if status == "complete" and token:
                 return await self._async_finish(token)

@@ -7,7 +7,7 @@
       },
       "bankid_qr": {
         "title": "Scan QR code with BankID",
-        "description": "Open the BankID app and scan the QR code.\n\n{qr_image}\n\nThe code updates automatically. Click Submit to refresh."
+        "description": "Open the BankID app and scan the QR code below. **Scan within 30 seconds** — the code rotates every second and expires after ~3 minutes. Click Submit to check if authentication is complete."
       }
     },
     "error": {
