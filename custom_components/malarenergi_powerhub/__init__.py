@@ -14,6 +14,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .api import PowerHubApiClient
 from .const import CONF_FACILITY_ID, CONF_TOKEN, DOMAIN
 from .coordinator import PowerHubCoordinator
+from .notifications_coordinator import NotificationsCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -45,7 +46,13 @@ def _get_client(hass: HomeAssistant, facility_id: str | None) -> tuple[PowerHubA
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator = PowerHubCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
+
+    notifications_coordinator = NotificationsCoordinator(hass, entry)
+    await notifications_coordinator.async_config_entry_first_refresh()
+
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
+    hass.data[DOMAIN][f"{entry.entry_id}_notifications"] = notifications_coordinator
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     async def handle_create_invitation(call: ServiceCall) -> None:
@@ -113,6 +120,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         hass.data[DOMAIN].pop(entry.entry_id)
+        hass.data[DOMAIN].pop(f"{entry.entry_id}_notifications", None)
     if not hass.data.get(DOMAIN):
         hass.services.async_remove(DOMAIN, SERVICE_CREATE_INVITATION)
         hass.services.async_remove(DOMAIN, SERVICE_DELETE_INVITATION)
