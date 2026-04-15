@@ -1,0 +1,33 @@
+create_invitation:
+  name: Create invitation
+  description: >
+    Creates a sharing invitation for a facility. The recipient receives a
+    short alphanumeric code to redeem in the Mälarenergi app.
+  fields:
+    facility_id:
+      name: Facility ID
+      description: >
+        The facility to share. Omit when only one facility is configured.
+      required: false
+      example: "00000000-0000-0000-0000-000000000001"
+      selector:
+        text:
+    share_all_devices:
+      name: Share all devices
+      description: Whether to share all devices in the facility.
+      required: false
+      default: true
+      selector:
+        boolean:
+
+delete_invitation:
+  name: Delete invitation
+  description: Deletes an existing sharing invitation, revoking access for anyone who hasn't yet redeemed it.
+  fields:
+    invitation_id:
+      name: Invitation ID
+      description: The ID of the invitation to delete.
+      required: true
+      example: "7adfa928-4081-4c3e-a27d-55c3833fd383"
+      selector:
+        text:

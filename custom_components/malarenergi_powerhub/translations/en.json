@@ -20,5 +20,31 @@
       "already_configured": "This facility is already configured.",
       "reauth_successful": "Re-authentication successful."
     }
+  },
+  "services": {
+    "create_invitation": {
+      "name": "Create invitation",
+      "description": "Creates a sharing invitation for a facility.",
+      "fields": {
+        "facility_id": {
+          "name": "Facility ID",
+          "description": "The facility to share. Omit when only one facility is configured."
+        },
+        "share_all_devices": {
+          "name": "Share all devices",
+          "description": "Whether to share all devices in the facility."
+        }
+      }
+    },
+    "delete_invitation": {
+      "name": "Delete invitation",
+      "description": "Deletes an existing sharing invitation.",
+      "fields": {
+        "invitation_id": {
+          "name": "Invitation ID",
+          "description": "The ID of the invitation to delete."
+        }
+      }
+    }
   }
 }
