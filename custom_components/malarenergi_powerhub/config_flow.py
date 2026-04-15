@@ -26,17 +26,17 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._qr_code: str | None = None
         self._token: str | None = None
         self._failed: bool = False
-        self._refresh_task: asyncio.Task | None = None
+        self._poll_task: asyncio.Task | None = None
 
     def _cancel_task(self) -> None:
-        if self._refresh_task and not self._refresh_task.done():
-            self._refresh_task.cancel()
-        self._refresh_task = None
+        if self._poll_task and not self._poll_task.done():
+            self._poll_task.cancel()
+        self._poll_task = None
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.FlowResult:
-        """Start BankID session and begin polling."""
+        """Start BankID session, fetch first QR synchronously, then poll in bg."""
         self._cancel_task()
         self._token = None
         self._failed = False
@@ -52,18 +52,33 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors={"base": "cannot_connect"},
             )
 
-        # Kick off background poller
-        self._refresh_task = self.hass.async_create_task(
-            self._run_poller(), eager_start=True
-        )
+        # Fetch first QR synchronously so it's ready when the form renders
+        try:
+            async for status, qr, token in bankid_poll(session, self._transaction_id):  # type: ignore[arg-type]
+                if status == "pending" and qr:
+                    self._qr_code = qr
+                    break
+                if status == "complete" and token:
+                    return await self._async_finish(token)
+                if status == "failed":
+                    return self.async_show_form(
+                        step_id="user",
+                        errors={"base": "bankid_failed"},
+                    )
+        except Exception as err:
+            _LOGGER.error("BankID first poll failed: %s", err)
+            return self.async_show_form(
+                step_id="user",
+                errors={"base": "cannot_connect"},
+            )
 
-        # Wait briefly for first QR
-        await asyncio.sleep(0.1)
+        # Start background task to keep polling and refreshing _qr_code
+        self._poll_task = self.hass.async_create_task(self._run_poller())
 
         return self._show_qr_form()
 
     async def _run_poller(self) -> None:
-        """Background: poll BankID until complete/failed, storing latest QR."""
+        """Background: keep polling BankID, store latest QR / token / failed."""
         session = async_get_clientsession(self.hass)
         try:
             async for status, qr, token in bankid_poll(
@@ -96,7 +111,7 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_bankid_qr(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.FlowResult:
-        """Called when user clicks Submit — check status and refresh QR."""
+        """Called when user clicks Submit — check status and show refreshed QR."""
         if self._token:
             self._cancel_task()
             return await self._async_finish(self._token)
@@ -105,11 +120,10 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._cancel_task()
             return await self.async_step_user()
 
-        # If poller has finished without token/failed flag, restart
-        if self._refresh_task and self._refresh_task.done():
+        if self._poll_task and self._poll_task.done():
             return await self.async_step_user()
 
-        # Return updated QR
+        # Return updated QR (background task keeps _qr_code fresh)
         return self._show_qr_form()
 
     async def _async_finish(self, token: str) -> config_entries.FlowResult:
