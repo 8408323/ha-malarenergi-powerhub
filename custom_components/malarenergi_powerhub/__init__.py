@@ -16,7 +16,7 @@ from .coordinator import PowerHubCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[Platform] = [Platform.SENSOR]
+PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
 
 SERVICE_CREATE_INVITATION = "create_invitation"
 SERVICE_DELETE_INVITATION = "delete_invitation"

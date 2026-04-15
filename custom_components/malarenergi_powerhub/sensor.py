@@ -81,18 +81,6 @@ SENSORS: tuple[PowerHubSensorDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda d: d.attributes.facility_type if d.attributes else None,
     ),
-    PowerHubSensorDescription(
-        key="has_solar",
-        name="Has Solar",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda d: d.attributes.has_solar if d.attributes else None,
-    ),
-    PowerHubSensorDescription(
-        key="has_battery",
-        name="Has Battery",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda d: d.attributes.has_battery if d.attributes else None,
-    ),
 )
 
 
