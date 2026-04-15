@@ -9,17 +9,16 @@ import os
 from typing import Any
 
 from homeassistant import config_entries
-from homeassistant.components.http import StaticPathConfig
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import AuthError, bankid_poll, bankid_start
-from .const import CONF_FACILITY_ID, CONF_TOKEN, DOMAIN, STATIC_URL
+from .const import CONF_FACILITY_ID, CONF_TOKEN, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
 
 def _write_qr_png(hass_config_path: str, qr_code: str) -> str:
-    """Write a QR code PNG to the www dir and return the URL path."""
+    """Write a QR code PNG to the /local/ dir and return the URL path."""
     try:
         import qrcode  # noqa: PLC0415
     except ImportError:
@@ -29,14 +28,16 @@ def _write_qr_png(hass_config_path: str, qr_code: str) -> str:
     buf = io.BytesIO()
     img.save(buf, format="PNG")
 
-    # Use a hash of the code as filename so each rotation gets a unique URL
+    # Use a hash of the code as filename so each rotation gets a unique URL.
+    # Write to <config>/www/ which HA always serves at /local/ — no custom
+    # static path registration required.
     fname = hashlib.sha256(qr_code.encode()).hexdigest()[:16] + ".png"
-    www_dir = os.path.join(hass_config_path, "custom_components", DOMAIN, "www")
+    www_dir = os.path.join(hass_config_path, "www", DOMAIN)
     os.makedirs(www_dir, exist_ok=True)
     with open(os.path.join(www_dir, fname), "wb") as f:
         f.write(buf.getvalue())
 
-    return f"{STATIC_URL}/{fname}"
+    return f"/local/{DOMAIN}/{fname}"
 
 
 def _qr_placeholders(hass_config_path: str, qr_code: str) -> dict:
@@ -60,21 +61,10 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._token: str | None = None
         self._poll_task: asyncio.Task | None = None
 
-    def _ensure_static_path(self) -> None:
-        """Register static path for QR images (idempotent)."""
-        www_dir = self.hass.config.path("custom_components", DOMAIN, "www")
-        try:
-            self.hass.http.async_register_static_paths(
-                [StaticPathConfig(STATIC_URL, www_dir, cache_headers=False)]
-            )
-        except RuntimeError:
-            _LOGGER.debug("Static path %s already registered", STATIC_URL)
-
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.FlowResult:
         """Show QR code and start BankID polling."""
-        self._ensure_static_path()
         session = async_get_clientsession(self.hass)
 
         try:
