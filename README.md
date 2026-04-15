@@ -48,8 +48,9 @@ The integration stores the JWT Bearer token in the HA config entry. When the tok
 
 1. Go to **Settings → Devices & Services → Add Integration**.
 2. Search for *Mälarenergi PowerHub*.
-3. Scan the BankID QR code that appears.
-4. Select which facility to monitor (if you have multiple).
+3. Scan the BankID QR code that appears with the BankID app.
+
+See the **[full setup guide](docs/setup.md)** for step-by-step instructions with screenshots.
 
 ## Sensors
 
