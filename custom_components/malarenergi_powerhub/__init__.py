@@ -7,13 +7,12 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
-from .const import DOMAIN
+from .const import DOMAIN, STATIC_URL
 from .coordinator import PowerHubCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [Platform.SENSOR]
-_STATIC_URL = "/malarenergi_powerhub"
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
@@ -21,7 +20,10 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     import os
     qr_dir = hass.config.path("custom_components", DOMAIN, "www")
     os.makedirs(qr_dir, exist_ok=True)
-    hass.http.register_static_path(_STATIC_URL, qr_dir, cache_headers=False)
+    try:
+        hass.http.register_static_path(STATIC_URL, qr_dir, cache_headers=False)
+    except RuntimeError:
+        _LOGGER.debug("Static path %s already registered", STATIC_URL)
     return True
 
 
