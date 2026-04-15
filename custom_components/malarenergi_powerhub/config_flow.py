@@ -2,10 +2,10 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import io
 import logging
 import os
+import time
 from typing import Any
 
 from homeassistant import config_entries
@@ -28,16 +28,15 @@ def _write_qr_png(hass_config_path: str, qr_code: str) -> str:
     buf = io.BytesIO()
     img.save(buf, format="PNG")
 
-    # Use a hash of the code as filename so each rotation gets a unique URL.
-    # Write to <config>/www/ which HA always serves at /local/ — no custom
-    # static path registration required.
-    fname = hashlib.sha256(qr_code.encode()).hexdigest()[:16] + ".png"
+    # Use a stable filename so old QR images don't accumulate.
+    # A timestamp query parameter prevents browser caching across rotations.
+    # HA always serves <config>/www/ at /local/ — no custom registration needed.
     www_dir = os.path.join(hass_config_path, "www", DOMAIN)
     os.makedirs(www_dir, exist_ok=True)
-    with open(os.path.join(www_dir, fname), "wb") as f:
+    with open(os.path.join(www_dir, "qr.png"), "wb") as f:
         f.write(buf.getvalue())
 
-    return f"/local/{DOMAIN}/{fname}"
+    return f"/local/{DOMAIN}/qr.png?t={int(time.time())}"
 
 
 def _qr_placeholders(hass_config_path: str, qr_code: str) -> dict:
