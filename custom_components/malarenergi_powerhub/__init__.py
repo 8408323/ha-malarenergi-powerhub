@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import logging
+import os
 
 import voluptuous as vol
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
@@ -43,8 +45,6 @@ def _get_client(hass: HomeAssistant, facility_id: str | None) -> tuple[PowerHubA
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Register static path for QR images served during config flow."""
-    import os
-    from homeassistant.components.http import StaticPathConfig
     qr_dir = hass.config.path("custom_components", DOMAIN, "www")
     os.makedirs(qr_dir, exist_ok=True)
     try:
