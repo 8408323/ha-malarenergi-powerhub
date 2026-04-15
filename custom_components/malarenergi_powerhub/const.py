@@ -6,8 +6,5 @@ DOMAIN = "malarenergi_powerhub"
 CONF_TOKEN = "token"
 CONF_FACILITY_ID = "facility_id"
 
-# Static URL path for serving QR PNG images during config flow
-STATIC_URL = "/malarenergi_powerhub"
-
 # Update interval — API has 15-min buckets, no point polling faster
 DEFAULT_SCAN_INTERVAL = 60  # seconds

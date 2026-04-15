@@ -2,10 +2,8 @@
 from __future__ import annotations
 
 import logging
-import os
 
 import voluptuous as vol
-from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
@@ -13,7 +11,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import PowerHubApiClient
-from .const import CONF_FACILITY_ID, CONF_TOKEN, DOMAIN, STATIC_URL
+from .const import CONF_FACILITY_ID, CONF_TOKEN, DOMAIN
 from .coordinator import PowerHubCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -41,19 +39,6 @@ def _get_client(hass: HomeAssistant, facility_id: str | None) -> tuple[PowerHubA
             session = async_get_clientsession(hass)
             return PowerHubApiClient(session, entry.data[CONF_TOKEN]), fid
     raise ValueError(f"No config entry found for facility_id={facility_id!r}")
-
-
-async def async_setup(hass: HomeAssistant, config: dict) -> bool:
-    """Register static path for QR images served during config flow."""
-    qr_dir = hass.config.path("custom_components", DOMAIN, "www")
-    os.makedirs(qr_dir, exist_ok=True)
-    try:
-        hass.http.async_register_static_paths(
-            [StaticPathConfig(STATIC_URL, qr_dir, cache_headers=False)]
-        )
-    except RuntimeError:
-        _LOGGER.debug("Static path %s already registered", STATIC_URL)
-    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
