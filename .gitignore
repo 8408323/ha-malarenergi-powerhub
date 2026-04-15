@@ -31,3 +31,10 @@ Thumbs.db
 # Secrets / sensitive config — NEVER commit these
 secrets.yaml
 config/secrets.yaml
+
+# Captured traffic — may contain credentials, never commit
+tools/captured_traffic.jsonl
+tools/captured_traffic.log
+# mitmproxy state
+.mitmproxy/
+~/.mitmproxy/
