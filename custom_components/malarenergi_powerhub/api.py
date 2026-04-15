@@ -23,7 +23,7 @@ import aiohttp
 _LOGGER = logging.getLogger(__name__)
 
 BASE_URL = "https://malarenergi.prod.flow.bitv.is/powerapi/v1"
-POLL_INTERVAL = 2  # seconds between bankid/check polls
+POLL_INTERVAL = 1  # seconds between bankid/check polls
 POLL_TIMEOUT = 180  # seconds before giving up
 
 

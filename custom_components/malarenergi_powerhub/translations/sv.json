@@ -7,7 +7,7 @@
       },
       "bankid_qr": {
         "title": "Skanna QR-kod med BankID",
-        "description": "Öppna BankID-appen och skanna QR-koden nedan. **Skanna inom 30 sekunder** — koden roterar varje sekund och löper ut efter ~3 minuter. Tryck Skicka för att kontrollera om inloggningen är klar."
+        "description": "1. Öppna BankID-appen\n2. Tryck **Skicka** nedan för att ladda en ny QR-kod\n3. Skanna den omedelbart\n\nQR-koden löper ut inom några sekunder — tryck alltid Skicka precis innan du skannar för att få en färsk kod."
       }
     },
     "error": {
