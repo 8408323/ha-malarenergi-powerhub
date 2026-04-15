@@ -20,5 +20,31 @@
       "already_configured": "Denna anläggning är redan konfigurerad.",
       "reauth_successful": "Omautentisering lyckades."
     }
+  },
+  "services": {
+    "create_invitation": {
+      "name": "Skapa inbjudan",
+      "description": "Skapar en delningsinbjudan för en anläggning.",
+      "fields": {
+        "facility_id": {
+          "name": "Anläggnings-ID",
+          "description": "Anläggningen som ska delas. Utelämna om bara en anläggning är konfigurerad."
+        },
+        "share_all_devices": {
+          "name": "Dela alla enheter",
+          "description": "Om alla enheter i anläggningen ska delas."
+        }
+      }
+    },
+    "delete_invitation": {
+      "name": "Ta bort inbjudan",
+      "description": "Tar bort en befintlig delningsinbjudan.",
+      "fields": {
+        "invitation_id": {
+          "name": "Inbjudans-ID",
+          "description": "ID för inbjudan som ska tas bort."
+        }
+      }
+    }
   }
 }
