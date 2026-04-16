@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Callable
 
 from homeassistant.components.sensor import (
@@ -22,7 +23,7 @@ from .coordinator import PowerHubCoordinator, PowerHubData
 
 @dataclass(frozen=True, kw_only=True)
 class PowerHubSensorDescription(SensorEntityDescription):
-    value_fn: Callable[[PowerHubData], float | str | bool | None]
+    value_fn: Callable[[PowerHubData], float | str | int | bool | None]
 
 
 SENSORS: tuple[PowerHubSensorDescription, ...] = (
@@ -81,6 +82,21 @@ SENSORS: tuple[PowerHubSensorDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda d: d.attributes.facility_type if d.attributes else None,
     ),
+    # ── Sharing (diagnostic) ─────────────────────────────────────────────
+    PowerHubSensorDescription(
+        key="active_invitations",
+        name="Active Invitations",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda d: len(d.invitations),
+    ),
+    PowerHubSensorDescription(
+        key="invitees",
+        name="Invitees",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda d: len(d.invitees),
+    ),
 )
 
 
@@ -116,7 +132,44 @@ class PowerHubSensor(CoordinatorEntity[PowerHubCoordinator], SensorEntity):
         }
 
     @property
-    def native_value(self) -> float | str | bool | None:
+    def native_value(self) -> float | str | int | bool | None:
         if self.coordinator.data is None:
             return None
         return self.entity_description.value_fn(self.coordinator.data)
+
+    @property
+    def extra_state_attributes(self) -> dict | None:
+        if self.coordinator.data is None:
+            return None
+        key = self.entity_description.key
+
+        if key == "active_invitations":
+            return {
+                "invitations": [
+                    {
+                        "id": inv.invitation_id,
+                        "claimed": inv.claimed,
+                        "expires": datetime.fromtimestamp(
+                            inv.expires / 1000, tz=timezone.utc
+                        ).isoformat() if inv.expires else None,
+                        "created": datetime.fromtimestamp(
+                            inv.created / 1000, tz=timezone.utc
+                        ).isoformat() if inv.created else None,
+                    }
+                    for inv in self.coordinator.data.invitations
+                ]
+            }
+
+        if key == "invitees":
+            return {
+                "invitees": [
+                    {
+                        "id": inv.invitee_id,
+                        "name": inv.claimer_name,
+                        "share_all_devices": inv.share_all_devices,
+                    }
+                    for inv in self.coordinator.data.invitees
+                ]
+            }
+
+        return None

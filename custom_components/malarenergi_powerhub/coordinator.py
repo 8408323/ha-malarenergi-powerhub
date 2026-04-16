@@ -10,7 +10,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import AuthError, FacilityAttributes, PowerHubApiClient
+from .api import AuthError, FacilityAttributes, Invitation, Invitee, PowerHubApiClient
 from .const import CONF_FACILITY_ID, CONF_TOKEN, DEFAULT_SCAN_INTERVAL, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -23,6 +23,8 @@ class PowerHubData:
     production_today_kwh: float | None     # kWh exported to grid today so far
     spot_price_now: float | None           # Current Nordpool spot price (öre/kWh)
     attributes: FacilityAttributes | None  # Static facility attributes (solar, battery, etc.)
+    invitations: list[Invitation]          # Active sharing invitations
+    invitees: list[Invitee]               # People with access to the facility
 
 
 def _day_start_ms() -> int:
@@ -98,6 +100,10 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
                 if past:
                     spot_now = max(past, key=lambda p: p["timestamp"])["value"]
 
+            # Invitations and invitees (account-level, fetched each poll)
+            invitations = await client.get_invitations()
+            invitees = await client.get_invitees(self._facility_id)
+
         except AuthError:
             _LOGGER.warning("Token expired — triggering re-auth")
             self._entry.async_start_reauth(self.hass)
@@ -110,4 +116,6 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
             production_today_kwh=production_kwh,
             spot_price_now=spot_now,
             attributes=self._cached_attributes,
+            invitations=invitations,
+            invitees=invitees,
         )

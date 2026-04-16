@@ -29,7 +29,9 @@
       "heating_type": { "name": "Uppvärmningstyp" },
       "fuse_size": { "name": "Säkringsstorlek" },
       "area": { "name": "Area" },
-      "facility_type": { "name": "Anläggningstyp" }
+      "facility_type": { "name": "Anläggningstyp" },
+      "active_invitations": { "name": "Aktiva inbjudningar" },
+      "invitees": { "name": "Inbjudna" }
     },
     "binary_sensor": {
       "has_solar": { "name": "Har solceller" },
