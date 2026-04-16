@@ -35,9 +35,7 @@ config/secrets.yaml
 # Captured traffic — may contain credentials, never commit
 tools/captures/
 !tools/captures/.gitkeep
-tools/captured_traffic.jsonl
-tools/captured_traffic.log
+
 # mitmproxy state
 .mitmproxy/
 ~/.mitmproxy/
-tools/firebase_config.json

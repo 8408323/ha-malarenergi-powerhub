@@ -20,7 +20,7 @@ Install mitmproxy CA cert on phone:
 Output (per capture session, timestamped):
   tools/captures/YYYYMMDD_HHMMSS.jsonl  — one JSON record per line (machine-readable)
   tools/captures/YYYYMMDD_HHMMSS.log    — human-readable log
-  tools/firebase_config.json            — auto-extracted Firebase project config (if found)
+  tools/captures/firebase_config.json   — auto-extracted Firebase project config (if found)
 
 WARNING: Output files may contain auth tokens. They are .gitignored.
          Never commit them.
@@ -93,7 +93,7 @@ _CAPTURES_DIR.mkdir(exist_ok=True)
 
 OUT_JSONL    = _CAPTURES_DIR / f"{_SESSION_TS}.jsonl"
 OUT_LOG      = _CAPTURES_DIR / f"{_SESSION_TS}.log"
-OUT_FIREBASE = Path(__file__).parent / "firebase_config.json"
+OUT_FIREBASE = _CAPTURES_DIR / "firebase_config.json"
 
 # -------------------------------------------------------------------------
 
