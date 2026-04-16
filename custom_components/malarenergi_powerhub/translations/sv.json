@@ -21,6 +21,21 @@
       "reauth_successful": "Omautentisering lyckades."
     }
   },
+  "entity": {
+    "sensor": {
+      "import_today": { "name": "Import idag" },
+      "export_today": { "name": "Export idag" },
+      "spot_price": { "name": "Spotpris" },
+      "heating_type": { "name": "Uppvärmningstyp" },
+      "fuse_size": { "name": "Säkringsstorlek" },
+      "area": { "name": "Area" },
+      "facility_type": { "name": "Anläggningstyp" }
+    },
+    "binary_sensor": {
+      "has_solar": { "name": "Har solceller" },
+      "has_battery": { "name": "Har batteri" }
+    }
+  },
   "services": {
     "create_invitation": {
       "name": "Skapa inbjudan",

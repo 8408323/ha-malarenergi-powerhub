@@ -307,7 +307,7 @@ class PowerHubApiClient:
         # fuseSize is returned as e.g. "A20" — strip leading letter and parse
         raw_fuse = data.get("fuseSize", "0")
         try:
-            fuse_amps = int(str(raw_fuse).lstrip("A").lstrip("a"))
+            fuse_amps = int(str(raw_fuse).lstrip("Aa"))
         except ValueError:
             fuse_amps = 0
         return FacilityAttributes(

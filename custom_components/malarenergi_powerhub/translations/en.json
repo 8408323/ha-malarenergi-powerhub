@@ -21,6 +21,21 @@
       "reauth_successful": "Re-authentication successful."
     }
   },
+  "entity": {
+    "sensor": {
+      "import_today": { "name": "Import Today" },
+      "export_today": { "name": "Export Today" },
+      "spot_price": { "name": "Spot Price" },
+      "heating_type": { "name": "Heating Type" },
+      "fuse_size": { "name": "Fuse Size" },
+      "area": { "name": "Area" },
+      "facility_type": { "name": "Facility Type" }
+    },
+    "binary_sensor": {
+      "has_solar": { "name": "Has Solar" },
+      "has_battery": { "name": "Has Battery" }
+    }
+  },
   "services": {
     "create_invitation": {
       "name": "Create invitation",
