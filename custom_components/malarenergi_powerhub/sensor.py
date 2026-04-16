@@ -94,8 +94,9 @@ SENSORS: tuple[PowerHubSensorDescription, ...] = (
         key="invitees",
         name="Invitees",
         entity_category=EntityCategory.DIAGNOSTIC,
-        state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda d: len(d.invitees),
+        value_fn=lambda d: ", ".join(
+            inv.claimer_name for inv in d.invitees if inv.claimer_name
+        ) or str(len(d.invitees)),
     ),
 )
 
@@ -167,6 +168,7 @@ class PowerHubSensor(CoordinatorEntity[PowerHubCoordinator], SensorEntity):
 
         if key == "invitees":
             return {
+                "count": len(self.coordinator.data.invitees),
                 "invitees": [
                     {
                         "id": inv.invitee_id,
@@ -174,7 +176,7 @@ class PowerHubSensor(CoordinatorEntity[PowerHubCoordinator], SensorEntity):
                         "share_all_devices": inv.share_all_devices,
                     }
                     for inv in self.coordinator.data.invitees
-                ]
+                ],
             }
 
         return None
