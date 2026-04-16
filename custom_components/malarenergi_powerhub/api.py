@@ -6,7 +6,7 @@ Auth:      Bearer <JWT token> obtained via BankID QR flow
 BankID authentication flow:
   1. GET  /bankid/auth
          → { transactionId, autoStartToken }
-  2. GET  /bankid/check/{transactionId}   (poll every ~2s)
+  2. GET  /bankid/check/{transactionId}   (poll every ~1s)
          → { status: "pending", qrCode: "bankid.xxx.N.hash" }  (QR rotates each second)
          → { status: "complete", token: "<JWT>" }
   3. Use token as:  Authorization: Bearer <token>
@@ -23,7 +23,7 @@ import aiohttp
 _LOGGER = logging.getLogger(__name__)
 
 BASE_URL = "https://malarenergi.prod.flow.bitv.is/powerapi/v1"
-POLL_INTERVAL = 2  # seconds between bankid/check polls
+POLL_INTERVAL = 1  # seconds between bankid/check polls
 POLL_TIMEOUT = 180  # seconds before giving up
 
 
@@ -193,6 +193,19 @@ class PowerHubApiClient:
             resp.raise_for_status()
             return await resp.json(content_type=None)
 
+    async def _put(self, path: str, body: dict) -> object:
+        url = f"{BASE_URL}{path}"
+        async with self._session.put(
+            url,
+            headers=self._headers,
+            json=body,
+            timeout=aiohttp.ClientTimeout(total=15),
+        ) as resp:
+            if resp.status == 401:
+                raise AuthError("Token expired or invalid")
+            resp.raise_for_status()
+            return await resp.json(content_type=None)
+
     async def _delete(self, path: str) -> None:
         url = f"{BASE_URL}{path}"
         async with self._session.delete(
@@ -303,10 +316,16 @@ class PowerHubApiClient:
 
     async def get_facility_attributes(self, facility_id: str) -> FacilityAttributes:
         """Get physical attributes of a facility."""
-        data = await self._get(f"/facility/{facility_id}/attributes")
+        data: dict = await self._get(f"/facility/{facility_id}/attributes")  # type: ignore[assignment]
+        # fuseSize is returned as e.g. "A20" — strip leading letter and parse
+        raw_fuse = data.get("fuseSize", "0")
+        try:
+            fuse_amps = int(str(raw_fuse).lstrip("Aa"))
+        except ValueError:
+            fuse_amps = 0
         return FacilityAttributes(
             heating_type=data.get("heatingType", ""),
-            fuse_size=data.get("fuseSize", 0),
+            fuse_size=fuse_amps,
             occupants=data.get("occupants", 0),
             area=data.get("area", 0),
             facility_type=data.get("type", ""),
@@ -327,6 +346,41 @@ class PowerHubApiClient:
             )
             for inv in (data if isinstance(data, list) else [])
         ]
+
+    async def update_facility_attributes(
+        self, facility_id: str, attrs: FacilityAttributes
+    ) -> FacilityAttributes:
+        """Update physical attributes of a facility (PUT — full object required).
+
+        The API requires all fields to be sent; partial updates are not supported.
+        """
+        body = {
+            "heatingType": attrs.heating_type,
+            "fuseSize": f"A{attrs.fuse_size}",
+            "occupants": attrs.occupants,
+            "area": attrs.area,
+            "type": attrs.facility_type,
+            "icon": attrs.facility_type.lower() if attrs.facility_type else "villa",
+            "evType": attrs.ev_type or "NONE",
+            "battery": attrs.has_battery,
+            "solar": attrs.has_solar,
+        }
+        data: dict = await self._put(f"/facility/{facility_id}/attributes", body)  # type: ignore[assignment]
+        raw_fuse = data.get("fuseSize", "0")
+        try:
+            fuse_amps = int(str(raw_fuse).lstrip("Aa"))
+        except ValueError:
+            fuse_amps = attrs.fuse_size
+        return FacilityAttributes(
+            heating_type=data.get("heatingType", attrs.heating_type),
+            fuse_size=fuse_amps,
+            occupants=data.get("occupants", attrs.occupants),
+            area=data.get("area", attrs.area),
+            facility_type=data.get("type", attrs.facility_type),
+            ev_type=data.get("evType", attrs.ev_type),
+            has_battery=bool(data.get("battery", attrs.has_battery)),
+            has_solar=bool(data.get("solar", attrs.has_solar)),
+        )
 
     # ------------------------------------------------------------------
     # Energy data
@@ -385,6 +439,26 @@ class PowerHubApiClient:
             "YEAR",
             year_start_ms,
         )
+
+    async def get_notifications(
+        self,
+        firebase_token: str = "ha-integration",
+        topics: str = "operatingStatus,todaySpotPrice,generic",
+        page_size: int = 25,
+    ) -> list[dict]:
+        """Get recent push notifications from the Mälarenergi app backend.
+
+        Returns a list of notification dicts with keys:
+          title, body, type, read, created (epoch ms), facilityId
+        """
+        data = await self._get(
+            "/notifications",
+            firebase_token=firebase_token,
+            topics=topics,
+            page=1,
+            page_size=page_size,
+        )
+        return data if isinstance(data, list) else []
 
     async def get_monthly_insights(
         self,

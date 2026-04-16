@@ -33,8 +33,9 @@ secrets.yaml
 config/secrets.yaml
 
 # Captured traffic — may contain credentials, never commit
-tools/captured_traffic.jsonl
-tools/captured_traffic.log
+tools/captures/
+!tools/captures/.gitkeep
+
 # mitmproxy state
 .mitmproxy/
 ~/.mitmproxy/

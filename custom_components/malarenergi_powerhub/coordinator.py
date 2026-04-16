@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, replace as dataclass_replace
 from datetime import datetime, timedelta, timezone
 
 from homeassistant.config_entries import ConfigEntry
@@ -10,7 +10,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import AuthError, PowerHubApiClient
+from .api import AuthError, FacilityAttributes, Invitation, Invitee, PowerHubApiClient
 from .const import CONF_FACILITY_ID, CONF_TOKEN, DEFAULT_SCAN_INTERVAL, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -19,9 +19,12 @@ _LOGGER = logging.getLogger(__name__)
 @dataclass
 class PowerHubData:
     """Snapshot of data from the PowerHub API."""
-    consumption_today_wh: float | None    # Wh consumed today so far
-    production_today_wh: float | None     # Wh produced (solar) today so far
-    spot_price_now: float | None          # Current Nordpool spot price (öre/kWh)
+    consumption_today_kwh: float | None    # kWh imported from grid today so far
+    production_today_kwh: float | None     # kWh exported to grid today so far
+    spot_price_now: float | None           # Current Nordpool spot price (öre/kWh)
+    attributes: FacilityAttributes | None  # Static facility attributes (solar, battery, etc.)
+    invitations: list[Invitation]          # Active sharing invitations
+    invitees: list[Invitee]               # People with access to the facility
 
 
 def _day_start_ms() -> int:
@@ -44,6 +47,7 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
         self._token = entry.data[CONF_TOKEN]
         self._facility_id = entry.data[CONF_FACILITY_ID]
         self._entry = entry
+        self._cached_attributes: FacilityAttributes | None = None
         super().__init__(
             hass,
             _LOGGER,
@@ -61,24 +65,31 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
         now_ms = _now_ms()
 
         try:
-            # Consumption today
+            # Fetch facility attributes once (static data — cache after first successful fetch)
+            if self._cached_attributes is None:
+                self._cached_attributes = await client.get_facility_attributes(
+                    self._facility_id
+                )
+
+            # Consumption today — API returns Wh per bucket; convert to kWh
             consumption_points = await client.get_today_consumption(
                 self._facility_id, day_ms
             )
-            # Sum all 15-min buckets up to now
-            consumption_wh = sum(
-                p.value_wh for p in consumption_points
-                if p.timestamp_ms <= now_ms
-            ) or None
+            past_consumption = [p for p in consumption_points if p.timestamp_ms <= now_ms]
+            consumption_kwh = (
+                round(sum(p.value_wh for p in past_consumption) / 1000, 3)
+                if past_consumption else None
+            )
 
-            # Production today (solar)
+            # Production (export) today — API returns Wh per bucket; convert to kWh
             production_points = await client.get_today_production(
                 self._facility_id, day_ms
             )
-            production_wh = sum(
-                p.value_wh for p in production_points
-                if p.timestamp_ms <= now_ms
-            ) or None
+            past_production = [p for p in production_points if p.timestamp_ms <= now_ms]
+            production_kwh = (
+                round(sum(p.value_wh for p in past_production) / 1000, 3)
+                if past_production else None
+            )
 
             # Current spot price — find the 15-min bucket containing now
             spot_points = await client.get_spot_price_today(
@@ -91,6 +102,10 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
                 if past:
                     spot_now = max(past, key=lambda p: p["timestamp"])["value"]
 
+            # Invitations and invitees (account-level, fetched each poll)
+            invitations = await client.get_invitations()
+            invitees = await client.get_invitees(self._facility_id)
+
         except AuthError:
             _LOGGER.warning("Token expired — triggering re-auth")
             self._entry.async_start_reauth(self.hass)
@@ -99,7 +114,25 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
             raise UpdateFailed(f"API error: {err}") from err
 
         return PowerHubData(
-            consumption_today_wh=consumption_wh,
-            production_today_wh=production_wh,
+            consumption_today_kwh=consumption_kwh,
+            production_today_kwh=production_kwh,
             spot_price_now=spot_now,
+            attributes=self._cached_attributes,
+            invitations=invitations,
+            invitees=invitees,
         )
+
+    async def async_update_attributes(self, **kwargs) -> None:
+        """Write one or more attribute fields via PUT, then refresh sensors.
+
+        Keyword arguments must match FacilityAttributes field names, e.g.:
+            await coordinator.async_update_attributes(fuse_size=20)
+        """
+        if self._cached_attributes is None:
+            raise RuntimeError("Facility attributes not yet loaded")
+        updated = dataclass_replace(self._cached_attributes, **kwargs)
+        client = self._make_client()
+        self._cached_attributes = await client.update_facility_attributes(
+            self._facility_id, updated
+        )
+        await self.async_request_refresh()
