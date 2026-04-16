@@ -168,14 +168,14 @@ async def _run(token: str | None) -> None:
     _LOGGER.info("Listening for FCM messages… (Ctrl-C to stop)")
     _LOGGER.info("Output → %s", _OUT_JSONL)
 
-    await client.start_listening()
+    await client.start()
 
     try:
         await asyncio.get_running_loop().create_future()  # run forever
     except asyncio.CancelledError:
         pass
     finally:
-        await client.stop_listening()
+        await client.stop()
 
 
 def main() -> None:
