@@ -7,7 +7,7 @@
       },
       "bankid_qr": {
         "title": "Scan QR code with BankID",
-        "description": "Open the BankID app and scan the QR code.\n\n{qr_image}\n\nThe code updates automatically. Click Submit to refresh."
+        "description": "Sign in with Mobile BankID:\n1. Open the BankID app on your phone\n2. Click **Submit** to generate a fresh QR code\n3. Scan the QR code immediately with BankID\n4. After approving in BankID, click **Submit** again to complete sign-in\n\nThe QR rotates every second — click Submit right before scanning."
       }
     },
     "error": {
@@ -19,6 +19,30 @@
     "abort": {
       "already_configured": "This facility is already configured.",
       "reauth_successful": "Re-authentication successful."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "import_today": { "name": "Import Today" },
+      "export_today": { "name": "Export Today" },
+      "spot_price": { "name": "Spot Price" },
+      "active_invitations": { "name": "Active Invitations" },
+      "invitees": { "name": "Invitees" },
+      "latest_notification": { "name": "Latest Notification" }
+    },
+    "binary_sensor": {
+      "has_solar": { "name": "Has Solar" },
+      "has_battery": { "name": "Has Battery" }
+    },
+    "number": {
+      "area": { "name": "Area" },
+      "occupants": { "name": "Occupants" }
+    },
+    "select": {
+      "fuse_size": { "name": "Fuse Size" },
+      "heating_type": { "name": "Heating Type" },
+      "facility_type": { "name": "Facility Type" },
+      "ev_type": { "name": "EV Charger Type" }
     }
   },
   "services": {

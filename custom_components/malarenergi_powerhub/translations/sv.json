@@ -7,7 +7,7 @@
       },
       "bankid_qr": {
         "title": "Skanna QR-kod med BankID",
-        "description": "Öppna BankID-appen och skanna QR-koden.\n\n{qr_image}\n\nKoden uppdateras automatiskt. Tryck Skicka för att uppdatera koden."
+        "description": "Logga in med Mobilt BankID:\n1. Öppna BankID-appen på din telefon\n2. Tryck **Skicka** för att generera en ny QR-kod\n3. Skanna QR-koden omedelbart med BankID\n4. Efter godkännande i BankID, tryck **Skicka** igen för att slutföra inloggningen\n\nQR-koden roterar varje sekund — tryck Skicka precis innan du skannar."
       }
     },
     "error": {
@@ -19,6 +19,30 @@
     "abort": {
       "already_configured": "Denna anläggning är redan konfigurerad.",
       "reauth_successful": "Omautentisering lyckades."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "import_today": { "name": "Import idag" },
+      "export_today": { "name": "Export idag" },
+      "spot_price": { "name": "Spotpris" },
+      "active_invitations": { "name": "Aktiva inbjudningar" },
+      "invitees": { "name": "Inbjudna" },
+      "latest_notification": { "name": "Senaste notis" }
+    },
+    "binary_sensor": {
+      "has_solar": { "name": "Har solceller" },
+      "has_battery": { "name": "Har batteri" }
+    },
+    "number": {
+      "area": { "name": "Area" },
+      "occupants": { "name": "Antal boende" }
+    },
+    "select": {
+      "fuse_size": { "name": "Säkringsstorlek" },
+      "heating_type": { "name": "Uppvärmningstyp" },
+      "facility_type": { "name": "Anläggningstyp" },
+      "ev_type": { "name": "Elbilsladdare" }
     }
   },
   "services": {

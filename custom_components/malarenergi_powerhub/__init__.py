@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 
 import voluptuous as vol
+from homeassistant.components.persistent_notification import async_create as pn_create
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
@@ -13,10 +14,11 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .api import PowerHubApiClient
 from .const import CONF_FACILITY_ID, CONF_TOKEN, DOMAIN
 from .coordinator import PowerHubCoordinator
+from .notifications_coordinator import NotificationsCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[Platform] = [Platform.SENSOR]
+PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.NUMBER, Platform.SELECT]
 
 SERVICE_CREATE_INVITATION = "create_invitation"
 SERVICE_DELETE_INVITATION = "delete_invitation"
@@ -44,7 +46,15 @@ def _get_client(hass: HomeAssistant, facility_id: str | None) -> tuple[PowerHubA
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator = PowerHubCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
+
+    notifications_coordinator = NotificationsCoordinator(hass, entry)
+    # Use async_refresh so a transient API error doesn't abort the whole entry setup.
+    # The coordinator will retry on its normal schedule.
+    await notifications_coordinator.async_refresh()
+
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
+    hass.data[DOMAIN][f"{entry.entry_id}_notifications"] = notifications_coordinator
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     async def handle_create_invitation(call: ServiceCall) -> None:
@@ -62,6 +72,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             result.code,
             result.expires,
         )
+        # Show a persistent notification so the user can share the code
+        pn_create(
+            hass,
+            message=(
+                f"**Invitation code:** `{result.code}`\n\n"
+                f"Invitation ID: `{result.invitation_id}`\n"
+                f"Expires: {result.expires}\n\n"
+                "Share this code with the person you want to invite. "
+                "Use the `delete_invitation` service with the invitation ID to revoke access."
+            ),
+            title="PowerHub — Invitation Created",
+            notification_id=f"powerhub_invitation_{result.invitation_id}",
+        )
+        # Refresh coordinator so invitation count sensor updates immediately
+        coordinator = hass.data[DOMAIN].get(entry.entry_id)
+        if coordinator:
+            await coordinator.async_request_refresh()
 
     async def handle_delete_invitation(call: ServiceCall) -> None:
         # Invitations are account-wide; any config entry's token is valid.
@@ -73,6 +100,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             return
         await client.delete_invitation(invitation_id)
         _LOGGER.info("Deleted invitation %s", invitation_id)
+        # Refresh coordinator so invitation count sensor updates immediately
+        coordinator = hass.data[DOMAIN].get(entry.entry_id)
+        if coordinator:
+            await coordinator.async_request_refresh()
 
     if not hass.services.has_service(DOMAIN, SERVICE_CREATE_INVITATION):
         hass.services.async_register(
@@ -91,6 +122,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         hass.data[DOMAIN].pop(entry.entry_id)
+        hass.data[DOMAIN].pop(f"{entry.entry_id}_notifications", None)
     if not hass.data.get(DOMAIN):
         hass.services.async_remove(DOMAIN, SERVICE_CREATE_INVITATION)
         hass.services.async_remove(DOMAIN, SERVICE_DELETE_INVITATION)
