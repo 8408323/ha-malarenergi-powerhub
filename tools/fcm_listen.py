@@ -54,23 +54,14 @@ _OUT_JSONL = _CAPTURES_DIR / f"fcm_{_SESSION_TS}.jsonl"
 # Firebase project config (from APK extraction)
 # ---------------------------------------------------------------------------
 
-_BUILTIN_CONFIG = {
-    "projectId": "malar-powerflow",
-    "appId": "1:52316409850:android:244561ec811dc2b0",
-    "apiKey": "AIzaSyDmwoSEPk-W5GZBDJPFJyD8bGxrW8bYKHE",
-    "messagingSenderId": "52316409850",
-    "storageBucket": "malar-powerflow.firebasestorage.app",
-    "authDomain": "malar-powerflow.firebaseapp.com",
-}
-
-
 def _load_firebase_config() -> dict:
-    if _FIREBASE_CONFIG_FILE.exists():
-        try:
-            return json.loads(_FIREBASE_CONFIG_FILE.read_text())
-        except Exception:
-            pass
-    return _BUILTIN_CONFIG
+    if not _FIREBASE_CONFIG_FILE.exists():
+        raise FileNotFoundError(
+            f"Firebase config not found at {_FIREBASE_CONFIG_FILE}\n"
+            "Extract it from the APK first — see tools/capture.py or run the "
+            "extraction script documented in docs/firebase_extraction.md"
+        )
+    return json.loads(_FIREBASE_CONFIG_FILE.read_text())
 
 
 # ---------------------------------------------------------------------------
