@@ -26,10 +26,6 @@
       "import_today": { "name": "Import Today" },
       "export_today": { "name": "Export Today" },
       "spot_price": { "name": "Spot Price" },
-      "heating_type": { "name": "Heating Type" },
-      "fuse_size": { "name": "Fuse Size" },
-      "area": { "name": "Area" },
-      "facility_type": { "name": "Facility Type" },
       "active_invitations": { "name": "Active Invitations" },
       "invitees": { "name": "Invitees" },
       "latest_notification": { "name": "Latest Notification" }
@@ -37,6 +33,16 @@
     "binary_sensor": {
       "has_solar": { "name": "Has Solar" },
       "has_battery": { "name": "Has Battery" }
+    },
+    "number": {
+      "area": { "name": "Area" },
+      "occupants": { "name": "Occupants" }
+    },
+    "select": {
+      "fuse_size": { "name": "Fuse Size" },
+      "heating_type": { "name": "Heating Type" },
+      "facility_type": { "name": "Facility Type" },
+      "ev_type": { "name": "EV Charger Type" }
     }
   },
   "services": {

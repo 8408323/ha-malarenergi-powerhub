@@ -8,6 +8,10 @@ Configure source IPs via environment variables (optional):
   CAPTURE_PHONE_IP=192.168.1.x   — capture ALL traffic from this IP (phone)
   CAPTURE_DEVICE_IP=192.168.1.x  — capture ALL traffic from this IP (PowerHub)
 
+  CAPTURE_FIREBASE=1             — also capture Firebase / Google API traffic
+                                   (default: 0, disabled — Firebase uses certificate
+                                    pinning so these calls often fail through mitmproxy)
+
 If not set, only traffic to known Mälarenergi/Bitvis domains is captured.
 
 Install mitmproxy CA cert on phone:
@@ -16,6 +20,7 @@ Install mitmproxy CA cert on phone:
 Output:
   tools/captured_traffic.jsonl  — one JSON record per line (machine-readable)
   tools/captured_traffic.log    — human-readable log
+  tools/firebase_config.json    — auto-extracted Firebase project config (if found)
 
 WARNING: Output files may contain auth tokens. They are .gitignored.
          Never commit them.
@@ -41,6 +46,29 @@ CAPTURE_DOMAINS = [
     "bitv.is",
 ]
 
+# Firebase / Google domains — only included when CAPTURE_FIREBASE=1
+FIREBASE_DOMAINS = [
+    "firebase",
+    "firebaseapp",
+    "googleapis.com",
+    "fcm.googleapis.com",
+    "firebaseinstallations.googleapis.com",
+    "firebaseremoteconfig.googleapis.com",
+]
+
+# Whether to capture Firebase traffic (disabled by default — Firebase uses
+# certificate pinning which causes app connectivity issues through mitmproxy)
+CAPTURE_FIREBASE: bool = os.environ.get("CAPTURE_FIREBASE", "0") not in ("", "0", "false", "no")
+
+if CAPTURE_FIREBASE:
+    CAPTURE_DOMAINS.extend(FIREBASE_DOMAINS)
+
+# Firebase project config keys we want to extract (only relevant when CAPTURE_FIREBASE=1)
+FIREBASE_CONFIG_KEYS = {
+    "projectId", "appId", "apiKey", "messagingSenderId",
+    "storageBucket", "authDomain",
+}
+
 # Load source IPs from env — no defaults so nothing personal is hardcoded
 _CAPTURE_SOURCE_IPS: set[str] = set(filter(None, [
     os.environ.get("CAPTURE_PHONE_IP", ""),
@@ -58,8 +86,9 @@ REDACT_HEADERS = {
     "x-access-token",
 }
 
-OUT_JSONL = Path(__file__).parent / "captured_traffic.jsonl"
-OUT_LOG   = Path(__file__).parent / "captured_traffic.log"
+OUT_JSONL    = Path(__file__).parent / "captured_traffic.jsonl"
+OUT_LOG      = Path(__file__).parent / "captured_traffic.log"
+OUT_FIREBASE = Path(__file__).parent / "firebase_config.json"
 
 # -------------------------------------------------------------------------
 
@@ -115,6 +144,14 @@ def response(flow: http.HTTPFlow) -> None:
 
     with OUT_JSONL.open("a", encoding="utf-8") as f:
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+    # Extract Firebase project config if present in response body
+    body = record["response"]["body"]
+    if isinstance(body, dict):
+        found = {k: body[k] for k in FIREBASE_CONFIG_KEYS if k in body}
+        if found and not OUT_FIREBASE.exists():
+            OUT_FIREBASE.write_text(json.dumps(found, indent=2, ensure_ascii=False))
+            print(f"\n🔥 Firebase config extracted → {OUT_FIREBASE}\n{json.dumps(found, indent=2)}\n")
 
     sep = "─" * 72
     lines = [

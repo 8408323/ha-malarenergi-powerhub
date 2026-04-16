@@ -55,33 +55,6 @@ SENSORS: tuple[PowerHubSensorDescription, ...] = (
         suggested_display_precision=2,
         value_fn=lambda d: d.spot_price_now,
     ),
-    # ── Facility attributes (diagnostic) ─────────────────────────────────
-    PowerHubSensorDescription(
-        key="heating_type",
-        name="Heating Type",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda d: d.attributes.heating_type if d.attributes else None,
-    ),
-    PowerHubSensorDescription(
-        key="fuse_size",
-        name="Fuse Size",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        native_unit_of_measurement="A",
-        value_fn=lambda d: d.attributes.fuse_size if d.attributes else None,
-    ),
-    PowerHubSensorDescription(
-        key="area",
-        name="Area",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        native_unit_of_measurement="m²",
-        value_fn=lambda d: d.attributes.area if d.attributes else None,
-    ),
-    PowerHubSensorDescription(
-        key="facility_type",
-        name="Facility Type",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda d: d.attributes.facility_type if d.attributes else None,
-    ),
     # ── Sharing (diagnostic) ─────────────────────────────────────────────
     PowerHubSensorDescription(
         key="active_invitations",

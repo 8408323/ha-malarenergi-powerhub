@@ -26,10 +26,6 @@
       "import_today": { "name": "Import idag" },
       "export_today": { "name": "Export idag" },
       "spot_price": { "name": "Spotpris" },
-      "heating_type": { "name": "Uppvärmningstyp" },
-      "fuse_size": { "name": "Säkringsstorlek" },
-      "area": { "name": "Area" },
-      "facility_type": { "name": "Anläggningstyp" },
       "active_invitations": { "name": "Aktiva inbjudningar" },
       "invitees": { "name": "Inbjudna" },
       "latest_notification": { "name": "Senaste notis" }
@@ -37,6 +33,16 @@
     "binary_sensor": {
       "has_solar": { "name": "Har solceller" },
       "has_battery": { "name": "Har batteri" }
+    },
+    "number": {
+      "area": { "name": "Area" },
+      "occupants": { "name": "Antal boende" }
+    },
+    "select": {
+      "fuse_size": { "name": "Säkringsstorlek" },
+      "heating_type": { "name": "Uppvärmningstyp" },
+      "facility_type": { "name": "Anläggningstyp" },
+      "ev_type": { "name": "Elbilsladdare" }
     }
   },
   "services": {

@@ -71,23 +71,25 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
                     self._facility_id
                 )
 
-            # Consumption today — API returns kWh per 15-min bucket
+            # Consumption today — API returns Wh per bucket; convert to kWh
             consumption_points = await client.get_today_consumption(
                 self._facility_id, day_ms
             )
-            consumption_kwh = sum(
+            _consumption_wh = sum(
                 p.value_wh for p in consumption_points
                 if p.timestamp_ms <= now_ms
-            ) or None
+            )
+            consumption_kwh = round(_consumption_wh / 1000, 3) if _consumption_wh else None
 
-            # Production (export) today — API returns kWh per 15-min bucket
+            # Production (export) today — API returns Wh per bucket; convert to kWh
             production_points = await client.get_today_production(
                 self._facility_id, day_ms
             )
-            production_kwh = sum(
+            _production_wh = sum(
                 p.value_wh for p in production_points
                 if p.timestamp_ms <= now_ms
-            ) or None
+            )
+            production_kwh = round(_production_wh / 1000, 3) if _production_wh else None
 
             # Current spot price — find the 15-min bucket containing now
             spot_points = await client.get_spot_price_today(
@@ -119,3 +121,19 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
             invitations=invitations,
             invitees=invitees,
         )
+
+    async def async_update_attributes(self, **kwargs) -> None:
+        """Write one or more attribute fields via PUT, then refresh sensors.
+
+        Keyword arguments must match FacilityAttributes field names, e.g.:
+            await coordinator.async_update_attributes(fuse_size=20)
+        """
+        if self._cached_attributes is None:
+            raise RuntimeError("Facility attributes not yet loaded")
+        from dataclasses import replace as _replace
+        updated = _replace(self._cached_attributes, **kwargs)
+        client = self._make_client()
+        self._cached_attributes = await client.update_facility_attributes(
+            self._facility_id, updated
+        )
+        await self.async_request_refresh()
