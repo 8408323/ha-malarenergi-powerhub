@@ -31,7 +31,8 @@
       "area": { "name": "Area" },
       "facility_type": { "name": "Anläggningstyp" },
       "active_invitations": { "name": "Aktiva inbjudningar" },
-      "invitees": { "name": "Inbjudna" }
+      "invitees": { "name": "Inbjudna" },
+      "latest_notification": { "name": "Senaste notis" }
     },
     "binary_sensor": {
       "has_solar": { "name": "Har solceller" },

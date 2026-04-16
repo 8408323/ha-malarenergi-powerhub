@@ -31,7 +31,8 @@
       "area": { "name": "Area" },
       "facility_type": { "name": "Facility Type" },
       "active_invitations": { "name": "Active Invitations" },
-      "invitees": { "name": "Invitees" }
+      "invitees": { "name": "Invitees" },
+      "latest_notification": { "name": "Latest Notification" }
     },
     "binary_sensor": {
       "has_solar": { "name": "Has Solar" },
