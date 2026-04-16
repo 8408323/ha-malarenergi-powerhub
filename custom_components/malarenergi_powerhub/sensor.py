@@ -11,7 +11,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import UnitOfEnergy
+from homeassistant.const import EntityCategory, UnitOfEnergy
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -22,10 +22,11 @@ from .coordinator import PowerHubCoordinator, PowerHubData
 
 @dataclass(frozen=True, kw_only=True)
 class PowerHubSensorDescription(SensorEntityDescription):
-    value_fn: Callable[[PowerHubData], float | None]
+    value_fn: Callable[[PowerHubData], float | str | bool | None]
 
 
 SENSORS: tuple[PowerHubSensorDescription, ...] = (
+    # ── Energy metering ──────────────────────────────────────────────────
     PowerHubSensorDescription(
         key="import_today",
         name="Import Today",
@@ -52,6 +53,33 @@ SENSORS: tuple[PowerHubSensorDescription, ...] = (
         native_unit_of_measurement="öre/kWh",
         suggested_display_precision=2,
         value_fn=lambda d: d.spot_price_now,
+    ),
+    # ── Facility attributes (diagnostic) ─────────────────────────────────
+    PowerHubSensorDescription(
+        key="heating_type",
+        name="Heating Type",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: d.attributes.heating_type if d.attributes else None,
+    ),
+    PowerHubSensorDescription(
+        key="fuse_size",
+        name="Fuse Size",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        native_unit_of_measurement="A",
+        value_fn=lambda d: d.attributes.fuse_size if d.attributes else None,
+    ),
+    PowerHubSensorDescription(
+        key="area",
+        name="Area",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        native_unit_of_measurement="m²",
+        value_fn=lambda d: d.attributes.area if d.attributes else None,
+    ),
+    PowerHubSensorDescription(
+        key="facility_type",
+        name="Facility Type",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: d.attributes.facility_type if d.attributes else None,
     ),
 )
 
@@ -88,7 +116,7 @@ class PowerHubSensor(CoordinatorEntity[PowerHubCoordinator], SensorEntity):
         }
 
     @property
-    def native_value(self) -> float | None:
+    def native_value(self) -> float | str | bool | None:
         if self.coordinator.data is None:
             return None
         return self.entity_description.value_fn(self.coordinator.data)

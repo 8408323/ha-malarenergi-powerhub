@@ -303,10 +303,16 @@ class PowerHubApiClient:
 
     async def get_facility_attributes(self, facility_id: str) -> FacilityAttributes:
         """Get physical attributes of a facility."""
-        data = await self._get(f"/facility/{facility_id}/attributes")
+        data: dict = await self._get(f"/facility/{facility_id}/attributes")  # type: ignore[assignment]
+        # fuseSize is returned as e.g. "A20" — strip leading letter and parse
+        raw_fuse = data.get("fuseSize", "0")
+        try:
+            fuse_amps = int(str(raw_fuse).lstrip("Aa"))
+        except ValueError:
+            fuse_amps = 0
         return FacilityAttributes(
             heating_type=data.get("heatingType", ""),
-            fuse_size=data.get("fuseSize", 0),
+            fuse_size=fuse_amps,
             occupants=data.get("occupants", 0),
             area=data.get("area", 0),
             facility_type=data.get("type", ""),
