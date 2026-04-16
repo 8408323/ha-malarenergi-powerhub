@@ -10,6 +10,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
+from aiohttp import ClientResponseError
+
 from .api import AuthError, PowerHubApiClient
 from .const import CONF_TOKEN, DOMAIN
 
@@ -50,6 +52,15 @@ class NotificationsCoordinator(DataUpdateCoordinator[NotificationData]):
             _LOGGER.warning("Token expired fetching notifications — triggering re-auth")
             self._entry.async_start_reauth(self.hass)
             raise UpdateFailed("Token expired, re-authentication required")
+        except ClientResponseError as err:
+            if err.status == 400:
+                # API rejects placeholder firebase_token — return empty data silently
+                _LOGGER.debug("Notifications API returned 400 (firebase_token not accepted): %s", err)
+                return NotificationData(
+                    title=None, body=None, notification_type=None,
+                    created_ms=None, all_notifications=[],
+                )
+            raise UpdateFailed(f"Notifications API error: {err}") from err
         except Exception as err:
             raise UpdateFailed(f"Notifications API error: {err}") from err
 
