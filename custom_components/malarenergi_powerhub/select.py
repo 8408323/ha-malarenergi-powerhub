@@ -50,9 +50,9 @@ EV_TYPE_OPTIONS = [
 class PowerHubSelectDescription(SelectEntityDescription):
     value_fn: Callable[[FacilityAttributes], str | None]
     attr_field: str
-    # For fuse_size we store int in attrs but the API/select uses "A20" strings
+    # Converts the selected option string to the FacilityAttributes field value.
+    # Default is identity (str→str); fuse_size overrides to parse "A20" → 20 (int).
     to_attr_value: Callable[[str], object] = lambda v: v
-    from_attr_value: Callable[[object], str] = lambda v: str(v)
 
 
 def _fuse_to_attr(v: str) -> int:
@@ -65,17 +65,16 @@ def _fuse_to_attr(v: str) -> int:
 SELECTS: tuple[PowerHubSelectDescription, ...] = (
     PowerHubSelectDescription(
         key="fuse_size",
-        name="Fuse Size",
+        translation_key="fuse_size",
         entity_category=EntityCategory.CONFIG,
         options=FUSE_OPTIONS,
         value_fn=lambda a: f"A{a.fuse_size}" if a.fuse_size else None,
         attr_field="fuse_size",
         to_attr_value=_fuse_to_attr,
-        from_attr_value=lambda v: f"A{v}",
     ),
     PowerHubSelectDescription(
         key="heating_type",
-        name="Heating Type",
+        translation_key="heating_type",
         entity_category=EntityCategory.CONFIG,
         options=HEATING_TYPE_OPTIONS,
         value_fn=lambda a: a.heating_type or None,
@@ -83,7 +82,7 @@ SELECTS: tuple[PowerHubSelectDescription, ...] = (
     ),
     PowerHubSelectDescription(
         key="facility_type",
-        name="Facility Type",
+        translation_key="facility_type",
         entity_category=EntityCategory.CONFIG,
         options=FACILITY_TYPE_OPTIONS,
         value_fn=lambda a: a.facility_type or None,
@@ -91,7 +90,7 @@ SELECTS: tuple[PowerHubSelectDescription, ...] = (
     ),
     PowerHubSelectDescription(
         key="ev_type",
-        name="EV Charger Type",
+        translation_key="ev_type",
         entity_category=EntityCategory.CONFIG,
         options=EV_TYPE_OPTIONS,
         value_fn=lambda a: a.ev_type or "NONE",

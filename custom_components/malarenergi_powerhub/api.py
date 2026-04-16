@@ -6,7 +6,7 @@ Auth:      Bearer <JWT token> obtained via BankID QR flow
 BankID authentication flow:
   1. GET  /bankid/auth
          → { transactionId, autoStartToken }
-  2. GET  /bankid/check/{transactionId}   (poll every ~2s)
+  2. GET  /bankid/check/{transactionId}   (poll every ~1s)
          → { status: "pending", qrCode: "bankid.xxx.N.hash" }  (QR rotates each second)
          → { status: "complete", token: "<JWT>" }
   3. Use token as:  Authorization: Bearer <token>

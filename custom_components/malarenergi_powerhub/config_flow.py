@@ -58,7 +58,7 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # Fetch first QR synchronously so it's ready when the form renders
         try:
-            async for status, qr, token in bankid_poll(session, self._transaction_id):  # type: ignore[arg-type]
+            async for status, qr, token in bankid_poll(session, self._transaction_id):
                 if status == "pending" and qr:
                     self._qr_code = qr
                     break
@@ -84,10 +84,9 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def _run_poller(self) -> None:
         """Background: keep polling BankID, store latest QR / token / failed."""
         session = async_get_clientsession(self.hass)
+        assert self._transaction_id is not None
         try:
-            async for status, qr, token in bankid_poll(
-                session, self._transaction_id  # type: ignore[arg-type]
-            ):
+            async for status, qr, token in bankid_poll(session, self._transaction_id):
                 if status == "pending" and qr:
                     self._qr_code = qr
                 elif status == "complete" and token:
@@ -116,6 +115,11 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.FlowResult:
         """Called when user clicks Submit — check status and show refreshed QR."""
+        # Guard: if transaction is missing (e.g. flow resumed after HA restart),
+        # restart from the beginning so we get a fresh BankID session.
+        if not self._transaction_id or not self._poll_task:
+            return await self.async_step_user()
+
         if self._token:
             self._cancel_task()
             return await self._async_finish(self._token)
@@ -124,7 +128,7 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._cancel_task()
             return await self.async_step_user()
 
-        if self._poll_task and self._poll_task.done():
+        if self._poll_task.done():
             return await self.async_step_user()
 
         # Return updated QR (background task keeps _qr_code fresh)

@@ -31,7 +31,7 @@ SENSORS: tuple[PowerHubSensorDescription, ...] = (
     # ── Energy metering ──────────────────────────────────────────────────
     PowerHubSensorDescription(
         key="import_today",
-        name="Import Today",
+        translation_key="import_today",
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
@@ -40,7 +40,7 @@ SENSORS: tuple[PowerHubSensorDescription, ...] = (
     ),
     PowerHubSensorDescription(
         key="export_today",
-        name="Export Today",
+        translation_key="export_today",
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
@@ -49,8 +49,9 @@ SENSORS: tuple[PowerHubSensorDescription, ...] = (
     ),
     PowerHubSensorDescription(
         key="spot_price",
-        name="Spot Price",
+        translation_key="spot_price",
         device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="öre/kWh",
         suggested_display_precision=2,
         value_fn=lambda d: d.spot_price_now,
@@ -58,14 +59,14 @@ SENSORS: tuple[PowerHubSensorDescription, ...] = (
     # ── Sharing (diagnostic) ─────────────────────────────────────────────
     PowerHubSensorDescription(
         key="active_invitations",
-        name="Active Invitations",
+        translation_key="active_invitations",
         entity_category=EntityCategory.DIAGNOSTIC,
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda d: len(d.invitations),
     ),
     PowerHubSensorDescription(
         key="invitees",
-        name="Invitees",
+        translation_key="invitees",
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda d: ", ".join(
             inv.claimer_name for inv in d.invitees if inv.claimer_name
@@ -92,7 +93,6 @@ async def async_setup_entry(
 
 class PowerHubSensor(CoordinatorEntity[PowerHubCoordinator], SensorEntity):
     _attr_has_entity_name = True
-    _attr_force_update = True
     entity_description: PowerHubSensorDescription
 
     def __init__(

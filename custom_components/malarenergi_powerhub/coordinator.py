@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, replace as dataclass_replace
 from datetime import datetime, timedelta, timezone
 
 from homeassistant.config_entries import ConfigEntry
@@ -75,21 +75,21 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
             consumption_points = await client.get_today_consumption(
                 self._facility_id, day_ms
             )
-            _consumption_wh = sum(
-                p.value_wh for p in consumption_points
-                if p.timestamp_ms <= now_ms
+            past_consumption = [p for p in consumption_points if p.timestamp_ms <= now_ms]
+            consumption_kwh = (
+                round(sum(p.value_wh for p in past_consumption) / 1000, 3)
+                if past_consumption else None
             )
-            consumption_kwh = round(_consumption_wh / 1000, 3) if _consumption_wh else None
 
             # Production (export) today — API returns Wh per bucket; convert to kWh
             production_points = await client.get_today_production(
                 self._facility_id, day_ms
             )
-            _production_wh = sum(
-                p.value_wh for p in production_points
-                if p.timestamp_ms <= now_ms
+            past_production = [p for p in production_points if p.timestamp_ms <= now_ms]
+            production_kwh = (
+                round(sum(p.value_wh for p in past_production) / 1000, 3)
+                if past_production else None
             )
-            production_kwh = round(_production_wh / 1000, 3) if _production_wh else None
 
             # Current spot price — find the 15-min bucket containing now
             spot_points = await client.get_spot_price_today(
@@ -130,8 +130,7 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
         """
         if self._cached_attributes is None:
             raise RuntimeError("Facility attributes not yet loaded")
-        from dataclasses import replace as _replace
-        updated = _replace(self._cached_attributes, **kwargs)
+        updated = dataclass_replace(self._cached_attributes, **kwargs)
         client = self._make_client()
         self._cached_attributes = await client.update_facility_attributes(
             self._facility_id, updated

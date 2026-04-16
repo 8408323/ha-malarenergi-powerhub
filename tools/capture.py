@@ -17,10 +17,10 @@ If not set, only traffic to known Mälarenergi/Bitvis domains is captured.
 Install mitmproxy CA cert on phone:
   Open http://mitm.it in the phone browser while proxy is active.
 
-Output:
-  tools/captured_traffic.jsonl  — one JSON record per line (machine-readable)
-  tools/captured_traffic.log    — human-readable log
-  tools/firebase_config.json    — auto-extracted Firebase project config (if found)
+Output (per capture session, timestamped):
+  tools/captures/YYYYMMDD_HHMMSS.jsonl  — one JSON record per line (machine-readable)
+  tools/captures/YYYYMMDD_HHMMSS.log    — human-readable log
+  tools/firebase_config.json            — auto-extracted Firebase project config (if found)
 
 WARNING: Output files may contain auth tokens. They are .gitignored.
          Never commit them.
@@ -86,8 +86,13 @@ REDACT_HEADERS = {
     "x-access-token",
 }
 
-OUT_JSONL    = Path(__file__).parent / "captured_traffic.jsonl"
-OUT_LOG      = Path(__file__).parent / "captured_traffic.log"
+# Timestamped output directory — one session per run, never overwrites old captures
+_SESSION_TS = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+_CAPTURES_DIR = Path(__file__).parent / "captures"
+_CAPTURES_DIR.mkdir(exist_ok=True)
+
+OUT_JSONL    = _CAPTURES_DIR / f"{_SESSION_TS}.jsonl"
+OUT_LOG      = _CAPTURES_DIR / f"{_SESSION_TS}.log"
 OUT_FIREBASE = Path(__file__).parent / "firebase_config.json"
 
 # -------------------------------------------------------------------------

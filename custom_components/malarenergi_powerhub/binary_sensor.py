@@ -26,13 +26,13 @@ class PowerHubBinarySensorDescription(BinarySensorEntityDescription):
 BINARY_SENSORS: tuple[PowerHubBinarySensorDescription, ...] = (
     PowerHubBinarySensorDescription(
         key="has_solar",
-        name="Has Solar",
+        translation_key="has_solar",
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda d: d.attributes.has_solar if d.attributes else None,
     ),
     PowerHubBinarySensorDescription(
         key="has_battery",
-        name="Has Battery",
+        translation_key="has_battery",
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda d: d.attributes.has_battery if d.attributes else None,
     ),

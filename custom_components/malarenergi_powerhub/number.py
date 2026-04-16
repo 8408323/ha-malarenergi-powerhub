@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from typing import Callable
 
 from homeassistant.components.number import (
-    NumberDeviceClass,
     NumberEntity,
     NumberEntityDescription,
     NumberMode,
@@ -30,7 +29,7 @@ class PowerHubNumberDescription(NumberEntityDescription):
 NUMBERS: tuple[PowerHubNumberDescription, ...] = (
     PowerHubNumberDescription(
         key="area",
-        name="Area",
+        translation_key="area",
         entity_category=EntityCategory.CONFIG,
         native_unit_of_measurement=UnitOfArea.SQUARE_METERS,
         native_min_value=1,
@@ -42,7 +41,7 @@ NUMBERS: tuple[PowerHubNumberDescription, ...] = (
     ),
     PowerHubNumberDescription(
         key="occupants",
-        name="Occupants",
+        translation_key="occupants",
         entity_category=EntityCategory.CONFIG,
         native_min_value=1,
         native_max_value=20,
