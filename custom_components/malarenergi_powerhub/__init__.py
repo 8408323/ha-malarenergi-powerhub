@@ -18,7 +18,7 @@ from .notifications_coordinator import NotificationsCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.NUMBER, Platform.SELECT]
+PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.SWITCH, Platform.NUMBER, Platform.SELECT]
 
 SERVICE_CREATE_INVITATION = "create_invitation"
 SERVICE_DELETE_INVITATION = "delete_invitation"

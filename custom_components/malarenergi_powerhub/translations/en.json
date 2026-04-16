@@ -30,7 +30,7 @@
       "invitees": { "name": "Invitees" },
       "latest_notification": { "name": "Latest Notification" }
     },
-    "binary_sensor": {
+    "switch": {
       "has_solar": { "name": "Has Solar" },
       "has_battery": { "name": "Has Battery" }
     },

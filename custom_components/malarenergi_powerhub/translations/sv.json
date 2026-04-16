@@ -30,7 +30,7 @@
       "invitees": { "name": "Inbjudna" },
       "latest_notification": { "name": "Senaste notis" }
     },
-    "binary_sensor": {
+    "switch": {
       "has_solar": { "name": "Har solceller" },
       "has_battery": { "name": "Har batteri" }
     },
