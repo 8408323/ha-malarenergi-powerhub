@@ -51,7 +51,6 @@ SENSORS: tuple[PowerHubSensorDescription, ...] = (
         key="spot_price",
         name="Spot Price",
         device_class=SensorDeviceClass.MONETARY,
-        state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="öre/kWh",
         suggested_display_precision=2,
         value_fn=lambda d: d.spot_price_now,
