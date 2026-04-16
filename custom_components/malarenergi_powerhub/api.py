@@ -392,6 +392,26 @@ class PowerHubApiClient:
             year_start_ms,
         )
 
+    async def get_notifications(
+        self,
+        firebase_token: str = "ha-integration",
+        topics: str = "operatingStatus,todaySpotPrice,generic",
+        page_size: int = 25,
+    ) -> list[dict]:
+        """Get recent push notifications from the Mälarenergi app backend.
+
+        Returns a list of notification dicts with keys:
+          title, body, type, read, created (epoch ms), facilityId
+        """
+        data = await self._get(
+            "/notifications",
+            firebase_token=firebase_token,
+            topics=topics,
+            page=1,
+            page_size=page_size,
+        )
+        return data if isinstance(data, list) else []
+
     async def get_monthly_insights(
         self,
         facility_id: str,
