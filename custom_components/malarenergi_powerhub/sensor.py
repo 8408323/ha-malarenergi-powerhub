@@ -376,12 +376,8 @@ class PowerHubSensor(CoordinatorEntity[PowerHubCoordinator], SensorEntity):
                     {
                         "id": inv.invitation_id,
                         "claimed": inv.claimed,
-                        "expires": datetime.fromtimestamp(
-                            inv.expires / 1000, tz=timezone.utc
-                        ).isoformat() if inv.expires else None,
-                        "created": datetime.fromtimestamp(
-                            inv.created / 1000, tz=timezone.utc
-                        ).isoformat() if inv.created else None,
+                        "expires": inv.expires or None,
+                        "created": inv.created or None,
                     }
                     for inv in self.coordinator.data.invitations
                 ]

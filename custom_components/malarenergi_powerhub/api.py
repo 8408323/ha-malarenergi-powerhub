@@ -113,8 +113,8 @@ class Agreement:
 class Invitation:
     """Sharing invitation created by this account."""
     invitation_id: str
-    expires: int               # epoch ms
-    created: int               # epoch ms
+    expires: str               # ISO 8601 timestamp
+    created: str               # ISO 8601 timestamp
     claimed: bool
     accessed_facilities: list[str] = field(default_factory=list)
 
@@ -276,9 +276,9 @@ class PowerHubApiClient:
         return [
             Invitation(
                 invitation_id=inv.get("id", ""),
-                expires=inv.get("expires", 0),
-                created=inv.get("created", 0),
-                claimed=inv.get("claimed", False),
+                expires=inv.get("expires", ""),
+                created=inv.get("created", ""),
+                claimed=bool(inv.get("claimed")),
                 accessed_facilities=inv.get("accessedFacilities", []),
             )
             for inv in (data if isinstance(data, list) else [])
