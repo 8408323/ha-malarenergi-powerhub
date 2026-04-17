@@ -12,7 +12,13 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EntityCategory, UnitOfEnergy
+from homeassistant.const import (
+    SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
+    EntityCategory,
+    UnitOfElectricCurrent,
+    UnitOfEnergy,
+    UnitOfPower,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -55,6 +61,245 @@ SENSORS: tuple[PowerHubSensorDescription, ...] = (
         native_unit_of_measurement="öre/kWh",
         suggested_display_precision=2,
         value_fn=lambda d: d.spot_price_now,
+    ),
+    # ── Real-time power (1-min resolution) ──────────────────────────────
+    PowerHubSensorDescription(
+        key="power_import",
+        translation_key="power_import",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        suggested_display_precision=3,
+        value_fn=lambda d: round(d.current_power.power_import_kw, 3) if d.current_power else None,
+    ),
+    PowerHubSensorDescription(
+        key="power_export",
+        translation_key="power_export",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        suggested_display_precision=3,
+        value_fn=lambda d: round(d.current_power.power_export_kw, 3) if d.current_power else None,
+    ),
+    # ── Per-phase power and current ──────────────────────────────────────
+    PowerHubSensorDescription(
+        key="power_l1_import",
+        translation_key="power_l1_import",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        suggested_display_precision=3,
+        value_fn=lambda d: round(d.current_power_phases.power_l1_import_kw, 3) if d.current_power_phases else None,
+    ),
+    PowerHubSensorDescription(
+        key="power_l2_import",
+        translation_key="power_l2_import",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        suggested_display_precision=3,
+        value_fn=lambda d: round(d.current_power_phases.power_l2_import_kw, 3) if d.current_power_phases else None,
+    ),
+    PowerHubSensorDescription(
+        key="power_l3_import",
+        translation_key="power_l3_import",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        suggested_display_precision=3,
+        value_fn=lambda d: round(d.current_power_phases.power_l3_import_kw, 3) if d.current_power_phases else None,
+    ),
+    PowerHubSensorDescription(
+        key="power_l1_export",
+        translation_key="power_l1_export",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        suggested_display_precision=3,
+        value_fn=lambda d: round(d.current_power_phases.power_l1_export_kw, 3) if d.current_power_phases else None,
+    ),
+    PowerHubSensorDescription(
+        key="power_l2_export",
+        translation_key="power_l2_export",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        suggested_display_precision=3,
+        value_fn=lambda d: round(d.current_power_phases.power_l2_export_kw, 3) if d.current_power_phases else None,
+    ),
+    PowerHubSensorDescription(
+        key="power_l3_export",
+        translation_key="power_l3_export",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        suggested_display_precision=3,
+        value_fn=lambda d: round(d.current_power_phases.power_l3_export_kw, 3) if d.current_power_phases else None,
+    ),
+    PowerHubSensorDescription(
+        key="current_l1",
+        translation_key="current_l1",
+        device_class=SensorDeviceClass.CURRENT,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        suggested_display_precision=2,
+        value_fn=lambda d: round(d.current_power_phases.current_l1_a, 2) if d.current_power_phases else None,
+    ),
+    PowerHubSensorDescription(
+        key="current_l2",
+        translation_key="current_l2",
+        device_class=SensorDeviceClass.CURRENT,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        suggested_display_precision=2,
+        value_fn=lambda d: round(d.current_power_phases.current_l2_a, 2) if d.current_power_phases else None,
+    ),
+    PowerHubSensorDescription(
+        key="current_l3",
+        translation_key="current_l3",
+        device_class=SensorDeviceClass.CURRENT,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        suggested_display_precision=2,
+        value_fn=lambda d: round(d.current_power_phases.current_l3_a, 2) if d.current_power_phases else None,
+    ),
+    # ── Device diagnostics ───────────────────────────────────────────────
+    PowerHubSensorDescription(
+        key="wifi_rssi",
+        translation_key="wifi_rssi",
+        device_class=SensorDeviceClass.SIGNAL_STRENGTH,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: d.diagnostics.wifi_rssi_dbm if d.diagnostics else None,
+    ),
+    PowerHubSensorDescription(
+        key="sw_version",
+        translation_key="sw_version",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: d.diagnostics.sw_version if d.diagnostics else None,
+    ),
+    PowerHubSensorDescription(
+        key="han_port_state",
+        translation_key="han_port_state",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: d.diagnostics.han_port_state if d.diagnostics else None,
+    ),
+    PowerHubSensorDescription(
+        key="fuse_limit",
+        translation_key="fuse_limit",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        native_unit_of_measurement="A",
+        value_fn=lambda d: d.facility_control.fuse_limit_a if d.facility_control else None,
+    ),
+    PowerHubSensorDescription(
+        key="power_limit",
+        translation_key="power_limit",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        device_class=SensorDeviceClass.POWER,
+        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        value_fn=lambda d: d.facility_control.power_limit_kw if d.facility_control else None,
+    ),
+    PowerHubSensorDescription(
+        key="fcr_enabled",
+        translation_key="fcr_enabled",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: d.fcr_status.fcrd_down_enabled if d.fcr_status else None,
+    ),
+    # ── Account / facility info (diagnostic) ────────────────────────────
+    PowerHubSensorDescription(
+        key="account_name",
+        translation_key="account_name",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: d.profile.name if d.profile else None,
+    ),
+    PowerHubSensorDescription(
+        key="customer_number",
+        translation_key="customer_number",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: d.profile.customer_number if d.profile else None,
+    ),
+    PowerHubSensorDescription(
+        key="facility_address",
+        translation_key="facility_address",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: (
+            f"{d.facility_info.street} {d.facility_info.house_number}"
+            if d.facility_info else None
+        ),
+    ),
+    PowerHubSensorDescription(
+        key="meter_id",
+        translation_key="meter_id",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: d.facility_info.meter_id if d.facility_info else None,
+    ),
+    PowerHubSensorDescription(
+        key="price_zone",
+        translation_key="price_zone",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: d.facility_info.region if d.facility_info else None,
+    ),
+    PowerHubSensorDescription(
+        key="agreement_number",
+        translation_key="agreement_number",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: d.agreements[0].agreement_number if d.agreements else None,
+    ),
+    PowerHubSensorDescription(
+        key="price_model",
+        translation_key="price_model",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: d.agreements[0].price_model if d.agreements else None,
+    ),
+    PowerHubSensorDescription(
+        key="uptime",
+        translation_key="uptime",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        native_unit_of_measurement="s",
+        value_fn=lambda d: d.diagnostics.uptime_s if d.diagnostics else None,
+    ),
+    # ── Monthly insights ─────────────────────────────────────────────────
+    PowerHubSensorDescription(
+        key="avg_price_this_month",
+        translation_key="avg_price_this_month",
+        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="öre/kWh",
+        suggested_display_precision=2,
+        value_fn=lambda d: round(d.monthly_insights.your_average_price, 2)
+            if d.monthly_insights and d.monthly_insights.your_average_price is not None else None,
+    ),
+    PowerHubSensorDescription(
+        key="market_avg_price_this_month",
+        translation_key="market_avg_price_this_month",
+        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="öre/kWh",
+        suggested_display_precision=2,
+        value_fn=lambda d: round(d.monthly_insights.monthly_average_price, 2)
+            if d.monthly_insights and d.monthly_insights.monthly_average_price is not None else None,
+    ),
+    PowerHubSensorDescription(
+        key="consumption_ytd",
+        translation_key="consumption_ytd",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        suggested_display_precision=3,
+        value_fn=lambda d: d.monthly_insights.current_year_value
+            if d.monthly_insights else None,
+    ),
+    PowerHubSensorDescription(
+        key="baseload_power",
+        translation_key="baseload_power",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        suggested_display_precision=3,
+        value_fn=lambda d: d.monthly_insights.baseload_kw
+            if d.monthly_insights else None,
     ),
     # ── Sharing (diagnostic) ─────────────────────────────────────────────
     PowerHubSensorDescription(
@@ -102,6 +347,7 @@ class PowerHubSensor(CoordinatorEntity[PowerHubCoordinator], SensorEntity):
     ) -> None:
         super().__init__(coordinator)
         self.entity_description = description
+        assert coordinator.config_entry is not None
         self._attr_unique_id = f"{coordinator.config_entry.entry_id}_{description.key}"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, coordinator.config_entry.entry_id)},

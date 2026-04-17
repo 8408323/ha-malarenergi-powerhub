@@ -10,7 +10,25 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import AuthError, FacilityAttributes, Invitation, Invitee, PowerHubApiClient
+from .api import (
+    AccountProfile,
+    Agreement,
+    AuthError,
+    FacilityAttributes,
+    FacilityControl,
+    FacilityInfo,
+    FcrStatus,
+    HourlyEnergy,
+    Invitation,
+    Invitee,
+    MonthlyInsights,
+    NotificationSettings,
+    PhaseTelemetry,
+    PowerApiClient,
+    PowerDiagnostics,
+    PowerHubApiClient,
+    PowerTelemetry,
+)
 from .const import CONF_FACILITY_ID, CONF_TOKEN, DEFAULT_SCAN_INTERVAL, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -25,6 +43,19 @@ class PowerHubData:
     attributes: FacilityAttributes | None  # Static facility attributes (solar, battery, etc.)
     invitations: list[Invitation]          # Active sharing invitations
     invitees: list[Invitee]               # People with access to the facility
+    # Account / facility metadata
+    profile: AccountProfile | None         # Account holder name, email, phone
+    agreements: list[Agreement]            # Supply agreements
+    facility_info: FacilityInfo | None     # Address, meter ID, region
+    notification_settings: NotificationSettings | None  # Push notification prefs
+    monthly_insights: MonthlyInsights | None            # Current-month price/usage stats
+    # Power backend (real-time)
+    current_power: PowerTelemetry | None      # Most recent 1-min total power sample
+    current_power_phases: PhaseTelemetry | None  # Most recent per-phase sample
+    diagnostics: PowerDiagnostics | None      # Device status
+    facility_control: FacilityControl | None  # Fuse/power limits
+    fcr_status: FcrStatus | None              # FCR enablement
+    hourly_energy_today: list[HourlyEnergy]   # Hourly energy buckets (today)
 
 
 def _day_start_ms() -> int:
@@ -48,6 +79,9 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
         self._facility_id = entry.data[CONF_FACILITY_ID]
         self._entry = entry
         self._cached_attributes: FacilityAttributes | None = None
+        self._cached_profile: AccountProfile | None = None
+        self._cached_agreements: list[Agreement] | None = None
+        self._cached_facility_info: FacilityInfo | None = None
         super().__init__(
             hass,
             _LOGGER,
@@ -59,17 +93,49 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
         session = async_get_clientsession(self.hass)
         return PowerHubApiClient(session, self._token)
 
+    def _make_power_client(self) -> PowerApiClient:
+        session = async_get_clientsession(self.hass)
+        return PowerApiClient(session, self._token)
+
     async def _async_update_data(self) -> PowerHubData:
         client = self._make_client()
+        power_client = self._make_power_client()
         day_ms = _day_start_ms()
         now_ms = _now_ms()
 
         try:
-            # Fetch facility attributes once (static data — cache after first successful fetch)
+            # Static data — cache after first successful fetch
             if self._cached_attributes is None:
                 self._cached_attributes = await client.get_facility_attributes(
                     self._facility_id
                 )
+            if self._cached_profile is None:
+                self._cached_profile = await client.get_profile()
+            if self._cached_agreements is None:
+                self._cached_agreements = await client.get_agreements()
+            if self._cached_facility_info is None:
+                facilities = await client.get_facilities()
+                self._cached_facility_info = next(
+                    (f for f in facilities if f.facility_id == self._facility_id),
+                    facilities[0] if facilities else None,
+                )
+
+            # Notification settings (fetched each poll — user may change in app)
+            notification_settings = await power_client.get_notification_settings(
+                self._facility_id
+            )
+
+            # Monthly insights for the current month
+            import zoneinfo as _zi
+            _tz = _zi.ZoneInfo("Europe/Stockholm")
+            _now_local = datetime.now(_tz)
+            _month_start = _now_local.replace(
+                day=1, hour=0, minute=0, second=0, microsecond=0
+            )
+            _month_start_ms = int(_month_start.timestamp() * 1000)
+            monthly_insights = await client.get_monthly_insights(
+                self._facility_id, _month_start_ms
+            )
 
             # Consumption today — API returns Wh per bucket; convert to kWh
             consumption_points = await client.get_today_consumption(
@@ -106,6 +172,29 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
             invitations = await client.get_invitations()
             invitees = await client.get_invitees(self._facility_id)
 
+            # Power backend: real-time power, diagnostics, facility control
+            current_power = await power_client.get_current_power(self._facility_id)
+            current_power_phases = await power_client.get_current_power_phases(
+                self._facility_id
+            )
+            diagnostics = await power_client.get_diagnostics(self._facility_id)
+            facility_control = await power_client.get_facility_control(self._facility_id)
+            fcr_status = await power_client.get_fcr_status(self._facility_id)
+
+            # Hourly energy for today (from midnight Stockholm time until now)
+            import zoneinfo
+            tz = zoneinfo.ZoneInfo("Europe/Stockholm")
+            from datetime import datetime as _dt
+            now_local = _dt.now(tz)
+            day_start_utc = now_local.replace(
+                hour=0, minute=0, second=0, microsecond=0
+            ).astimezone(timezone.utc)
+            hourly_energy_today = await power_client.get_hourly_energy(
+                self._facility_id,
+                start=day_start_utc,
+                end=datetime.now(tz=timezone.utc),
+            )
+
         except AuthError:
             _LOGGER.warning("Token expired — triggering re-auth")
             self._entry.async_start_reauth(self.hass)
@@ -120,7 +209,36 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
             attributes=self._cached_attributes,
             invitations=invitations,
             invitees=invitees,
+            profile=self._cached_profile,
+            agreements=self._cached_agreements or [],
+            facility_info=self._cached_facility_info,
+            notification_settings=notification_settings,
+            current_power=current_power,
+            current_power_phases=current_power_phases,
+            diagnostics=diagnostics,
+            facility_control=facility_control,
+            fcr_status=fcr_status,
+            hourly_energy_today=hourly_energy_today,
+            monthly_insights=monthly_insights,
         )
+
+    async def async_update_facility_control(self, **kwargs) -> None:
+        """Update one or more FacilityControl fields, then refresh."""
+        if self.data is None or self.data.facility_control is None:
+            raise RuntimeError("Facility control not yet loaded")
+        updated = dataclass_replace(self.data.facility_control, **kwargs)
+        power_client = self._make_power_client()
+        await power_client.update_facility_control(self._facility_id, updated)
+        await self.async_request_refresh()
+
+    async def async_update_notification_settings(self, **kwargs) -> None:
+        """Update one or more NotificationSettings fields, then refresh."""
+        if self.data is None or self.data.notification_settings is None:
+            raise RuntimeError("Notification settings not yet loaded")
+        updated = dataclass_replace(self.data.notification_settings, **kwargs)
+        power_client = self._make_power_client()
+        await power_client.update_notification_settings(self._facility_id, updated)
+        await self.async_request_refresh()
 
     async def async_update_attributes(self, **kwargs) -> None:
         """Write one or more attribute fields via PUT, then refresh sensors.

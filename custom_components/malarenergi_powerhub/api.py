@@ -1,7 +1,8 @@
-"""Mälarenergi PowerHub — Bitvis Flow API client.
+"""Mälarenergi PowerHub — Bitvis Flow API client + Bitvis Power API client.
 
-Base URL:  https://malarenergi.prod.flow.bitv.is/powerapi/v1
-Auth:      Bearer <JWT token> obtained via BankID QR flow
+Flow API base URL:  https://malarenergi.prod.flow.bitv.is/powerapi/v1
+Power API base URL: https://api.prod.power.bitv.is
+Auth (both):        Bearer <JWT token> obtained via BankID QR flow
 
 BankID authentication flow:
   1. GET  /bankid/auth
@@ -15,7 +16,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import struct
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import AsyncGenerator
 
 import aiohttp
@@ -513,6 +516,462 @@ class PowerHubApiClient:
             avg=data.get("avg", 0.0),
             data=[MeterData(d["timestamp"], d["value"]) for d in data.get("data", [])],
         )
+
+
+# ------------------------------------------------------------------
+# Bitvis Power API
+# ------------------------------------------------------------------
+
+POWER_BASE_URL = "https://api.prod.power.bitv.is"
+
+
+@dataclass
+class PowerHubDevice:
+    device_id: str
+    model: str
+    facility_id: str
+    mac_address: str
+
+
+@dataclass
+class PowerTelemetry:
+    """One 1-minute sample from the Power telemetry endpoint."""
+    timestamp: datetime
+    power_import_kw: float   # power_active_delivered_to_client_kw
+    power_export_kw: float   # power_active_delivered_by_client_kw
+
+
+@dataclass
+class PhaseTelemetry:
+    """One 1-minute per-phase sample."""
+    timestamp: datetime
+    current_l1_a: float
+    current_l2_a: float
+    current_l3_a: float
+    power_l1_import_kw: float
+    power_l1_export_kw: float
+    power_l2_import_kw: float
+    power_l2_export_kw: float
+    power_l3_import_kw: float
+    power_l3_export_kw: float
+
+
+@dataclass
+class HourlyEnergy:
+    """One hourly energy bucket from the aggregated energy endpoint."""
+    bucket_start: datetime
+    window_start: datetime
+    window_end: datetime
+    sample_count: int
+    energy_import_wh: float
+    energy_export_wh: float
+
+
+@dataclass
+class PowerDiagnostics:
+    uptime_s: int
+    wifi_rssi_dbm: int
+    sw_version: str
+    han_port_state: str      # "ACTIVE" / "INACTIVE"
+
+
+@dataclass
+class FacilityControl:
+    fuse_limit_a: float
+    power_limit_kw: float
+    action_on_fuse_limit: str   # "NOTIFY" / "CUT"
+    action_on_power_limit: str
+
+
+@dataclass
+class FcrStatus:
+    fcrd_down_enabled: bool
+
+
+@dataclass
+class NotificationSettings:
+    notify_total_power: bool
+    notify_phase_load: bool
+    notify_control_disabled_exceeded_phase: bool
+    notify_control_disabled_exceeded_power: bool
+    notify_control_enabled_exceeded_phase: bool
+    notify_control_enabled_exceeded_power: bool
+
+    def to_dict(self) -> dict:
+        return {
+            "notifyTotalPower": self.notify_total_power,
+            "notifyPhaseLoad": self.notify_phase_load,
+            "notifyControlDisabledExceededPhase": self.notify_control_disabled_exceeded_phase,
+            "notifyControlDisabledExceededPower": self.notify_control_disabled_exceeded_power,
+            "notifyControlEnabledExceededPhase": self.notify_control_enabled_exceeded_phase,
+            "notifyControlEnabledExceededPower": self.notify_control_enabled_exceeded_power,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "NotificationSettings":
+        return cls(
+            notify_total_power=bool(data.get("notifyTotalPower", False)),
+            notify_phase_load=bool(data.get("notifyPhaseLoad", False)),
+            notify_control_disabled_exceeded_phase=bool(data.get("notifyControlDisabledExceededPhase", False)),
+            notify_control_disabled_exceeded_power=bool(data.get("notifyControlDisabledExceededPower", False)),
+            notify_control_enabled_exceeded_phase=bool(data.get("notifyControlEnabledExceededPhase", False)),
+            notify_control_enabled_exceeded_power=bool(data.get("notifyControlEnabledExceededPower", False)),
+        )
+
+
+def _read_varint(data: bytes, pos: int) -> tuple[int, int]:
+    """Read a varint from data at pos. Returns (value, new_pos)."""
+    val = 0
+    shift = 0
+    while pos < len(data):
+        b = data[pos]; pos += 1
+        val |= (b & 0x7f) << shift
+        shift += 7
+        if not (b & 0x80):
+            break
+    return val, pos
+
+
+def _parse_submessage(sub: bytes) -> dict[int, int | float | bytes]:
+    """Parse a flat protobuf submessage into {field_num: value}.
+
+    Handles: varint (wire=0), fixed32 float (wire=5), length-delimited (wire=2).
+    Length-delimited values are stored as raw bytes under their field number.
+    """
+    fields: dict[int, int | float | bytes] = {}
+    sp = 0
+    while sp < len(sub):
+        tag_val, sp = _read_varint(sub, sp)
+        field_num = tag_val >> 3
+        wire = tag_val & 7
+        if wire == 0:
+            val, sp = _read_varint(sub, sp)
+            fields[field_num] = val
+        elif wire == 5:
+            if sp + 4 > len(sub):
+                break
+            fields[field_num] = struct.unpack_from("<f", sub, sp)[0]
+            sp += 4
+        elif wire == 2:
+            length, sp = _read_varint(sub, sp)
+            fields[field_num] = sub[sp:sp + length]
+            sp += length
+        elif wire == 1:
+            sp += 8  # skip 64-bit
+        else:
+            break
+    return fields
+
+
+def _decode_telemetry_proto(raw: bytes) -> list[PowerTelemetry]:
+    """Decode 2-field power telemetry (import + export kW).
+
+    Wire format: repeated records, each starting with length byte (0x10=16),
+    followed by submessage: field1 varint timestamp_s, field6 float32 import,
+    field7 float32 export.
+    """
+    results: list[PowerTelemetry] = []
+    pos = 0
+    n = len(raw)
+    while pos < n:
+        if pos < n and raw[pos] == 0x0a:
+            pos += 1
+        if pos >= n:
+            break
+        sub_len, pos = _read_varint(raw, pos)
+        if pos + sub_len > n:
+            break
+        fields = _parse_submessage(raw[pos:pos + sub_len])
+        pos += sub_len
+        ts_s = fields.get(1)
+        if isinstance(ts_s, int):
+            results.append(PowerTelemetry(
+                timestamp=datetime.fromtimestamp(ts_s, tz=timezone.utc),
+                power_import_kw=float(fields.get(6, 0.0)),
+                power_export_kw=float(fields.get(7, 0.0)),
+            ))
+    return results
+
+
+def _decode_phase_telemetry_proto(raw: bytes) -> list[PhaseTelemetry]:
+    """Decode 9-field per-phase telemetry.
+
+    Fields (by position in API query order, field numbers 2-10):
+      2: phase_current_l1_a, 3: phase_current_l2_a, 4: phase_current_l3_a,
+      5: power_l1_import, 6: power_l1_export,
+      7: power_l2_import, 8: power_l2_export,
+      9: power_l3_import, 10: power_l3_export
+    """
+    results: list[PhaseTelemetry] = []
+    pos = 0
+    n = len(raw)
+    while pos < n:
+        if pos < n and raw[pos] == 0x0a:
+            pos += 1
+        if pos >= n:
+            break
+        sub_len, pos = _read_varint(raw, pos)
+        if pos + sub_len > n:
+            break
+        f = _parse_submessage(raw[pos:pos + sub_len])
+        pos += sub_len
+        ts_s = f.get(1)
+        if isinstance(ts_s, int):
+            results.append(PhaseTelemetry(
+                timestamp=datetime.fromtimestamp(ts_s, tz=timezone.utc),
+                current_l1_a=float(f.get(2, 0.0)),
+                current_l2_a=float(f.get(3, 0.0)),
+                current_l3_a=float(f.get(4, 0.0)),
+                power_l1_import_kw=float(f.get(5, 0.0)),
+                power_l1_export_kw=float(f.get(6, 0.0)),
+                power_l2_import_kw=float(f.get(7, 0.0)),
+                power_l2_export_kw=float(f.get(8, 0.0)),
+                power_l3_import_kw=float(f.get(9, 0.0)),
+                power_l3_export_kw=float(f.get(10, 0.0)),
+            ))
+    return results
+
+
+def _ts_from_submsg(raw: bytes) -> int | None:
+    """Extract the varint timestamp from a nested timestamp submessage."""
+    f = _parse_submessage(raw)
+    val = f.get(1)
+    return val if isinstance(val, int) else None
+
+
+def _decode_hourly_energy_proto(raw: bytes) -> list[HourlyEnergy]:
+    """Decode aggregated hourly energy (EnergyDelta protobuf).
+
+    Outer: repeated field1 length-delimited. Each record:
+      field1 (msg): bucket start ts submessage  → field1 varint ts_s
+      field2 varint: sample count
+      field3 (msg): window start ts submessage
+      field4 (msg): window end ts submessage
+      field7 float32: energy_import_wh
+      field10 float32: energy_export_wh
+    """
+    results: list[HourlyEnergy] = []
+    pos = 0
+    n = len(raw)
+    while pos < n:
+        tag_val, pos = _read_varint(raw, pos)
+        wire = tag_val & 7
+        if wire != 2:
+            break
+        length, pos = _read_varint(raw, pos)
+        if pos + length > n:
+            break
+        f = _parse_submessage(raw[pos:pos + length])
+        pos += length
+
+        bucket_raw = f.get(1)
+        win_start_raw = f.get(3)
+        win_end_raw = f.get(4)
+        if not (isinstance(bucket_raw, bytes) and isinstance(win_start_raw, bytes) and isinstance(win_end_raw, bytes)):
+            continue
+        bucket_ts = _ts_from_submsg(bucket_raw)
+        win_start_ts = _ts_from_submsg(win_start_raw)
+        win_end_ts = _ts_from_submsg(win_end_raw)
+        if bucket_ts is None or win_start_ts is None or win_end_ts is None:
+            continue
+        results.append(HourlyEnergy(
+            bucket_start=datetime.fromtimestamp(bucket_ts, tz=timezone.utc),
+            window_start=datetime.fromtimestamp(win_start_ts, tz=timezone.utc),
+            window_end=datetime.fromtimestamp(win_end_ts, tz=timezone.utc),
+            sample_count=int(f.get(2, 0)),
+            energy_import_wh=float(f.get(7, 0.0)),
+            energy_export_wh=float(f.get(10, 0.0)),
+        ))
+    return results
+
+
+class PowerApiClient:
+    """Async HTTP client for the Bitvis Power backend."""
+
+    def __init__(self, session: aiohttp.ClientSession, token: str) -> None:
+        self._session = session
+        self._token = token
+
+    @property
+    def _headers(self) -> dict:
+        return {"Authorization": f"Bearer {self._token}"}
+
+    async def _get_json(self, path: str, **params) -> object:
+        url = f"{POWER_BASE_URL}{path}"
+        async with self._session.get(
+            url,
+            headers=self._headers,
+            params=params or None,
+            timeout=aiohttp.ClientTimeout(total=15),
+        ) as resp:
+            if resp.status == 401:
+                raise AuthError("Token expired or invalid")
+            resp.raise_for_status()
+            return await resp.json(content_type=None)
+
+    async def _get_bytes(self, path: str, params: list[tuple] | None = None) -> bytes:
+        url = f"{POWER_BASE_URL}{path}"
+        async with self._session.get(
+            url,
+            headers=self._headers,
+            params=params,
+            timeout=aiohttp.ClientTimeout(total=15),
+        ) as resp:
+            if resp.status == 401:
+                raise AuthError("Token expired or invalid")
+            resp.raise_for_status()
+            return await resp.read()
+
+    async def get_device(self) -> PowerHubDevice:
+        """Get PowerHub device info (deviceId, model, facilityId)."""
+        data = await self._get_json("/devices/powerhub")
+        d = data[0] if isinstance(data, list) else data
+        return PowerHubDevice(
+            device_id=d.get("deviceId", ""),
+            model=d.get("model", ""),
+            facility_id=d.get("facilityId", ""),
+            mac_address=d.get("macAddress", ""),
+        )
+
+    async def get_current_power(self, facility_id: str) -> PowerTelemetry | None:
+        """Fetch the most recent 1-minute power sample."""
+        now = datetime.now(tz=timezone.utc)
+        start_s = int(now.timestamp()) - 180  # 3 minutes back
+        end_s = int(now.timestamp())
+        raw = await self._get_bytes(
+            f"/data-extraction/powerhub/telemetry/{facility_id}",
+            params=[
+                ("start", start_s),
+                ("end", end_s),
+                ("fields", "power_active_delivered_to_client_kw"),
+                ("fields", "power_active_delivered_by_client_kw"),
+            ],
+        )
+        samples = _decode_telemetry_proto(raw)
+        if not samples:
+            return None
+        return max(samples, key=lambda s: s.timestamp)
+
+    async def get_diagnostics(self, facility_id: str) -> PowerDiagnostics:
+        """Get device status (uptime, WiFi RSSI, SW version, HAN port state)."""
+        data: dict = await self._get_json(  # type: ignore[assignment]
+            f"/data-extraction/powerhub/diagnostics/{facility_id}"
+        )
+        return PowerDiagnostics(
+            uptime_s=data.get("uptimeS", 0),
+            wifi_rssi_dbm=data.get("wifiRssiDbm", 0),
+            sw_version=(data.get("deviceInfoSwVersion") or ""),
+            han_port_state=data.get("hanPortState", ""),
+        )
+
+    async def get_current_power_phases(self, facility_id: str) -> PhaseTelemetry | None:
+        """Fetch the most recent per-phase power sample (3-phase currents + powers)."""
+        now = datetime.now(tz=timezone.utc)
+        start_s = int(now.timestamp()) - 180
+        end_s = int(now.timestamp())
+        raw = await self._get_bytes(
+            f"/data-extraction/powerhub/telemetry/{facility_id}",
+            params=[
+                ("start", start_s),
+                ("end", end_s),
+                ("fields", "phase_current_l1_a"),
+                ("fields", "phase_current_l2_a"),
+                ("fields", "phase_current_l3_a"),
+                ("fields", "power_active_l1_delivered_to_client_kw"),
+                ("fields", "power_active_l1_delivered_by_client_kw"),
+                ("fields", "power_active_l2_delivered_to_client_kw"),
+                ("fields", "power_active_l2_delivered_by_client_kw"),
+                ("fields", "power_active_l3_delivered_to_client_kw"),
+                ("fields", "power_active_l3_delivered_by_client_kw"),
+            ],
+        )
+        samples = _decode_phase_telemetry_proto(raw)
+        if not samples:
+            return None
+        return max(samples, key=lambda s: s.timestamp)
+
+    async def get_hourly_energy(
+        self, facility_id: str, start: datetime, end: datetime
+    ) -> list[HourlyEnergy]:
+        """Fetch hourly energy aggregates (max 745 hours window)."""
+        raw = await self._get_bytes(
+            f"/data-extraction/powerhub/telemetry/{facility_id}/aggregated/energy",
+            params=[
+                ("start", start.strftime("%Y-%m-%dT%H:%M:%SZ")),
+                ("end", end.strftime("%Y-%m-%dT%H:%M:%SZ")),
+                ("resolution", "HOURLY"),
+            ],
+        )
+        return _decode_hourly_energy_proto(raw)
+
+    async def get_facility_control(self, facility_id: str) -> FacilityControl:
+        """Get fuse/power limits for the facility."""
+        data: dict = await self._get_json(  # type: ignore[assignment]
+            f"/activation/facilitycontrol/{facility_id}"
+        )
+        return FacilityControl(
+            fuse_limit_a=data.get("fuseLimitA", 0.0),
+            power_limit_kw=data.get("powerLimitKw", 0.0),
+            action_on_fuse_limit=data.get("actionOnFuseLimit", ""),
+            action_on_power_limit=data.get("actionOnPowerLimit", ""),
+        )
+
+    async def get_fcr_status(self, facility_id: str) -> FcrStatus:
+        """Get FCR (Frequency Containment Reserve) enablement status."""
+        data: dict = await self._get_json(  # type: ignore[assignment]
+            f"/activation/fcr/facility-enablements/{facility_id}"
+        )
+        return FcrStatus(
+            fcrd_down_enabled=bool(data.get("fcrdDownEnabled", False)),
+        )
+
+    async def update_facility_control(
+        self,
+        facility_id: str,
+        control: FacilityControl,
+    ) -> None:
+        """Update fuse/power limits via POST /activation/facilitycontrol."""
+        body = {
+            "facilityId": facility_id,
+            "fuseLimitA": control.fuse_limit_a,
+            "actionOnFuseLimit": control.action_on_fuse_limit,
+            "powerLimitKw": control.power_limit_kw,
+            "actionOnPowerLimit": control.action_on_power_limit,
+        }
+        url = f"{POWER_BASE_URL}/activation/facilitycontrol"
+        async with self._session.post(
+            url,
+            headers=self._headers,
+            json=body,
+            timeout=aiohttp.ClientTimeout(total=15),
+        ) as resp:
+            if resp.status == 401:
+                raise AuthError("Token expired or invalid")
+            resp.raise_for_status()
+
+    async def get_notification_settings(self, facility_id: str) -> NotificationSettings:
+        """Get push notification preferences."""
+        data: dict = await self._get_json(  # type: ignore[assignment]
+            f"/customer/settings/{facility_id}/notifications"
+        )
+        return NotificationSettings.from_dict(data)
+
+    async def update_notification_settings(
+        self, facility_id: str, settings: NotificationSettings
+    ) -> NotificationSettings:
+        """Update push notification preferences via PATCH."""
+        url = f"{POWER_BASE_URL}/customer/settings/{facility_id}/notifications"
+        async with self._session.patch(
+            url,
+            headers=self._headers,
+            json=settings.to_dict(),
+            timeout=aiohttp.ClientTimeout(total=15),
+        ) as resp:
+            if resp.status == 401:
+                raise AuthError("Token expired or invalid")
+            resp.raise_for_status()
+            result = await resp.json(content_type=None)
+            return NotificationSettings.from_dict(result if isinstance(result, dict) else {})
 
 
 # ------------------------------------------------------------------
