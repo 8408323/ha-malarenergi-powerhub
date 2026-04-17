@@ -18,7 +18,7 @@ import asyncio
 import logging
 import struct
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import AsyncGenerator
 
 import aiohttp
@@ -836,13 +836,13 @@ class PowerApiClient:
     async def get_current_power(self, facility_id: str) -> PowerTelemetry | None:
         """Fetch the most recent 1-minute power sample."""
         now = datetime.now(tz=timezone.utc)
-        start_s = int(now.timestamp()) - 180  # 3 minutes back
-        end_s = int(now.timestamp())
+        start = (now - timedelta(minutes=3)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        end = now.strftime("%Y-%m-%dT%H:%M:%SZ")
         raw = await self._get_bytes(
             f"/data-extraction/powerhub/telemetry/{facility_id}",
             params=[
-                ("start", start_s),
-                ("end", end_s),
+                ("start", start),
+                ("end", end),
                 ("fields", "power_active_delivered_to_client_kw"),
                 ("fields", "power_active_delivered_by_client_kw"),
             ],
@@ -867,13 +867,13 @@ class PowerApiClient:
     async def get_current_power_phases(self, facility_id: str) -> PhaseTelemetry | None:
         """Fetch the most recent per-phase power sample (3-phase currents + powers)."""
         now = datetime.now(tz=timezone.utc)
-        start_s = int(now.timestamp()) - 180
-        end_s = int(now.timestamp())
+        start = (now - timedelta(minutes=3)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        end = now.strftime("%Y-%m-%dT%H:%M:%SZ")
         raw = await self._get_bytes(
             f"/data-extraction/powerhub/telemetry/{facility_id}",
             params=[
-                ("start", start_s),
-                ("end", end_s),
+                ("start", start),
+                ("end", end),
                 ("fields", "phase_current_l1_a"),
                 ("fields", "phase_current_l2_a"),
                 ("fields", "phase_current_l3_a"),
