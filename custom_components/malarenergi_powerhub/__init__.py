@@ -65,7 +65,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         except ValueError as err:
             _LOGGER.error("create_invitation service failed: %s", err)
             return
-        result = await client.create_invitation(fid, share_all_devices=share_all_devices)
+        try:
+            result = await client.create_invitation(fid, share_all_devices=share_all_devices)
+        except Exception as err:
+            _LOGGER.error("create_invitation API call failed: %s", err)
+            raise
         _LOGGER.info(
             "Created invitation %s (code=%s, expires=%s)",
             result.invitation_id,

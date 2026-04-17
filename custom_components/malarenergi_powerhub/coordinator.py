@@ -49,6 +49,7 @@ class PowerHubData:
     facility_info: FacilityInfo | None     # Address, meter ID, region
     notification_settings: NotificationSettings | None  # Push notification prefs
     monthly_insights: MonthlyInsights | None            # Current-month price/usage stats
+    production_ytd_kwh: float | None                    # kWh exported to grid this year
     # Power backend (real-time)
     current_power: PowerTelemetry | None      # Most recent 1-min total power sample
     current_power_phases: PhaseTelemetry | None  # Most recent per-phase sample
@@ -136,6 +137,10 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
             monthly_insights = await client.get_monthly_insights(
                 self._facility_id, _month_start_ms
             )
+            production_insights = await client.get_monthly_insights(
+                self._facility_id, _month_start_ms, meter_type="production"
+            )
+            production_ytd_kwh = production_insights.current_year_value
 
             # Consumption today — API returns Wh per bucket; convert to kWh
             consumption_points = await client.get_today_consumption(
@@ -220,6 +225,7 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
             fcr_status=fcr_status,
             hourly_energy_today=hourly_energy_today,
             monthly_insights=monthly_insights,
+            production_ytd_kwh=production_ytd_kwh,
         )
 
     async def async_update_facility_control(self, **kwargs) -> None:

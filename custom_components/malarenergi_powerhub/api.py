@@ -443,6 +443,14 @@ class PowerHubApiClient:
             year_start_ms,
         )
 
+    async def get_year_production(self, facility_id: str, year_start_ms: int) -> MeterResponse:
+        """Get production (solar export) for a full year (monthly buckets)."""
+        return await self._get_meter(
+            f"/facility/{facility_id}/facility_production_meter",
+            "YEAR",
+            year_start_ms,
+        )
+
     async def get_notifications(
         self,
         firebase_token: str = "ha-integration",

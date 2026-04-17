@@ -186,13 +186,6 @@ SENSORS: tuple[PowerHubSensorDescription, ...] = (
         value_fn=lambda d: d.diagnostics.han_port_state if d.diagnostics else None,
     ),
     PowerHubSensorDescription(
-        key="fuse_limit",
-        translation_key="fuse_limit",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        native_unit_of_measurement="A",
-        value_fn=lambda d: d.facility_control.fuse_limit_a if d.facility_control else None,
-    ),
-    PowerHubSensorDescription(
         key="power_limit",
         translation_key="power_limit",
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -290,6 +283,15 @@ SENSORS: tuple[PowerHubSensorDescription, ...] = (
         suggested_display_precision=3,
         value_fn=lambda d: d.monthly_insights.current_year_value
             if d.monthly_insights else None,
+    ),
+    PowerHubSensorDescription(
+        key="production_ytd",
+        translation_key="production_ytd",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        suggested_display_precision=3,
+        value_fn=lambda d: d.production_ytd_kwh,
     ),
     PowerHubSensorDescription(
         key="baseload_power",
