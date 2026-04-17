@@ -54,7 +54,7 @@
       "market_avg_price_this_month": { "name": "Marknadssnitt denna månad" },
       "consumption_ytd": { "name": "Förbrukning hittills i år" },
       "production_ytd": { "name": "Produktion hittills i år" },
-      "baseload_power": { "name": "Bashastighet" },
+      "baseload_power": { "name": "Baslast" },
       "active_invitations": { "name": "Aktiva inbjudningar" },
       "invitees": { "name": "Inbjudna" },
       "latest_notification": { "name": "Senaste notis" }

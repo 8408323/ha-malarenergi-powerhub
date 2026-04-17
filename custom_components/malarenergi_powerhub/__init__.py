@@ -8,6 +8,7 @@ from homeassistant.components.persistent_notification import async_create as pn_
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
@@ -69,7 +70,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             result = await client.create_invitation(fid, share_all_devices=share_all_devices)
         except Exception as err:
             _LOGGER.error("create_invitation API call failed: %s", err)
-            raise
+            raise HomeAssistantError(f"Failed to create invitation: {err}") from err
         _LOGGER.info(
             "Created invitation %s (code=%s, expires=%s)",
             result.invitation_id,
@@ -102,7 +103,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         except ValueError as err:
             _LOGGER.error("delete_invitation service failed: %s", err)
             return
-        await client.delete_invitation(invitation_id)
+        try:
+            await client.delete_invitation(invitation_id)
+        except Exception as err:
+            _LOGGER.error("delete_invitation API call failed: %s", err)
+            raise HomeAssistantError(f"Failed to delete invitation: {err}") from err
         _LOGGER.info("Deleted invitation %s", invitation_id)
         # Refresh coordinator so invitation count sensor updates immediately (best-effort)
         coordinator = hass.data[DOMAIN].get(entry.entry_id)
