@@ -89,10 +89,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             title="PowerHub — Invitation Created",
             notification_id=f"powerhub_invitation_{result.invitation_id}",
         )
-        # Refresh coordinator so invitation count sensor updates immediately
+        # Refresh coordinator so invitation count sensor updates immediately (best-effort)
         coordinator = hass.data[DOMAIN].get(entry.entry_id)
         if coordinator:
-            await coordinator.async_request_refresh()
+            coordinator.async_update_listeners()
 
     async def handle_delete_invitation(call: ServiceCall) -> None:
         # Invitations are account-wide; any config entry's token is valid.
@@ -104,10 +104,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             return
         await client.delete_invitation(invitation_id)
         _LOGGER.info("Deleted invitation %s", invitation_id)
-        # Refresh coordinator so invitation count sensor updates immediately
+        # Notify listeners immediately; next scheduled poll will refresh data
         coordinator = hass.data[DOMAIN].get(entry.entry_id)
         if coordinator:
-            await coordinator.async_request_refresh()
+            coordinator.async_update_listeners()
 
     if not hass.services.has_service(DOMAIN, SERVICE_CREATE_INVITATION):
         hass.services.async_register(
