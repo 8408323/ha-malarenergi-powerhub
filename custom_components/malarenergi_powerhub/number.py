@@ -10,13 +10,13 @@ from homeassistant.components.number import (
     NumberMode,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EntityCategory, UnitOfArea, UnitOfPower
+from homeassistant.const import EntityCategory, UnitOfArea, UnitOfElectricCurrent, UnitOfPower
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
-from .coordinator import PowerHubCoordinator, PowerHubData
+from .coordinator import PowerHubCoordinator
 from .api import FacilityAttributes, FacilityControl
 
 
@@ -63,7 +63,7 @@ CONTROL_NUMBERS: tuple[PowerControlNumberDescription, ...] = (
         key="fuse_limit_set",
         translation_key="fuse_limit_set",
         entity_category=EntityCategory.CONFIG,
-        native_unit_of_measurement="A",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         native_min_value=1,
         native_max_value=63,
         native_step=1,

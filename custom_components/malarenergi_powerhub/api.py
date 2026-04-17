@@ -674,9 +674,10 @@ def _parse_submessage(sub: bytes) -> dict[int, int | float | bytes]:
 def _decode_telemetry_proto(raw: bytes) -> list[PowerTelemetry]:
     """Decode 2-field power telemetry (import + export kW).
 
-    Wire format: repeated records, each starting with length byte (0x10=16),
-    followed by submessage: field1 varint timestamp_s, field6 float32 import,
-    field7 float32 export.
+    Wire format: repeated length-delimited protobuf records, each optionally
+    starting with the repeated-field tag ``0x0a`` (field 1, wire type 2)
+    followed by a varint length, then a submessage containing field1 varint
+    timestamp_s, field6 float32 import, and field7 float32 export.
     """
     results: list[PowerTelemetry] = []
     pos = 0
@@ -833,7 +834,12 @@ class PowerApiClient:
     async def get_device(self) -> PowerHubDevice:
         """Get PowerHub device info (deviceId, model, facilityId)."""
         data = await self._get_json("/devices/powerhub")
-        d = data[0] if isinstance(data, list) else data
+        if isinstance(data, list):
+            if not data:
+                raise ValueError("No PowerHub device returned by backend")
+            d = data[0]
+        else:
+            d = data
         return PowerHubDevice(
             device_id=d.get("deviceId", ""),
             model=d.get("model", ""),

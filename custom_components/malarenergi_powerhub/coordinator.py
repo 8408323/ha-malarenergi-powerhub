@@ -118,8 +118,15 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
                 facilities = await client.get_facilities()
                 self._cached_facility_info = next(
                     (f for f in facilities if f.facility_id == self._facility_id),
-                    facilities[0] if facilities else None,
+                    None,
                 )
+                if self._cached_facility_info is None and facilities:
+                    _LOGGER.warning(
+                        "Configured facility_id %s was not found in the returned facilities. "
+                        "Facility metadata (address, meter ID) will be unavailable. "
+                        "Please verify the facility_id in your configuration or reconfigure the integration.",
+                        self._facility_id,
+                    )
 
             # Notification settings (fetched each poll — user may change in app)
             notification_settings = await power_client.get_notification_settings(

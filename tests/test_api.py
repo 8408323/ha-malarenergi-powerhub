@@ -468,3 +468,269 @@ class TestGetMonthlyInsights:
         assert result.off_peak_rating is None
         # non-nullable fields still populated
         assert result.current_year_value == pytest.approx(1200.0)
+
+
+# ---------------------------------------------------------------------------
+# Protobuf decoders
+# ---------------------------------------------------------------------------
+
+import struct
+
+from custom_components.malarenergi_powerhub.api import (
+    _decode_telemetry_proto,
+    _decode_phase_telemetry_proto,
+    _decode_hourly_energy_proto,
+    PowerHubDevice,
+    PowerApiClient,
+    POWER_BASE_URL,
+)
+
+# Protobuf tag bytes used in the wire helpers below.
+# Tags are encoded as (field_number << 3) | wire_type.
+# Wire type 0 = varint, wire type 2 = length-delimited, wire type 5 = 32-bit.
+_TAG_FIELD1_VARINT  = b'\x08'   # field 1, varint
+_TAG_FIELD2_FIXED32 = b'\x15'   # field 2, 32-bit (float)
+_TAG_FIELD3_FIXED32 = b'\x1d'   # field 3, 32-bit
+_TAG_FIELD4_FIXED32 = b'\x25'   # field 4, 32-bit
+_TAG_FIELD5_FIXED32 = b'\x2d'   # field 5, 32-bit
+_TAG_FIELD6_FIXED32 = b'\x35'   # field 6, 32-bit
+_TAG_FIELD7_FIXED32 = b'\x3d'   # field 7, 32-bit
+_TAG_FIELD8_FIXED32 = b'\x45'   # field 8, 32-bit
+_TAG_FIELD9_FIXED32 = b'\x4d'   # field 9, 32-bit
+_TAG_FIELD10_FIXED32 = b'\x55'  # field 10, 32-bit
+_TAG_RECORD_LEN_DELIM = b'\x0a' # field 1, length-delimited (outer record tag)
+
+
+def _make_telemetry_bytes(ts_s: int, import_kw: float, export_kw: float) -> bytes:
+    """Build a minimal _decode_telemetry_proto wire payload for one record."""
+    sub = _TAG_FIELD1_VARINT                                 # field 1 varint tag
+    v = ts_s
+    while True:
+        b = v & 0x7F
+        v >>= 7
+        sub += bytes([b | 0x80]) if v else bytes([b])
+        if not v:
+            break
+    sub += _TAG_FIELD6_FIXED32 + struct.pack('<f', import_kw)   # field 6 fixed32
+    sub += _TAG_FIELD7_FIXED32 + struct.pack('<f', export_kw)   # field 7 fixed32
+    return _TAG_RECORD_LEN_DELIM + bytes([len(sub)]) + sub
+
+
+def _make_phase_telemetry_bytes(
+    ts_s: int,
+    l1_a: float, l2_a: float, l3_a: float,
+    p_l1_imp: float, p_l1_exp: float,
+    p_l2_imp: float, p_l2_exp: float,
+    p_l3_imp: float, p_l3_exp: float,
+) -> bytes:
+    """Build a minimal _decode_phase_telemetry_proto payload for one record."""
+    sub = _TAG_FIELD1_VARINT
+    v = ts_s
+    while True:
+        b = v & 0x7F
+        v >>= 7
+        sub += bytes([b | 0x80]) if v else bytes([b])
+        if not v:
+            break
+    sub += _TAG_FIELD2_FIXED32  + struct.pack('<f', l1_a)       # current_l1_a
+    sub += _TAG_FIELD3_FIXED32  + struct.pack('<f', l2_a)       # current_l2_a
+    sub += _TAG_FIELD4_FIXED32  + struct.pack('<f', l3_a)       # current_l3_a
+    sub += _TAG_FIELD5_FIXED32  + struct.pack('<f', p_l1_imp)   # power_l1_import
+    sub += _TAG_FIELD6_FIXED32  + struct.pack('<f', p_l1_exp)   # power_l1_export
+    sub += _TAG_FIELD7_FIXED32  + struct.pack('<f', p_l2_imp)   # power_l2_import
+    sub += _TAG_FIELD8_FIXED32  + struct.pack('<f', p_l2_exp)   # power_l2_export
+    sub += _TAG_FIELD9_FIXED32  + struct.pack('<f', p_l3_imp)   # power_l3_import
+    sub += _TAG_FIELD10_FIXED32 + struct.pack('<f', p_l3_exp)   # power_l3_export
+    return _TAG_RECORD_LEN_DELIM + bytes([len(sub)]) + sub
+
+
+def _make_hourly_energy_bytes(
+    bucket_ts_s: int, win_start_ts_s: int, win_end_ts_s: int,
+    sample_count: int, import_wh: float, export_wh: float,
+) -> bytes:
+    """Build a minimal _decode_hourly_energy_proto payload for one record."""
+    def _varint(v: int) -> bytes:
+        out = b''
+        while True:
+            b = v & 0x7F
+            v >>= 7
+            out += bytes([b | 0x80]) if v else bytes([b])
+            if not v:
+                break
+        return out
+
+    def _ts_submsg(ts_s: int) -> bytes:
+        return _TAG_FIELD1_VARINT + _varint(ts_s)
+
+    bucket_raw   = _ts_submsg(bucket_ts_s)
+    win_start_raw = _ts_submsg(win_start_ts_s)
+    win_end_raw  = _ts_submsg(win_end_ts_s)
+
+    # Tags for the outer record fields (field_num << 3 | wire_type)
+    _tag_f1_ld = b'\x0a'   # field 1, length-delimited (bucket ts submsg)
+    _tag_f2_vi = b'\x10'   # field 2, varint (sample_count)
+    _tag_f3_ld = b'\x1a'   # field 3, length-delimited (win_start submsg)
+    _tag_f4_ld = b'\x22'   # field 4, length-delimited (win_end submsg)
+
+    record = b''
+    record += _tag_f1_ld + bytes([len(bucket_raw)])    + bucket_raw     # bucket ts
+    record += _tag_f2_vi + _varint(sample_count)                        # sample count
+    record += _tag_f3_ld + bytes([len(win_start_raw)]) + win_start_raw  # window start
+    record += _tag_f4_ld + bytes([len(win_end_raw)])   + win_end_raw    # window end
+    record += _TAG_FIELD7_FIXED32  + struct.pack('<f', import_wh)       # energy_import_wh
+    record += _TAG_FIELD10_FIXED32 + struct.pack('<f', export_wh)       # energy_export_wh
+
+    return _TAG_RECORD_LEN_DELIM + bytes([len(record)]) + record
+
+
+class TestDecodeTelemProto:
+    def test_single_record(self):
+        raw = _make_telemetry_bytes(1000, import_kw=1.5, export_kw=0.5)
+        results = _decode_telemetry_proto(raw)
+        assert len(results) == 1
+        r = results[0]
+        assert r.timestamp.timestamp() == pytest.approx(1000)
+        assert r.timestamp.tzinfo is not None
+        assert r.power_import_kw == pytest.approx(1.5, abs=1e-4)
+        assert r.power_export_kw == pytest.approx(0.5, abs=1e-4)
+
+    def test_two_records(self):
+        raw = (
+            _make_telemetry_bytes(1000, 1.5, 0.5)
+            + _make_telemetry_bytes(1060, 2.0, 0.0)
+        )
+        results = _decode_telemetry_proto(raw)
+        assert len(results) == 2
+        assert results[0].power_import_kw == pytest.approx(1.5, abs=1e-4)
+        assert results[1].power_import_kw == pytest.approx(2.0, abs=1e-4)
+
+    def test_empty_bytes_returns_empty_list(self):
+        assert _decode_telemetry_proto(b'') == []
+
+    def test_record_without_leading_tag(self):
+        """Records without the leading 0x0a byte are also valid."""
+        raw = _make_telemetry_bytes(1000, 1.5, 0.5)
+        # strip the leading 0x0a byte
+        raw_no_tag = raw[1:]
+        results = _decode_telemetry_proto(raw_no_tag)
+        assert len(results) == 1
+        assert results[0].power_import_kw == pytest.approx(1.5, abs=1e-4)
+
+
+class TestDecodePhaseTelemetryProto:
+    def test_single_record_all_fields(self):
+        raw = _make_phase_telemetry_bytes(
+            ts_s=2000,
+            l1_a=10.5, l2_a=11.0, l3_a=9.5,
+            p_l1_imp=2.4, p_l1_exp=0.1,
+            p_l2_imp=2.5, p_l2_exp=0.0,
+            p_l3_imp=2.2, p_l3_exp=0.0,
+        )
+        results = _decode_phase_telemetry_proto(raw)
+        assert len(results) == 1
+        r = results[0]
+        assert r.timestamp.timestamp() == pytest.approx(2000)
+        assert r.current_l1_a == pytest.approx(10.5, abs=1e-3)
+        assert r.current_l2_a == pytest.approx(11.0, abs=1e-3)
+        assert r.current_l3_a == pytest.approx(9.5, abs=1e-3)
+        assert r.power_l1_import_kw == pytest.approx(2.4, abs=1e-3)
+        assert r.power_l1_export_kw == pytest.approx(0.1, abs=1e-3)
+        assert r.power_l2_import_kw == pytest.approx(2.5, abs=1e-3)
+        assert r.power_l2_export_kw == pytest.approx(0.0, abs=1e-3)
+        assert r.power_l3_import_kw == pytest.approx(2.2, abs=1e-3)
+        assert r.power_l3_export_kw == pytest.approx(0.0, abs=1e-3)
+
+    def test_zero_current_values(self):
+        """All-zero values decode without error."""
+        raw = _make_phase_telemetry_bytes(1000, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+        results = _decode_phase_telemetry_proto(raw)
+        assert len(results) == 1
+        r = results[0]
+        assert r.current_l1_a == pytest.approx(0.0)
+        assert r.power_l1_import_kw == pytest.approx(0.0)
+
+    def test_empty_bytes_returns_empty_list(self):
+        assert _decode_phase_telemetry_proto(b'') == []
+
+
+class TestDecodeHourlyEnergyProto:
+    def test_single_bucket(self):
+        raw = _make_hourly_energy_bytes(
+            bucket_ts_s=1000, win_start_ts_s=1000, win_end_ts_s=3600,
+            sample_count=4, import_wh=500.0, export_wh=100.0,
+        )
+        results = _decode_hourly_energy_proto(raw)
+        assert len(results) == 1
+        r = results[0]
+        assert r.bucket_start.timestamp() == pytest.approx(1000)
+        assert r.window_start.timestamp() == pytest.approx(1000)
+        assert r.window_end.timestamp() == pytest.approx(3600)
+        assert r.sample_count == 4
+        assert r.energy_import_wh == pytest.approx(500.0, abs=0.1)
+        assert r.energy_export_wh == pytest.approx(100.0, abs=0.1)
+
+    def test_two_buckets(self):
+        raw = (
+            _make_hourly_energy_bytes(1000, 1000, 3600, 4, 500.0, 0.0)
+            + _make_hourly_energy_bytes(3600, 3600, 7200, 4, 480.0, 20.0)
+        )
+        results = _decode_hourly_energy_proto(raw)
+        assert len(results) == 2
+        assert results[0].energy_import_wh == pytest.approx(500.0, abs=0.1)
+        assert results[1].energy_import_wh == pytest.approx(480.0, abs=0.1)
+
+    def test_empty_bytes_returns_empty_list(self):
+        assert _decode_hourly_energy_proto(b'') == []
+
+
+class TestGetDevice:
+    async def test_dict_response(self):
+        async with aiohttp.ClientSession() as session:
+            client = PowerApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.get(
+                    f"{POWER_BASE_URL}/devices/powerhub",
+                    payload={
+                        "deviceId": "dev-001",
+                        "model": "PowerHub v1",
+                        "facilityId": FACILITY_ID,
+                        "macAddress": "AA:BB:CC:DD:EE:FF",
+                    },
+                )
+                device = await client.get_device()
+        assert isinstance(device, PowerHubDevice)
+        assert device.device_id == "dev-001"
+        assert device.facility_id == FACILITY_ID
+
+    async def test_list_response(self):
+        async with aiohttp.ClientSession() as session:
+            client = PowerApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.get(
+                    f"{POWER_BASE_URL}/devices/powerhub",
+                    payload=[{
+                        "deviceId": "dev-002",
+                        "model": "PowerHub v2",
+                        "facilityId": FACILITY_ID,
+                        "macAddress": "11:22:33:44:55:66",
+                    }],
+                )
+                device = await client.get_device()
+        assert device.device_id == "dev-002"
+
+    async def test_empty_list_raises_value_error(self):
+        async with aiohttp.ClientSession() as session:
+            client = PowerApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.get(f"{POWER_BASE_URL}/devices/powerhub", payload=[])
+                with pytest.raises(ValueError, match="No PowerHub device"):
+                    await client.get_device()
+
+    async def test_raises_auth_error_on_401(self):
+        async with aiohttp.ClientSession() as session:
+            client = PowerApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.get(f"{POWER_BASE_URL}/devices/powerhub", status=401)
+                with pytest.raises(AuthError):
+                    await client.get_device()
+

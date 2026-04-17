@@ -407,7 +407,7 @@ class NotificationSensor(CoordinatorEntity[NotificationsCoordinator], SensorEnti
     """Sensor showing the most recent Mälarenergi push notification."""
 
     _attr_has_entity_name = True
-    _attr_name = "Latest Notification"
+    _attr_translation_key = "latest_notification"
 
     def __init__(
         self,
