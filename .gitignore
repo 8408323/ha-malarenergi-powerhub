@@ -9,6 +9,12 @@ dist/
 build/
 .eggs/
 
+# Coverage
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
 # Virtual environments
 .venv/
 venv/
