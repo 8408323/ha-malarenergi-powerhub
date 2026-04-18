@@ -19,11 +19,16 @@ The device has **no local API** — all communication goes through Bitvis's clou
 
 ## Features
 
-- Today's energy consumption (Wh, summed from 15-minute buckets)
-- Today's energy production (Wh, if applicable)
-- Current spot price (öre/kWh, from Nordpool via Bitvis)
-- HA Energy dashboard compatible sensors
+- HA Energy dashboard compatible import/export/spot-price sensors
+- Real-time power and per-phase current (1-minute resolution)
+- Monthly insights: your average price vs. market, year-to-date consumption and production, baseload estimate
+- Device diagnostics: Wi-Fi signal, firmware, uptime, HAN port state
+- Writable fuse/power limits and notification preferences
+- Push notification mirroring (Mälarenergi → HA sensor)
+- Facility sharing services (create / revoke invitations)
 - Automatic token re-auth when JWT expires
+
+See the **[user manual](docs/user_manual.md)** for the full entity list and usage.
 
 ## Authentication
 
@@ -52,13 +57,9 @@ The integration stores the JWT Bearer token in the HA config entry. When the tok
 
 See the **[full setup guide](docs/setup.md)** for step-by-step instructions with screenshots.
 
-## Sensors
+## Entities
 
-| Entity | Unit | Description |
-|---|---|---|
-| `sensor.malarenergi_consumption_today` | Wh | Cumulative consumption since midnight |
-| `sensor.malarenergi_production_today` | Wh | Cumulative production since midnight |
-| `sensor.malarenergi_spot_price` | öre/kWh | Current Nordpool spot price |
+The integration exposes ~40 entities — sensors, binary sensors, switches, numbers and selects. The full reference (entity IDs, units, writable controls, services) is in the [user manual](docs/user_manual.md).
 
 ## Development
 
