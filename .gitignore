@@ -36,6 +36,16 @@ config/secrets.yaml
 tools/captures/
 !tools/captures/.gitkeep
 
+# APK reverse-engineering artifacts (large binaries, not needed in repo)
+tools/apk_patch/
+
+# Local .env files for capture scripts
+tools/.env
+.env
+
+# Local-only planning notes
+plan.md
+
 # mitmproxy state
 .mitmproxy/
 ~/.mitmproxy/

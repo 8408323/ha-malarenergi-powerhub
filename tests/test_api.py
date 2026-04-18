@@ -25,7 +25,7 @@ from custom_components.malarenergi_powerhub.api import (
 )
 
 FAKE_TOKEN = "eyJhbGciOiJIUzI1NiJ9.fake.token"
-FACILITY_ID = "102ee2c4-5c0a-4b92-b28f-8faa0c320def"
+FACILITY_ID = "00000000-0000-0000-0000-000000000001"
 
 
 # ---------------------------------------------------------------------------
@@ -41,14 +41,14 @@ class TestGetFacilities:
                     f"{BASE_URL}/account/facility",
                     payload=[{
                         "facilityid": FACILITY_ID,
-                        "street": "ÖSTER RÅBY",
+                        "street": "EXAMPLE STREET",
                         "houseNumber": 11,
                         "entrance": None,
-                        "city": "VÄSTERÅS",
+                        "city": "EXAMPLE CITY",
                         "postcode": "00000",
                         "countrycode": "SE",
-                        "latitude": 59.6099,
-                        "longitude": 16.54481,
+                        "latitude": 0.0,
+                        "longitude": 0.0,
                         "annualPrediction": 0,
                         "fuseType": "",
                         "utilityid": "fb71138f",
@@ -56,10 +56,10 @@ class TestGetFacilities:
                         "metadata": {
                             "netId": "VLS",
                             "region": "SE3",
-                            "meterId": "735999137910044285",
+                            "meterId": "00000000000000000000",
                         },
                         "facilityOwnerName": "Test User",
-                        "facilityOwnerId": "65bfe7c9-ac53-4c16-8325-fb237d422501",
+                        "facilityOwnerId": "00000000-0000-0000-0000-000000000002",
                         "attributes": {},
                     }],
                 )
@@ -68,10 +68,10 @@ class TestGetFacilities:
         assert len(facilities) == 1
         f = facilities[0]
         assert f.facility_id == FACILITY_ID
-        assert f.street == "ÖSTER RÅBY"
+        assert f.street == "EXAMPLE STREET"
         assert f.house_number == 11
         assert f.region == "SE3"
-        assert f.meter_id == "735999137910044285"
+        assert f.meter_id == "00000000000000000000"
 
     async def test_deduplicates_facility_id(self):
         """API sometimes returns same facility twice — should deduplicate."""

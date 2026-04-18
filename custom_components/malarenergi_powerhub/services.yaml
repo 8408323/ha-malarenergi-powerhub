@@ -9,7 +9,7 @@ create_invitation:
       description: >
         The facility to share. Omit when only one facility is configured.
       required: false
-      example: "102ee2c4-5c0a-4b92-b28f-8faa0c320def"
+      example: "00000000-0000-0000-0000-000000000001"
       selector:
         text:
     share_all_devices:

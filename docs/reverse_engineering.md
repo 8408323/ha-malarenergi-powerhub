@@ -4,8 +4,8 @@
 
 | Property | Value | Source |
 |---|---|---|
-| IP (local) | 192.168.1.157 | Direct observation |
-| MAC | 94:54:C5:1E:B3:18 | Windows ARP table |
+| IP (local) | 192.168.1.x (assigned by router) | Direct observation |
+| MAC | 94:54:C5:XX:XX:XX | Windows ARP table |
 | MAC OUI | Espressif Inc. (Shanghai, CN) | maclookup.app |
 | SoC | ESP32 | OUI `94:54:C5` is Espressif |
 | Ping TTL received | 63 | ICMP (Linux-based firmware, 1 hop away) |
