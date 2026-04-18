@@ -1,4 +1,5 @@
 """Tests for api.py — uses aioresponses to mock HTTP, no real network calls."""
+import struct
 import pytest
 import aiohttp
 from aioresponses import aioresponses
@@ -8,10 +9,17 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 
 from custom_components.malarenergi_powerhub.api import (
     BASE_URL,
+    POWER_BASE_URL,
     AuthError,
+    Invitation,
     InvitationCreated,
     MonthlyInsights,
+    PowerApiClient,
     PowerHubApiClient,
+    PowerHubDevice,
+    _decode_hourly_energy_proto,
+    _decode_phase_telemetry_proto,
+    _decode_telemetry_proto,
     bankid_start,
     bankid_poll,
 )
@@ -268,6 +276,42 @@ class TestGetMonthConsumption:
         assert result.data[1].value_wh == 231.0
 
 
+class TestGetInvitations:
+    async def test_exposes_code_for_unclaimed_and_null_for_claimed(self):
+        async with aiohttp.ClientSession() as session:
+            client = PowerHubApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.get(
+                    f"{BASE_URL}/account/invitation",
+                    payload=[
+                        {
+                            "id": "unclaimed-id",
+                            "code": "ELX4CULD",
+                            "claimed": None,
+                            "expires": "2026-04-18T07:58:30+0200",
+                            "created": "2026-04-15T07:58:30+0200",
+                            "accessedFacilities": [],
+                        },
+                        {
+                            "id": "claimed-id",
+                            "code": None,
+                            "claimed": "2026-04-12T22:17:35+0200",
+                            "expires": "2026-04-15T22:17:07+0200",
+                            "created": "2026-04-12T22:17:07+0200",
+                            "accessedFacilities": [],
+                        },
+                    ],
+                )
+                result = await client.get_invitations()
+
+        assert len(result) == 2
+        assert all(isinstance(inv, Invitation) for inv in result)
+        assert result[0].code == "ELX4CULD"
+        assert result[0].claimed is False
+        assert result[1].code is None
+        assert result[1].claimed is True
+
+
 class TestCreateInvitation:
     async def test_posts_and_returns_result(self):
         async with aiohttp.ClientSession() as session:
@@ -473,17 +517,6 @@ class TestGetMonthlyInsights:
 # ---------------------------------------------------------------------------
 # Protobuf decoders
 # ---------------------------------------------------------------------------
-
-import struct
-
-from custom_components.malarenergi_powerhub.api import (
-    _decode_telemetry_proto,
-    _decode_phase_telemetry_proto,
-    _decode_hourly_energy_proto,
-    PowerHubDevice,
-    PowerApiClient,
-    POWER_BASE_URL,
-)
 
 # Protobuf tag bytes used in the wire helpers below.
 # Tags are encoded as (field_number << 3) | wire_type.

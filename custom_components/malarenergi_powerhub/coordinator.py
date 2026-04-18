@@ -83,10 +83,12 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
         self._cached_profile: AccountProfile | None = None
         self._cached_agreements: list[Agreement] | None = None
         self._cached_facility_info: FacilityInfo | None = None
+        self._facility_info_resolved = False
         super().__init__(
             hass,
             _LOGGER,
             name=DOMAIN,
+            config_entry=entry,
             update_interval=timedelta(seconds=DEFAULT_SCAN_INTERVAL),
         )
 
@@ -114,12 +116,13 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
                 self._cached_profile = await client.get_profile()
             if self._cached_agreements is None:
                 self._cached_agreements = await client.get_agreements()
-            if self._cached_facility_info is None:
+            if not self._facility_info_resolved:
                 facilities = await client.get_facilities()
                 self._cached_facility_info = next(
                     (f for f in facilities if f.facility_id == self._facility_id),
                     None,
                 )
+                self._facility_info_resolved = True
                 if self._cached_facility_info is None and facilities:
                     _LOGGER.warning(
                         "Configured facility_id %s was not found in the returned facilities. "

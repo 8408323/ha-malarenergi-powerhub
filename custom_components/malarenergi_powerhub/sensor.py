@@ -375,6 +375,7 @@ class PowerHubSensor(CoordinatorEntity[PowerHubCoordinator], SensorEntity):
                 "invitations": [
                     {
                         "id": inv.invitation_id,
+                        "code": inv.code,
                         "claimed": inv.claimed,
                         "expires": inv.expires or None,
                         "created": inv.created or None,

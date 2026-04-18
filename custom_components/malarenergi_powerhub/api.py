@@ -116,6 +116,7 @@ class Invitation:
     expires: str               # ISO 8601 timestamp
     created: str               # ISO 8601 timestamp
     claimed: bool
+    code: str | None = None    # Short alphanumeric code; null once claimed
     accessed_facilities: list[str] = field(default_factory=list)
 
 
@@ -279,6 +280,7 @@ class PowerHubApiClient:
                 expires=inv.get("expires", ""),
                 created=inv.get("created", ""),
                 claimed=bool(inv.get("claimed")),
+                code=inv.get("code"),
                 accessed_facilities=inv.get("accessedFacilities", []),
             )
             for inv in (data if isinstance(data, list) else [])
