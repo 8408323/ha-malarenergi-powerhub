@@ -8,6 +8,7 @@ from homeassistant.components.persistent_notification import async_create as pn_
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
@@ -18,7 +19,7 @@ from .notifications_coordinator import NotificationsCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.NUMBER, Platform.SELECT]
+PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.SWITCH, Platform.NUMBER, Platform.SELECT]
 
 SERVICE_CREATE_INVITATION = "create_invitation"
 SERVICE_DELETE_INVITATION = "delete_invitation"
@@ -65,7 +66,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         except ValueError as err:
             _LOGGER.error("create_invitation service failed: %s", err)
             return
-        result = await client.create_invitation(fid, share_all_devices=share_all_devices)
+        try:
+            result = await client.create_invitation(fid, share_all_devices=share_all_devices)
+        except Exception as err:
+            _LOGGER.error("create_invitation API call failed: %s", err)
+            raise HomeAssistantError(f"Failed to create invitation: {err}") from err
         _LOGGER.info(
             "Created invitation %s (code=%s, expires=%s)",
             result.invitation_id,
@@ -85,10 +90,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             title="PowerHub — Invitation Created",
             notification_id=f"powerhub_invitation_{result.invitation_id}",
         )
-        # Refresh coordinator so invitation count sensor updates immediately
+        # Refresh coordinator so invitation count sensor updates immediately (best-effort)
         coordinator = hass.data[DOMAIN].get(entry.entry_id)
         if coordinator:
-            await coordinator.async_request_refresh()
+            hass.async_create_task(coordinator.async_request_refresh())
 
     async def handle_delete_invitation(call: ServiceCall) -> None:
         # Invitations are account-wide; any config entry's token is valid.
@@ -98,12 +103,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         except ValueError as err:
             _LOGGER.error("delete_invitation service failed: %s", err)
             return
-        await client.delete_invitation(invitation_id)
+        try:
+            await client.delete_invitation(invitation_id)
+        except Exception as err:
+            _LOGGER.error("delete_invitation API call failed: %s", err)
+            raise HomeAssistantError(f"Failed to delete invitation: {err}") from err
         _LOGGER.info("Deleted invitation %s", invitation_id)
-        # Refresh coordinator so invitation count sensor updates immediately
+        # Refresh coordinator so invitation count sensor updates immediately (best-effort)
         coordinator = hass.data[DOMAIN].get(entry.entry_id)
         if coordinator:
-            await coordinator.async_request_refresh()
+            hass.async_create_task(coordinator.async_request_refresh())
 
     if not hass.services.has_service(DOMAIN, SERVICE_CREATE_INVITATION):
         hass.services.async_register(

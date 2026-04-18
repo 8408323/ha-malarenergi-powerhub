@@ -40,6 +40,7 @@ class NotificationsCoordinator(DataUpdateCoordinator[NotificationData]):
             hass,
             _LOGGER,
             name=f"{DOMAIN}_notifications",
+            config_entry=entry,
             update_interval=timedelta(seconds=NOTIFICATIONS_SCAN_INTERVAL),
         )
 
