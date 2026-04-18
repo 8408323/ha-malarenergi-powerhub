@@ -26,6 +26,7 @@ WARNING: Output files may contain auth tokens. They are .gitignored.
          Never commit them.
 """
 
+import base64
 import json
 import os
 from datetime import datetime, timezone
@@ -115,7 +116,36 @@ def _redact(headers: dict) -> dict:
     }
 
 
-def _try_json(body: bytes) -> object:
+def _is_binary_content_type(headers) -> bool:
+    ct = headers.get("content-type", "").lower()
+    return (
+        "protobuf" in ct
+        or "octet-stream" in ct
+        or ct.startswith("image/")
+        or ct.startswith("audio/")
+        or ct.startswith("video/")
+    )
+
+
+def _summarize_body(body: object, limit: int) -> str:
+    """Render a captured body for the human-readable log. Binary bodies (base64)
+    show as a short marker instead of dumping the full blob."""
+    if isinstance(body, dict) and "__b64__" in body and len(body) == 1:
+        b64 = body["__b64__"]
+        raw_len = (len(b64) * 3) // 4 - b64.count("=")
+        return f"<binary {raw_len} bytes, base64 in .jsonl>"
+    return json.dumps(body, ensure_ascii=False)[:limit]
+
+
+def _encode_body(body: bytes, headers) -> object:
+    """Return a JSON-safe representation of a response/request body.
+
+    - JSON → parsed dict/list
+    - Binary (protobuf, octet-stream, media) → {"__b64__": "<base64>"}
+    - Otherwise → text with replacement chars, truncated at 4000
+    """
+    if _is_binary_content_type(headers):
+        return {"__b64__": base64.b64encode(body).decode("ascii")}
     try:
         return json.loads(body)
     except Exception:
@@ -138,12 +168,12 @@ def response(flow: http.HTTPFlow) -> None:
             "method": req.method,
             "url": req.pretty_url,
             "headers": _redact(dict(req.headers)),
-            "body": _try_json(req.content) if req.content else None,
+            "body": _encode_body(req.content, req.headers) if req.content else None,
         },
         "response": {
             "status": resp.status_code,
             "headers": _redact(dict(resp.headers)),
-            "body": _try_json(resp.content) if resp.content else None,
+            "body": _encode_body(resp.content, resp.headers) if resp.content else None,
         },
     }
 
@@ -171,9 +201,9 @@ def response(flow: http.HTTPFlow) -> None:
     if interesting:
         lines.append("  REQ HEADERS: " + json.dumps(interesting, ensure_ascii=False))
     if record["request"]["body"]:
-        lines.append("  REQ BODY:    " + json.dumps(record["request"]["body"], ensure_ascii=False)[:800])
+        lines.append("  REQ BODY:    " + _summarize_body(record["request"]["body"], 800))
     if record["response"]["body"]:
-        lines.append("  RESP BODY:   " + json.dumps(record["response"]["body"], ensure_ascii=False)[:1500])
+        lines.append("  RESP BODY:   " + _summarize_body(record["response"]["body"], 1500))
     lines.append("")
     text = "\n".join(lines)
 
