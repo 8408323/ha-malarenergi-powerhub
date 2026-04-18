@@ -4,7 +4,7 @@
 
 | Property | Value | Source |
 |---|---|---|
-| IP (local) | 192.168.1.x | Direct observation |
+| IP (local) | 192.168.1.x (assigned by router) | Direct observation |
 | MAC | 94:54:C5:XX:XX:XX | Windows ARP table |
 | MAC OUI | Espressif Inc. (Shanghai, CN) | maclookup.app |
 | SoC | ESP32 | OUI `94:54:C5` is Espressif |

@@ -48,7 +48,7 @@ class TestGetFacilities:
                         "postcode": "00000",
                         "countrycode": "SE",
                         "latitude": 0.0,
-                        "longitude": 0.01,
+                        "longitude": 0.0,
                         "annualPrediction": 0,
                         "fuseType": "",
                         "utilityid": "fb71138f",
@@ -59,7 +59,7 @@ class TestGetFacilities:
                             "meterId": "00000000000000000000",
                         },
                         "facilityOwnerName": "Test User",
-                        "facilityOwnerId": "65bfe7c9-ac53-4c16-8325-fb237d422501",
+                        "facilityOwnerId": "00000000-0000-0000-0000-000000000002",
                         "attributes": {},
                     }],
                 )
