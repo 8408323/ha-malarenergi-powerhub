@@ -38,7 +38,7 @@ set -a; source tools/.env; set +a
 
 | File | Purpose |
 |---|---|
-| `capture.py` | mitmproxy addon. Logs every captured request/response to a timestamped `captures/<ts>.jsonl` and `.log`. Redacts auth headers. |
+| `capture.py` | mitmproxy addon. Logs every captured request/response to a timestamped `captures/<ts>.jsonl` and `.log`. Redacts auth headers. Binary bodies (protobuf, octet-stream, media) are preserved as `{"__b64__": "..."}` in the JSONL so they round-trip cleanly; the `.log` shows `<binary N bytes>` markers instead of the full blob. |
 | `start_capture.sh` | Convenience wrapper — prints the LAN IP to set on the phone and starts `mitmdump` with `capture.py` on port 8080. |
 | `fcm_listen.py` | Registers a fake Android client with Firebase Cloud Messaging and prints push notifications from the Bitvis backend in real time. Requires Firebase project config (extracted from the APK). |
 | `setup_proxy_windows.ps1` | PowerShell helper for routing Windows traffic through mitmproxy (rarely needed; phone is the usual source). |
