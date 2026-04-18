@@ -1,7 +1,10 @@
 """Tests for api.py — uses aioresponses to mock HTTP, no real network calls."""
+import re
 import struct
-import pytest
+from datetime import datetime, timezone
+
 import aiohttp
+import pytest
 from aioresponses import aioresponses
 
 import sys, pathlib
@@ -11,12 +14,19 @@ from custom_components.malarenergi_powerhub.api import (
     BASE_URL,
     POWER_BASE_URL,
     AuthError,
+    FacilityAttributes,
+    FacilityControl,
+    FcrStatus,
     Invitation,
     InvitationCreated,
     MonthlyInsights,
+    NotificationSettings,
+    PhaseTelemetry,
     PowerApiClient,
+    PowerDiagnostics,
     PowerHubApiClient,
     PowerHubDevice,
+    PowerTelemetry,
     _decode_hourly_energy_proto,
     _decode_phase_telemetry_proto,
     _decode_telemetry_proto,
@@ -766,4 +776,332 @@ class TestGetDevice:
                 m.get(f"{POWER_BASE_URL}/devices/powerhub", status=401)
                 with pytest.raises(AuthError):
                     await client.get_device()
+
+
+# Matches /telemetry/<uuid>?... (no trailing /aggregated/)
+_TELEMETRY_URL_RE = re.compile(
+    rf"{re.escape(POWER_BASE_URL)}/data-extraction/powerhub/telemetry/[^/?]+\?"
+)
+_AGGREGATED_ENERGY_URL_RE = re.compile(
+    rf"{re.escape(POWER_BASE_URL)}/data-extraction/powerhub/telemetry/[^/]+/aggregated/energy\?"
+)
+
+
+class TestGetCurrentPower:
+    async def test_returns_latest_sample(self):
+        raw = (
+            _make_telemetry_bytes(1000, 1.5, 0.0)
+            + _make_telemetry_bytes(2000, 2.0, 0.0)  # latest
+            + _make_telemetry_bytes(1500, 1.7, 0.0)
+        )
+        async with aiohttp.ClientSession() as session:
+            client = PowerApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.get(_TELEMETRY_URL_RE, body=raw, content_type="application/octet-stream")
+                sample = await client.get_current_power(FACILITY_ID)
+        assert sample is not None
+        assert isinstance(sample, PowerTelemetry)
+        assert sample.timestamp.timestamp() == pytest.approx(2000)
+        assert sample.power_import_kw == pytest.approx(2.0, abs=1e-3)
+
+    async def test_returns_none_when_empty(self):
+        async with aiohttp.ClientSession() as session:
+            client = PowerApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.get(_TELEMETRY_URL_RE, body=b"", content_type="application/octet-stream")
+                sample = await client.get_current_power(FACILITY_ID)
+        assert sample is None
+
+    async def test_raises_auth_error_on_401(self):
+        async with aiohttp.ClientSession() as session:
+            client = PowerApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.get(_TELEMETRY_URL_RE, status=401)
+                with pytest.raises(AuthError):
+                    await client.get_current_power(FACILITY_ID)
+
+
+class TestGetCurrentPowerPhases:
+    async def test_returns_latest_phase_sample(self):
+        raw = (
+            _make_phase_telemetry_bytes(1000, 5.0, 5.0, 5.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0)
+            + _make_phase_telemetry_bytes(2000, 10.5, 11.0, 9.5, 2.4, 0.1, 2.5, 0.0, 2.2, 0.0)
+        )
+        async with aiohttp.ClientSession() as session:
+            client = PowerApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.get(_TELEMETRY_URL_RE, body=raw, content_type="application/octet-stream")
+                sample = await client.get_current_power_phases(FACILITY_ID)
+        assert sample is not None
+        assert isinstance(sample, PhaseTelemetry)
+        assert sample.timestamp.timestamp() == pytest.approx(2000)
+        assert sample.current_l1_a == pytest.approx(10.5, abs=1e-3)
+        assert sample.power_l2_import_kw == pytest.approx(2.5, abs=1e-3)
+
+    async def test_returns_none_when_empty(self):
+        async with aiohttp.ClientSession() as session:
+            client = PowerApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.get(_TELEMETRY_URL_RE, body=b"", content_type="application/octet-stream")
+                sample = await client.get_current_power_phases(FACILITY_ID)
+        assert sample is None
+
+
+class TestGetHourlyEnergy:
+    async def test_parses_aggregated_response(self):
+        raw = (
+            _make_hourly_energy_bytes(1000, 1000, 3600, 4, 500.0, 0.0)
+            + _make_hourly_energy_bytes(3600, 3600, 7200, 4, 480.0, 20.0)
+        )
+        start = datetime(2026, 4, 18, 0, 0, tzinfo=timezone.utc)
+        end = datetime(2026, 4, 18, 2, 0, tzinfo=timezone.utc)
+        async with aiohttp.ClientSession() as session:
+            client = PowerApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.get(_AGGREGATED_ENERGY_URL_RE, body=raw, content_type="application/octet-stream")
+                result = await client.get_hourly_energy(FACILITY_ID, start, end)
+        assert len(result) == 2
+        assert result[0].energy_import_wh == pytest.approx(500.0, abs=0.1)
+        assert result[1].energy_export_wh == pytest.approx(20.0, abs=0.1)
+
+
+class TestGetDiagnostics:
+    async def test_parses_fields(self):
+        payload = {
+            "uptimeS": 123456,
+            "wifiRssiDbm": -62,
+            "deviceInfoSwVersion": "1.2.3",
+            "hanPortState": "ACTIVE",
+        }
+        async with aiohttp.ClientSession() as session:
+            client = PowerApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.get(
+                    f"{POWER_BASE_URL}/data-extraction/powerhub/diagnostics/{FACILITY_ID}",
+                    payload=payload,
+                )
+                diag = await client.get_diagnostics(FACILITY_ID)
+        assert isinstance(diag, PowerDiagnostics)
+        assert diag.uptime_s == 123456
+        assert diag.wifi_rssi_dbm == -62
+        assert diag.sw_version == "1.2.3"
+        assert diag.han_port_state == "ACTIVE"
+
+    async def test_missing_sw_version_becomes_empty_string(self):
+        async with aiohttp.ClientSession() as session:
+            client = PowerApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.get(
+                    f"{POWER_BASE_URL}/data-extraction/powerhub/diagnostics/{FACILITY_ID}",
+                    payload={"uptimeS": 0, "wifiRssiDbm": 0, "deviceInfoSwVersion": None, "hanPortState": ""},
+                )
+                diag = await client.get_diagnostics(FACILITY_ID)
+        assert diag.sw_version == ""
+
+
+class TestGetFacilityControl:
+    async def test_parses_fields(self):
+        async with aiohttp.ClientSession() as session:
+            client = PowerApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.get(
+                    f"{POWER_BASE_URL}/activation/facilitycontrol/{FACILITY_ID}",
+                    payload={
+                        "fuseLimitA": 25.0,
+                        "powerLimitKw": 11.0,
+                        "actionOnFuseLimit": "NOTIFY",
+                        "actionOnPowerLimit": "CUT",
+                    },
+                )
+                ctrl = await client.get_facility_control(FACILITY_ID)
+        assert isinstance(ctrl, FacilityControl)
+        assert ctrl.fuse_limit_a == 25.0
+        assert ctrl.power_limit_kw == 11.0
+        assert ctrl.action_on_fuse_limit == "NOTIFY"
+        assert ctrl.action_on_power_limit == "CUT"
+
+
+class TestUpdateFacilityControl:
+    async def test_posts_full_body(self):
+        ctrl = FacilityControl(
+            fuse_limit_a=16.0,
+            power_limit_kw=10.0,
+            action_on_fuse_limit="NOTIFY",
+            action_on_power_limit="NOTIFY",
+        )
+        async with aiohttp.ClientSession() as session:
+            client = PowerApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.post(
+                    f"{POWER_BASE_URL}/activation/facilitycontrol",
+                    status=200,
+                    payload={},
+                )
+                await client.update_facility_control(FACILITY_ID, ctrl)
+
+    async def test_raises_auth_error_on_401(self):
+        ctrl = FacilityControl(16.0, 10.0, "NOTIFY", "NOTIFY")
+        async with aiohttp.ClientSession() as session:
+            client = PowerApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.post(f"{POWER_BASE_URL}/activation/facilitycontrol", status=401)
+                with pytest.raises(AuthError):
+                    await client.update_facility_control(FACILITY_ID, ctrl)
+
+
+class TestGetFcrStatus:
+    async def test_parses_enabled_true(self):
+        async with aiohttp.ClientSession() as session:
+            client = PowerApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.get(
+                    f"{POWER_BASE_URL}/activation/fcr/facility-enablements/{FACILITY_ID}",
+                    payload={"fcrdDownEnabled": True},
+                )
+                status = await client.get_fcr_status(FACILITY_ID)
+        assert isinstance(status, FcrStatus)
+        assert status.fcrd_down_enabled is True
+
+    async def test_parses_missing_field_as_false(self):
+        async with aiohttp.ClientSession() as session:
+            client = PowerApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.get(
+                    f"{POWER_BASE_URL}/activation/fcr/facility-enablements/{FACILITY_ID}",
+                    payload={},
+                )
+                status = await client.get_fcr_status(FACILITY_ID)
+        assert status.fcrd_down_enabled is False
+
+
+_NOTIFY_PAYLOAD = {
+    "notifyTotalPower": True,
+    "notifyPhaseLoad": False,
+    "notifyControlDisabledExceededPhase": True,
+    "notifyControlDisabledExceededPower": False,
+    "notifyControlEnabledExceededPhase": True,
+    "notifyControlEnabledExceededPower": False,
+}
+
+
+class TestGetNotificationSettings:
+    async def test_parses_all_flags(self):
+        async with aiohttp.ClientSession() as session:
+            client = PowerApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.get(
+                    f"{POWER_BASE_URL}/customer/settings/{FACILITY_ID}/notifications",
+                    payload=_NOTIFY_PAYLOAD,
+                )
+                settings = await client.get_notification_settings(FACILITY_ID)
+        assert isinstance(settings, NotificationSettings)
+        assert settings.notify_total_power is True
+        assert settings.notify_phase_load is False
+        assert settings.notify_control_disabled_exceeded_phase is True
+        assert settings.notify_control_enabled_exceeded_power is False
+
+
+class TestUpdateNotificationSettings:
+    async def test_patches_and_returns_updated(self):
+        new = NotificationSettings(
+            notify_total_power=True,
+            notify_phase_load=True,
+            notify_control_disabled_exceeded_phase=True,
+            notify_control_disabled_exceeded_power=True,
+            notify_control_enabled_exceeded_phase=True,
+            notify_control_enabled_exceeded_power=True,
+        )
+        echo = {**_NOTIFY_PAYLOAD, "notifyPhaseLoad": True, "notifyControlDisabledExceededPower": True, "notifyControlEnabledExceededPower": True}
+        async with aiohttp.ClientSession() as session:
+            client = PowerApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.patch(
+                    f"{POWER_BASE_URL}/customer/settings/{FACILITY_ID}/notifications",
+                    status=200,
+                    payload=echo,
+                )
+                result = await client.update_notification_settings(FACILITY_ID, new)
+        assert result.notify_phase_load is True
+        assert result.notify_control_enabled_exceeded_power is True
+
+    async def test_raises_auth_error_on_401(self):
+        new = NotificationSettings(False, False, False, False, False, False)
+        async with aiohttp.ClientSession() as session:
+            client = PowerApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.patch(
+                    f"{POWER_BASE_URL}/customer/settings/{FACILITY_ID}/notifications",
+                    status=401,
+                )
+                with pytest.raises(AuthError):
+                    await client.update_notification_settings(FACILITY_ID, new)
+
+
+_DEFAULT_ATTRS_BODY = {
+    "heatingType": "DISTRICT_HEATING",
+    "fuseSize": "A25",
+    "occupants": 2,
+    "area": 80,
+    "type": "APARTMENT",
+    "evType": "NONE",
+    "battery": False,
+    "solar": False,
+}
+
+
+def _make_attrs() -> "FacilityAttributes":
+    from custom_components.malarenergi_powerhub.api import FacilityAttributes
+    return FacilityAttributes(
+        heating_type="DISTRICT_HEATING",
+        fuse_size=25,
+        occupants=2,
+        area=80,
+        facility_type="APARTMENT",
+        ev_type="NONE",
+        has_battery=False,
+        has_solar=False,
+    )
+
+
+class TestUpdateFacilityAttributes:
+    """Covers the PowerHubApiClient._put helper via update_facility_attributes."""
+
+    async def test_put_updates_and_parses_response(self):
+        async with aiohttp.ClientSession() as session:
+            client = PowerHubApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.put(
+                    f"{BASE_URL}/facility/{FACILITY_ID}/attributes",
+                    status=200,
+                    payload=_DEFAULT_ATTRS_BODY,
+                )
+                result = await client.update_facility_attributes(FACILITY_ID, _make_attrs())
+        assert result.fuse_size == 25
+        assert result.occupants == 2
+        assert result.facility_type == "APARTMENT"
+        assert result.has_battery is False
+
+    async def test_put_tolerates_invalid_fuse_size_in_response(self):
+        """If the response's fuseSize can't be parsed, fall back to the input value."""
+        async with aiohttp.ClientSession() as session:
+            client = PowerHubApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.put(
+                    f"{BASE_URL}/facility/{FACILITY_ID}/attributes",
+                    status=200,
+                    payload={**_DEFAULT_ATTRS_BODY, "fuseSize": "GARBAGE"},
+                )
+                result = await client.update_facility_attributes(FACILITY_ID, _make_attrs())
+        assert result.fuse_size == 25
+
+    async def test_put_raises_auth_error_on_401(self):
+        async with aiohttp.ClientSession() as session:
+            client = PowerHubApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.put(
+                    f"{BASE_URL}/facility/{FACILITY_ID}/attributes",
+                    status=401,
+                )
+                with pytest.raises(AuthError):
+                    await client.update_facility_attributes(FACILITY_ID, _make_attrs())
 
