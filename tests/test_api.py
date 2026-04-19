@@ -531,83 +531,66 @@ class TestGetMonthlyInsights:
 # Protobuf tag bytes used in the wire helpers below.
 # Tags are encoded as (field_number << 3) | wire_type.
 # Wire type 0 = varint, wire type 2 = length-delimited, wire type 5 = 32-bit.
+# Telemetry streams use pure length-delimited framing: <len varint><submsg>...
 _TAG_FIELD1_VARINT  = b'\x08'   # field 1, varint
-_TAG_FIELD2_FIXED32 = b'\x15'   # field 2, 32-bit (float)
-_TAG_FIELD3_FIXED32 = b'\x1d'   # field 3, 32-bit
-_TAG_FIELD4_FIXED32 = b'\x25'   # field 4, 32-bit
-_TAG_FIELD5_FIXED32 = b'\x2d'   # field 5, 32-bit
 _TAG_FIELD6_FIXED32 = b'\x35'   # field 6, 32-bit
 _TAG_FIELD7_FIXED32 = b'\x3d'   # field 7, 32-bit
-_TAG_FIELD8_FIXED32 = b'\x45'   # field 8, 32-bit
-_TAG_FIELD9_FIXED32 = b'\x4d'   # field 9, 32-bit
 _TAG_FIELD10_FIXED32 = b'\x55'  # field 10, 32-bit
-_TAG_RECORD_LEN_DELIM = b'\x0a' # field 1, length-delimited (outer record tag)
+# Multi-byte tags for fields 17/18/19, all wire type 5 (fixed32).
+_TAG_FIELD17_FIXED32 = b'\x8d\x01'
+_TAG_FIELD18_FIXED32 = b'\x95\x01'
+_TAG_FIELD19_FIXED32 = b'\x9d\x01'
+
+
+def _varint(v: int) -> bytes:
+    out = b''
+    while True:
+        b = v & 0x7F
+        v >>= 7
+        out += bytes([b | 0x80]) if v else bytes([b])
+        if not v:
+            break
+    return out
 
 
 def _make_telemetry_bytes(ts_s: int, import_kw: float, export_kw: float) -> bytes:
     """Build a minimal _decode_telemetry_proto wire payload for one record."""
-    sub = _TAG_FIELD1_VARINT                                 # field 1 varint tag
-    v = ts_s
-    while True:
-        b = v & 0x7F
-        v >>= 7
-        sub += bytes([b | 0x80]) if v else bytes([b])
-        if not v:
-            break
-    sub += _TAG_FIELD6_FIXED32 + struct.pack('<f', import_kw)   # field 6 fixed32
-    sub += _TAG_FIELD7_FIXED32 + struct.pack('<f', export_kw)   # field 7 fixed32
-    return _TAG_RECORD_LEN_DELIM + bytes([len(sub)]) + sub
+    sub = _TAG_FIELD1_VARINT + _varint(ts_s)
+    sub += _TAG_FIELD6_FIXED32 + struct.pack('<f', import_kw)
+    sub += _TAG_FIELD7_FIXED32 + struct.pack('<f', export_kw)
+    return _varint(len(sub)) + sub
 
 
 def _make_phase_telemetry_bytes(
-    ts_s: int,
-    l1_a: float, l2_a: float, l3_a: float,
-    p_l1_imp: float, p_l1_exp: float,
-    p_l2_imp: float, p_l2_exp: float,
-    p_l3_imp: float, p_l3_exp: float,
+    ts_s: int, l1_a: float, l2_a: float, l3_a: float,
 ) -> bytes:
-    """Build a minimal _decode_phase_telemetry_proto payload for one record."""
-    sub = _TAG_FIELD1_VARINT
-    v = ts_s
-    while True:
-        b = v & 0x7F
-        v >>= 7
-        sub += bytes([b | 0x80]) if v else bytes([b])
-        if not v:
-            break
-    sub += _TAG_FIELD2_FIXED32  + struct.pack('<f', l1_a)       # current_l1_a
-    sub += _TAG_FIELD3_FIXED32  + struct.pack('<f', l2_a)       # current_l2_a
-    sub += _TAG_FIELD4_FIXED32  + struct.pack('<f', l3_a)       # current_l3_a
-    sub += _TAG_FIELD5_FIXED32  + struct.pack('<f', p_l1_imp)   # power_l1_import
-    sub += _TAG_FIELD6_FIXED32  + struct.pack('<f', p_l1_exp)   # power_l1_export
-    sub += _TAG_FIELD7_FIXED32  + struct.pack('<f', p_l2_imp)   # power_l2_import
-    sub += _TAG_FIELD8_FIXED32  + struct.pack('<f', p_l2_exp)   # power_l2_export
-    sub += _TAG_FIELD9_FIXED32  + struct.pack('<f', p_l3_imp)   # power_l3_import
-    sub += _TAG_FIELD10_FIXED32 + struct.pack('<f', p_l3_exp)   # power_l3_export
-    return _TAG_RECORD_LEN_DELIM + bytes([len(sub)]) + sub
+    """Build a minimal _decode_phase_telemetry_proto payload for one record.
+
+    Wire format: fields 17/18/19 fixed32 for the three phase currents. The
+    per-phase power fields in the query are not served by the backend.
+    """
+    sub = _TAG_FIELD1_VARINT + _varint(ts_s)
+    sub += _TAG_FIELD17_FIXED32 + struct.pack('<f', l1_a)
+    sub += _TAG_FIELD18_FIXED32 + struct.pack('<f', l2_a)
+    sub += _TAG_FIELD19_FIXED32 + struct.pack('<f', l3_a)
+    return _varint(len(sub)) + sub
 
 
 def _make_hourly_energy_bytes(
     bucket_ts_s: int, win_start_ts_s: int, win_end_ts_s: int,
     sample_count: int, import_wh: float, export_wh: float,
 ) -> bytes:
-    """Build a minimal _decode_hourly_energy_proto payload for one record."""
-    def _varint(v: int) -> bytes:
-        out = b''
-        while True:
-            b = v & 0x7F
-            v >>= 7
-            out += bytes([b | 0x80]) if v else bytes([b])
-            if not v:
-                break
-        return out
+    """Build a minimal _decode_hourly_energy_proto payload for one record.
 
+    Unlike telemetry streams, aggregated/energy uses a *tagged* outer wrapper
+    (field 1 length-delimited = 0x0a) repeated per bucket.
+    """
     def _ts_submsg(ts_s: int) -> bytes:
         return _TAG_FIELD1_VARINT + _varint(ts_s)
 
-    bucket_raw   = _ts_submsg(bucket_ts_s)
+    bucket_raw    = _ts_submsg(bucket_ts_s)
     win_start_raw = _ts_submsg(win_start_ts_s)
-    win_end_raw  = _ts_submsg(win_end_ts_s)
+    win_end_raw   = _ts_submsg(win_end_ts_s)
 
     # Tags for the outer record fields (field_num << 3 | wire_type)
     _tag_f1_ld = b'\x0a'   # field 1, length-delimited (bucket ts submsg)
@@ -616,14 +599,14 @@ def _make_hourly_energy_bytes(
     _tag_f4_ld = b'\x22'   # field 4, length-delimited (win_end submsg)
 
     record = b''
-    record += _tag_f1_ld + bytes([len(bucket_raw)])    + bucket_raw     # bucket ts
-    record += _tag_f2_vi + _varint(sample_count)                        # sample count
-    record += _tag_f3_ld + bytes([len(win_start_raw)]) + win_start_raw  # window start
-    record += _tag_f4_ld + bytes([len(win_end_raw)])   + win_end_raw    # window end
-    record += _TAG_FIELD7_FIXED32  + struct.pack('<f', import_wh)       # energy_import_wh
-    record += _TAG_FIELD10_FIXED32 + struct.pack('<f', export_wh)       # energy_export_wh
+    record += _tag_f1_ld + bytes([len(bucket_raw)])    + bucket_raw
+    record += _tag_f2_vi + _varint(sample_count)
+    record += _tag_f3_ld + bytes([len(win_start_raw)]) + win_start_raw
+    record += _tag_f4_ld + bytes([len(win_end_raw)])   + win_end_raw
+    record += _TAG_FIELD7_FIXED32  + struct.pack('<f', import_wh)
+    record += _TAG_FIELD10_FIXED32 + struct.pack('<f', export_wh)
 
-    return _TAG_RECORD_LEN_DELIM + bytes([len(record)]) + record
+    return b'\x0a' + bytes([len(record)]) + record
 
 
 class TestDecodeTelemProto:
@@ -650,25 +633,26 @@ class TestDecodeTelemProto:
     def test_empty_bytes_returns_empty_list(self):
         assert _decode_telemetry_proto(b'') == []
 
-    def test_record_without_leading_tag(self):
-        """Records without the leading 0x0a byte are also valid."""
-        raw = _make_telemetry_bytes(1000, 1.5, 0.5)
-        # strip the leading 0x0a byte
-        raw_no_tag = raw[1:]
-        results = _decode_telemetry_proto(raw_no_tag)
-        assert len(results) == 1
-        assert results[0].power_import_kw == pytest.approx(1.5, abs=1e-4)
+    def test_real_capture_two_field(self):
+        """Decode three real records captured from the production backend."""
+        raw = bytes.fromhex(
+            "100891ee93cf0635000000003df6286c40"
+            "100887ee93cf0635000000003d0f2d6a40"
+            "1008fded93cf0635000000003d46b66b40"
+        )
+        results = _decode_telemetry_proto(raw)
+        assert len(results) == 3
+        # Field 6 (import) is 0 across these samples — solar only exports.
+        assert all(r.power_import_kw == pytest.approx(0.0) for r in results)
+        # Field 7 (export) values round to ~3.69, ~3.66, ~3.68 kW.
+        assert results[0].power_export_kw == pytest.approx(3.69, abs=0.02)
+        assert results[1].power_export_kw == pytest.approx(3.66, abs=0.02)
+        assert results[2].power_export_kw == pytest.approx(3.68, abs=0.02)
 
 
 class TestDecodePhaseTelemetryProto:
-    def test_single_record_all_fields(self):
-        raw = _make_phase_telemetry_bytes(
-            ts_s=2000,
-            l1_a=10.5, l2_a=11.0, l3_a=9.5,
-            p_l1_imp=2.4, p_l1_exp=0.1,
-            p_l2_imp=2.5, p_l2_exp=0.0,
-            p_l3_imp=2.2, p_l3_exp=0.0,
-        )
+    def test_single_record(self):
+        raw = _make_phase_telemetry_bytes(ts_s=2000, l1_a=10.5, l2_a=11.0, l3_a=9.5)
         results = _decode_phase_telemetry_proto(raw)
         assert len(results) == 1
         r = results[0]
@@ -676,24 +660,43 @@ class TestDecodePhaseTelemetryProto:
         assert r.current_l1_a == pytest.approx(10.5, abs=1e-3)
         assert r.current_l2_a == pytest.approx(11.0, abs=1e-3)
         assert r.current_l3_a == pytest.approx(9.5, abs=1e-3)
-        assert r.power_l1_import_kw == pytest.approx(2.4, abs=1e-3)
-        assert r.power_l1_export_kw == pytest.approx(0.1, abs=1e-3)
-        assert r.power_l2_import_kw == pytest.approx(2.5, abs=1e-3)
-        assert r.power_l2_export_kw == pytest.approx(0.0, abs=1e-3)
-        assert r.power_l3_import_kw == pytest.approx(2.2, abs=1e-3)
-        assert r.power_l3_export_kw == pytest.approx(0.0, abs=1e-3)
+
+    def test_two_records(self):
+        raw = (
+            _make_phase_telemetry_bytes(1000, 5.0, 5.0, 5.0)
+            + _make_phase_telemetry_bytes(1060, 10.5, 11.0, 9.5)
+        )
+        results = _decode_phase_telemetry_proto(raw)
+        assert len(results) == 2
+        assert results[1].current_l1_a == pytest.approx(10.5, abs=1e-3)
 
     def test_zero_current_values(self):
         """All-zero values decode without error."""
-        raw = _make_phase_telemetry_bytes(1000, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+        raw = _make_phase_telemetry_bytes(1000, 0, 0, 0)
         results = _decode_phase_telemetry_proto(raw)
         assert len(results) == 1
-        r = results[0]
-        assert r.current_l1_a == pytest.approx(0.0)
-        assert r.power_l1_import_kw == pytest.approx(0.0)
+        assert results[0].current_l1_a == pytest.approx(0.0)
 
     def test_empty_bytes_returns_empty_list(self):
         assert _decode_phase_telemetry_proto(b'') == []
+
+    def test_real_capture_three_records(self):
+        """Decode three real records captured from the production backend.
+
+        Currents arrive in fields 17/18/19 as fixed32 little-endian floats.
+        """
+        raw = bytes.fromhex(
+            "1808cdee93cf068d014a0caa40950159399c409d01d122b340"
+            "1808c3ee93cf068d01d678a9409501699199409d01e6d0b240"
+            "1808b9ee93cf068d019643ab4095010d029f409d01d8a3b440"
+        )
+        results = _decode_phase_telemetry_proto(raw)
+        assert len(results) == 3
+        # Approx 5.3 A / 4.9 A / 5.6 A on L1/L2/L3 for all three samples.
+        for r in results:
+            assert 5.0 < r.current_l1_a < 5.5
+            assert 4.7 < r.current_l2_a < 5.0
+            assert 5.5 < r.current_l3_a < 5.7
 
 
 class TestDecodeHourlyEnergyProto:
@@ -824,8 +827,8 @@ class TestGetCurrentPower:
 class TestGetCurrentPowerPhases:
     async def test_returns_latest_phase_sample(self):
         raw = (
-            _make_phase_telemetry_bytes(1000, 5.0, 5.0, 5.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0)
-            + _make_phase_telemetry_bytes(2000, 10.5, 11.0, 9.5, 2.4, 0.1, 2.5, 0.0, 2.2, 0.0)
+            _make_phase_telemetry_bytes(1000, 5.0, 5.0, 5.0)
+            + _make_phase_telemetry_bytes(2000, 10.5, 11.0, 9.5)
         )
         async with aiohttp.ClientSession() as session:
             client = PowerApiClient(session, FAKE_TOKEN)
@@ -836,7 +839,8 @@ class TestGetCurrentPowerPhases:
         assert isinstance(sample, PhaseTelemetry)
         assert sample.timestamp.timestamp() == pytest.approx(2000)
         assert sample.current_l1_a == pytest.approx(10.5, abs=1e-3)
-        assert sample.power_l2_import_kw == pytest.approx(2.5, abs=1e-3)
+        assert sample.current_l2_a == pytest.approx(11.0, abs=1e-3)
+        assert sample.current_l3_a == pytest.approx(9.5, abs=1e-3)
 
     async def test_returns_none_when_empty(self):
         async with aiohttp.ClientSession() as session:

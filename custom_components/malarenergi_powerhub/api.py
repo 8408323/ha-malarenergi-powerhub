@@ -19,7 +19,7 @@ import logging
 import struct
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Iterator
 
 import aiohttp
 
@@ -553,17 +553,16 @@ class PowerTelemetry:
 
 @dataclass
 class PhaseTelemetry:
-    """One 1-minute per-phase sample."""
+    """One 1-minute per-phase sample.
+
+    The Bitvis Power backend only serves per-phase *current* for this endpoint —
+    per-phase power fields in the query are accepted but never populated in the
+    response, so we don't expose them.
+    """
     timestamp: datetime
     current_l1_a: float
     current_l2_a: float
     current_l3_a: float
-    power_l1_import_kw: float
-    power_l1_export_kw: float
-    power_l2_import_kw: float
-    power_l2_export_kw: float
-    power_l3_import_kw: float
-    power_l3_export_kw: float
 
 
 @dataclass
@@ -673,27 +672,29 @@ def _parse_submessage(sub: bytes) -> dict[int, int | float | bytes]:
     return fields
 
 
-def _decode_telemetry_proto(raw: bytes) -> list[PowerTelemetry]:
-    """Decode 2-field power telemetry (import + export kW).
+def _iter_delimited(raw: bytes) -> Iterator[dict[int, int | float | bytes]]:
+    """Yield one decoded submessage per record from a length-delimited protobuf stream.
 
-    Wire format: repeated length-delimited protobuf records, each optionally
-    starting with the repeated-field tag ``0x0a`` (field 1, wire type 2)
-    followed by a varint length, then a submessage containing field1 varint
-    timestamp_s, field6 float32 import, and field7 float32 export.
+    Wire format (``application/x-protobuf;delimited=true``): a varint length
+    prefix followed by that many bytes of submessage, repeated to end of buffer.
     """
-    results: list[PowerTelemetry] = []
     pos = 0
     n = len(raw)
     while pos < n:
-        if pos < n and raw[pos] == 0x0a:
-            pos += 1
-        if pos >= n:
-            break
         sub_len, pos = _read_varint(raw, pos)
         if pos + sub_len > n:
-            break
-        fields = _parse_submessage(raw[pos:pos + sub_len])
+            return
+        yield _parse_submessage(raw[pos:pos + sub_len])
         pos += sub_len
+
+
+def _decode_telemetry_proto(raw: bytes) -> list[PowerTelemetry]:
+    """Decode 2-field power telemetry (import + export kW).
+
+    Each record: field1 varint ts_s, field6 float32 import, field7 float32 export.
+    """
+    results: list[PowerTelemetry] = []
+    for fields in _iter_delimited(raw):
         ts_s = fields.get(1)
         if isinstance(ts_s, int):
             results.append(PowerTelemetry(
@@ -705,40 +706,20 @@ def _decode_telemetry_proto(raw: bytes) -> list[PowerTelemetry]:
 
 
 def _decode_phase_telemetry_proto(raw: bytes) -> list[PhaseTelemetry]:
-    """Decode 9-field per-phase telemetry.
+    """Decode per-phase current telemetry.
 
-    Fields (by position in API query order, field numbers 2-10):
-      2: phase_current_l1_a, 3: phase_current_l2_a, 4: phase_current_l3_a,
-      5: power_l1_import, 6: power_l1_export,
-      7: power_l2_import, 8: power_l2_export,
-      9: power_l3_import, 10: power_l3_export
+    Each record: field1 varint ts_s, fields 17/18/19 float32 currents L1/L2/L3.
+    The per-phase power fields in the query are not served by the backend.
     """
     results: list[PhaseTelemetry] = []
-    pos = 0
-    n = len(raw)
-    while pos < n:
-        if pos < n and raw[pos] == 0x0a:
-            pos += 1
-        if pos >= n:
-            break
-        sub_len, pos = _read_varint(raw, pos)
-        if pos + sub_len > n:
-            break
-        f = _parse_submessage(raw[pos:pos + sub_len])
-        pos += sub_len
+    for f in _iter_delimited(raw):
         ts_s = f.get(1)
         if isinstance(ts_s, int):
             results.append(PhaseTelemetry(
                 timestamp=datetime.fromtimestamp(ts_s, tz=timezone.utc),
-                current_l1_a=float(f.get(2, 0.0)),
-                current_l2_a=float(f.get(3, 0.0)),
-                current_l3_a=float(f.get(4, 0.0)),
-                power_l1_import_kw=float(f.get(5, 0.0)),
-                power_l1_export_kw=float(f.get(6, 0.0)),
-                power_l2_import_kw=float(f.get(7, 0.0)),
-                power_l2_export_kw=float(f.get(8, 0.0)),
-                power_l3_import_kw=float(f.get(9, 0.0)),
-                power_l3_export_kw=float(f.get(10, 0.0)),
+                current_l1_a=float(f.get(17, 0.0)),
+                current_l2_a=float(f.get(18, 0.0)),
+                current_l3_a=float(f.get(19, 0.0)),
             ))
     return results
 
