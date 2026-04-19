@@ -135,7 +135,13 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self._show_qr_form()
 
     async def _async_finish(self, token: str) -> config_entries.FlowResult:
-        """Create config entry after successful BankID login."""
+        """Complete the flow after successful BankID login.
+
+        For a fresh install: create a new config entry.
+        For a reauth: update the existing entry's token, reload, and abort with
+        reason="reauth_successful" so HA dismisses the "re-auth required"
+        notification.
+        """
         from .api import PowerHubApiClient
         session = async_get_clientsession(self.hass)
         client = PowerHubApiClient(session, token)
@@ -160,6 +166,28 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
 
         facility = facilities[0]
+
+        # Reauth path — update existing entry in place
+        if self.source == config_entries.SOURCE_REAUTH:
+            entry_id = self.context.get("entry_id")
+            existing = (
+                self.hass.config_entries.async_get_entry(entry_id)
+                if entry_id
+                else None
+            )
+            if existing is not None:
+                self.hass.config_entries.async_update_entry(
+                    existing,
+                    data={
+                        **existing.data,
+                        CONF_TOKEN: token,
+                        CONF_FACILITY_ID: facility.facility_id,
+                    },
+                )
+                await self.hass.config_entries.async_reload(existing.entry_id)
+                return self.async_abort(reason="reauth_successful")
+
+        # Fresh install path — create new entry (and bail out if already configured)
         await self.async_set_unique_id(facility.facility_id)
         self._abort_if_unique_id_configured(updates={CONF_TOKEN: token})
 
