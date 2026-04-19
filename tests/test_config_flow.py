@@ -123,6 +123,75 @@ class TestAsyncFinishReauth:
         assert result["type"] == "abort"
         assert result["reason"] == "reauth_successful"
 
+    async def test_reauth_with_no_identifiable_entry_aborts_as_unresolved(
+        self,
+    ) -> None:
+        """If entry_id is missing and no existing entry's unique_id matches
+        any returned facility, we must abort — not fall through to create."""
+        flow = _make_flow(config_entries.SOURCE_REAUTH, entry_id=None)
+        flow.hass.config_entries.async_get_entry.return_value = None
+        flow.hass.config_entries.async_entries = MagicMock(return_value=[])
+
+        fake_client = MagicMock()
+        fake_client.get_facilities = AsyncMock(return_value=[FACILITY])
+
+        with patch(
+            "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
+        ), patch(
+            "custom_components.malarenergi_powerhub.api.PowerHubApiClient",
+            return_value=fake_client,
+        ):
+            result = await flow._async_finish(NEW_TOKEN)
+
+        flow.hass.config_entries.async_update_entry.assert_not_called()
+        flow.hass.config_entries.async_reload.assert_not_awaited()
+        assert result["type"] == "abort"
+        assert result["reason"] == "reauth_unresolved"
+
+    async def test_reauth_with_ambiguous_unique_id_match_aborts(self) -> None:
+        """If the unique_id fallback finds more than one candidate entry
+        (future multi-facility case), we must abort rather than silently
+        pick the first one and update the wrong entry."""
+        flow = _make_flow(config_entries.SOURCE_REAUTH, entry_id=None)
+        flow.hass.config_entries.async_get_entry.return_value = None
+
+        entry_a = MagicMock()
+        entry_a.entry_id = "entry-a"
+        entry_a.unique_id = FACILITY.facility_id
+        entry_a.data = {CONF_FACILITY_ID: FACILITY.facility_id}
+        entry_b = MagicMock()
+        entry_b.entry_id = "entry-b"
+        entry_b.unique_id = "other-uuid-999"
+        entry_b.data = {CONF_FACILITY_ID: "other-uuid-999"}
+        flow.hass.config_entries.async_entries = MagicMock(
+            return_value=[entry_a, entry_b]
+        )
+
+        other_facility = FacilityInfo(
+            facility_id="other-uuid-999",
+            street="Lillgatan",
+            house_number=5,
+            city="Västerås",
+            meter_id="meter-2",
+            region="SE3",
+            customer_id="cust-1",
+        )
+        fake_client = MagicMock()
+        fake_client.get_facilities = AsyncMock(return_value=[FACILITY, other_facility])
+
+        with patch(
+            "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
+        ), patch(
+            "custom_components.malarenergi_powerhub.api.PowerHubApiClient",
+            return_value=fake_client,
+        ):
+            result = await flow._async_finish(NEW_TOKEN)
+
+        flow.hass.config_entries.async_update_entry.assert_not_called()
+        flow.hass.config_entries.async_reload.assert_not_awaited()
+        assert result["type"] == "abort"
+        assert result["reason"] == "reauth_ambiguous"
+
     async def test_reauth_with_different_bankid_account_aborts_with_wrong_account(
         self,
     ) -> None:
