@@ -5,6 +5,7 @@ import logging
 from dataclasses import dataclass, replace as dataclass_replace
 from datetime import datetime, timedelta, timezone
 
+from aiohttp import ClientResponseError
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -70,6 +71,26 @@ def _day_start_ms() -> int:
 
 def _now_ms() -> int:
     return int(datetime.now(timezone.utc).timestamp() * 1000)
+
+
+async def _optional(coro, name: str, default=None):
+    """Await an optional endpoint; map 404 to `default` and log other errors.
+
+    AuthError still propagates so the reauth guard in _async_update_data runs.
+    """
+    try:
+        return await coro
+    except AuthError:
+        raise
+    except ClientResponseError as err:
+        if err.status == 404:
+            _LOGGER.debug("Optional endpoint %s returned 404", name)
+            return default
+        _LOGGER.warning("Optional endpoint %s failed: %s", name, err)
+        return default
+    except Exception as err:
+        _LOGGER.warning("Optional endpoint %s failed: %s", name, err)
+        return default
 
 
 class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
@@ -192,14 +213,25 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
             invitations = await client.get_invitations()
             invitees = await client.get_invitees(self._facility_id)
 
-            # Power backend: real-time power, diagnostics, facility control
-            current_power = await power_client.get_current_power(self._facility_id)
-            current_power_phases = await power_client.get_current_power_phases(
-                self._facility_id
+            # Power backend: real-time power, diagnostics, facility control.
+            # These endpoints can 404 for accounts whose PowerHub device isn't
+            # fully provisioned — treat as "no data" instead of failing the tick.
+            current_power = await _optional(
+                power_client.get_current_power(self._facility_id), "current_power"
             )
-            diagnostics = await power_client.get_diagnostics(self._facility_id)
-            facility_control = await power_client.get_facility_control(self._facility_id)
-            fcr_status = await power_client.get_fcr_status(self._facility_id)
+            current_power_phases = await _optional(
+                power_client.get_current_power_phases(self._facility_id),
+                "current_power_phases",
+            )
+            diagnostics = await _optional(
+                power_client.get_diagnostics(self._facility_id), "diagnostics"
+            )
+            facility_control = await _optional(
+                power_client.get_facility_control(self._facility_id), "facility_control"
+            )
+            fcr_status = await _optional(
+                power_client.get_fcr_status(self._facility_id), "fcr_status"
+            )
 
             # Hourly energy for today (from midnight Stockholm time until now)
             import zoneinfo
@@ -209,10 +241,14 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
             day_start_utc = now_local.replace(
                 hour=0, minute=0, second=0, microsecond=0
             ).astimezone(timezone.utc)
-            hourly_energy_today = await power_client.get_hourly_energy(
-                self._facility_id,
-                start=day_start_utc,
-                end=datetime.now(tz=timezone.utc),
+            hourly_energy_today = await _optional(
+                power_client.get_hourly_energy(
+                    self._facility_id,
+                    start=day_start_utc,
+                    end=datetime.now(tz=timezone.utc),
+                ),
+                "hourly_energy_today",
+                default=[],
             )
 
         except AuthError:
