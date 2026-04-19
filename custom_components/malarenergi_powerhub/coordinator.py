@@ -84,6 +84,11 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
         self._cached_agreements: list[Agreement] | None = None
         self._cached_facility_info: FacilityInfo | None = None
         self._facility_info_resolved = False
+        # True once we've asked HA to start a reauth flow; reset after a
+        # successful poll. Prevents spamming async_start_reauth (and its
+        # log line) on every 60-second tick while the user is scanning the
+        # BankID QR code.
+        self._reauth_pending = False
         super().__init__(
             hass,
             _LOGGER,
@@ -211,11 +216,17 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
             )
 
         except AuthError:
-            _LOGGER.warning("Token expired — triggering re-auth")
-            self._entry.async_start_reauth(self.hass)
+            if not self._reauth_pending:
+                _LOGGER.warning("Token expired — triggering re-auth")
+                self._entry.async_start_reauth(self.hass)
+                self._reauth_pending = True
             raise UpdateFailed("Token expired, re-authentication required")
         except Exception as err:
             raise UpdateFailed(f"API error: {err}") from err
+
+        # Poll succeeded — if the user just completed re-auth, clear the flag
+        # so a future token expiry triggers a fresh reauth flow.
+        self._reauth_pending = False
 
         return PowerHubData(
             consumption_today_kwh=consumption_kwh,
