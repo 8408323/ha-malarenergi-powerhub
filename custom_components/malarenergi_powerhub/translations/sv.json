@@ -18,7 +18,10 @@
     },
     "abort": {
       "already_configured": "Denna anläggning är redan konfigurerad.",
-      "reauth_successful": "Omautentisering lyckades."
+      "reauth_successful": "Omautentisering lyckades.",
+      "reauth_wrong_account": "BankID-kontot du loggade in med äger inte den här anläggningen. Logga in med samma konto som ursprungligen konfigurerade integrationen.",
+      "reauth_unresolved": "Kunde inte identifiera vilken konfigurerad integration den här omautentiseringen gäller. Ta bort och lägg till integrationen igen.",
+      "reauth_ambiguous": "Flera konfigurerade anläggningar matchar detta BankID-konto. Starta omautentiseringen från den specifika anläggning som behöver det."
     }
   },
   "entity": {

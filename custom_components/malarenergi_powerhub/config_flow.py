@@ -135,7 +135,13 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self._show_qr_form()
 
     async def _async_finish(self, token: str) -> config_entries.FlowResult:
-        """Create config entry after successful BankID login."""
+        """Complete the flow after successful BankID login.
+
+        For a fresh install: create a new config entry.
+        For a reauth: update the existing entry's token, reload, and abort with
+        reason="reauth_successful" so HA dismisses the "re-auth required"
+        notification.
+        """
         from .api import PowerHubApiClient
         session = async_get_clientsession(self.hass)
         client = PowerHubApiClient(session, token)
@@ -159,6 +165,55 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors={"base": "no_facilities"},
             )
 
+        # Reauth path — update existing entry in place. Preserve the
+        # entry's original facility_id; only refresh the token. If we can't
+        # unambiguously identify which entry is being reauthed, abort with a
+        # reauth-specific reason rather than falling through to create_entry
+        # (which would mutate unrelated configuration).
+        if self.source == config_entries.SOURCE_REAUTH:
+            entry_id = self.context.get("entry_id")
+            existing = (
+                self.hass.config_entries.async_get_entry(entry_id)
+                if entry_id
+                else None
+            )
+            # Fallback: locate the entry by unique_id against the returned
+            # facilities. Require exactly one match — more than one means we
+            # cannot safely choose which entry to update.
+            if existing is None:
+                candidates = [
+                    e
+                    for e in self.hass.config_entries.async_entries(DOMAIN)
+                    if e.unique_id
+                    and any(f.facility_id == e.unique_id for f in facilities)
+                ]
+                if len(candidates) == 1:
+                    existing = candidates[0]
+                elif len(candidates) > 1:
+                    return self.async_abort(reason="reauth_ambiguous")
+
+            if existing is None:
+                # No entry identifiable as the reauth target — abort instead
+                # of silently creating a new entry.
+                return self.async_abort(reason="reauth_unresolved")
+
+            # Sanity-check: the entry's facility must still be one the
+            # just-authenticated account can see. If not, the user likely
+            # logged in with a different BankID identity — abort rather
+            # than silently retargeting.
+            existing_facility_id = existing.data.get(CONF_FACILITY_ID)
+            if not any(
+                f.facility_id == existing_facility_id for f in facilities
+            ):
+                return self.async_abort(reason="reauth_wrong_account")
+            self.hass.config_entries.async_update_entry(
+                existing,
+                data={**existing.data, CONF_TOKEN: token},
+            )
+            await self.hass.config_entries.async_reload(existing.entry_id)
+            return self.async_abort(reason="reauth_successful")
+
+        # Fresh install path — create new entry (and bail out if already configured)
         facility = facilities[0]
         await self.async_set_unique_id(facility.facility_id)
         self._abort_if_unique_id_configured(updates={CONF_TOKEN: token})
