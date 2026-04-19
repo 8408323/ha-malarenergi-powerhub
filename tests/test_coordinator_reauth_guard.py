@@ -13,6 +13,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from homeassistant.helpers.update_coordinator import UpdateFailed
+
 from custom_components.malarenergi_powerhub.api import AuthError
 from custom_components.malarenergi_powerhub.coordinator import PowerHubCoordinator
 from custom_components.malarenergi_powerhub.notifications_coordinator import (
@@ -59,7 +61,7 @@ class TestPowerHubCoordinatorReauthGuard:
         # Force first branch to execute get_facility_attributes by clearing the cache
         coord._cached_attributes = None
 
-        with pytest.raises(Exception):  # UpdateFailed wraps the AuthError path
+        with pytest.raises(UpdateFailed):
             await coord._async_update_data()
 
         entry.async_start_reauth.assert_called_once_with(coord.hass)
@@ -74,13 +76,13 @@ class TestPowerHubCoordinatorReauthGuard:
         coord._cached_attributes = None
 
         # First tick — arms the guard
-        with pytest.raises(Exception):
+        with pytest.raises(UpdateFailed):
             await coord._async_update_data()
 
         # Subsequent ticks — same AuthError, but we already asked HA once
-        with pytest.raises(Exception):
+        with pytest.raises(UpdateFailed):
             await coord._async_update_data()
-        with pytest.raises(Exception):
+        with pytest.raises(UpdateFailed):
             await coord._async_update_data()
 
         entry.async_start_reauth.assert_called_once()

@@ -74,23 +74,21 @@ def _now_ms() -> int:
 
 
 async def _optional(coro, name: str, default=None):
-    """Await an optional endpoint; map 404 to `default` and log other errors.
+    """Await an optional endpoint; map 404 to `default`, re-raise everything else.
 
-    AuthError still propagates so the reauth guard in _async_update_data runs.
+    404 is the expected response for accounts whose PowerHub device isn't
+    fully provisioned. Other errors (5xx, timeouts, protocol) should still
+    fail the coordinator tick so the user sees the problem instead of
+    getting silently stale/missing data. AuthError propagates so the
+    reauth guard runs.
     """
     try:
         return await coro
-    except AuthError:
-        raise
     except ClientResponseError as err:
         if err.status == 404:
             _LOGGER.debug("Optional endpoint %s returned 404", name)
             return default
-        _LOGGER.warning("Optional endpoint %s failed: %s", name, err)
-        return default
-    except Exception as err:
-        _LOGGER.warning("Optional endpoint %s failed: %s", name, err)
-        return default
+        raise
 
 
 class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):

@@ -53,14 +53,25 @@ class TestAsyncFinishReauth:
 
         existing_entry = MagicMock()
         existing_entry.entry_id = OLD_ENTRY_ID
+        existing_entry.unique_id = FACILITY.facility_id
         existing_entry.data = {
             CONF_TOKEN: "old-token",
             CONF_FACILITY_ID: FACILITY.facility_id,
         }
         flow.hass.config_entries.async_get_entry.return_value = existing_entry
 
+        # BankID returns two facilities in a different order than on first setup
+        other_facility = FacilityInfo(
+            facility_id="other-uuid-999",
+            street="Lillgatan",
+            house_number=5,
+            city="Västerås",
+            meter_id="meter-2",
+            region="SE3",
+            customer_id="cust-1",
+        )
         fake_client = MagicMock()
-        fake_client.get_facilities = AsyncMock(return_value=[FACILITY])
+        fake_client.get_facilities = AsyncMock(return_value=[other_facility, FACILITY])
 
         with patch(
             "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
@@ -70,25 +81,31 @@ class TestAsyncFinishReauth:
         ):
             result = await flow._async_finish(NEW_TOKEN)
 
-        # Token was written back onto the existing entry, preserving other data keys
+        # Token was written back; facility_id preserved (NOT overwritten with
+        # facilities[0] which would have retargeted the entry to other_facility)
         flow.hass.config_entries.async_update_entry.assert_called_once()
         _, kwargs = flow.hass.config_entries.async_update_entry.call_args
         assert kwargs["data"][CONF_TOKEN] == NEW_TOKEN
         assert kwargs["data"][CONF_FACILITY_ID] == FACILITY.facility_id
 
-        # Entry was reloaded so the coordinator picks up the new token
         flow.hass.config_entries.async_reload.assert_awaited_once_with(OLD_ENTRY_ID)
-
-        # Flow aborts with the reason HA uses to dismiss the re-auth notification
         assert result["type"] == "abort"
         assert result["reason"] == "reauth_successful"
 
-    async def test_reauth_without_entry_id_falls_through_to_create(self) -> None:
-        """If HA didn't stash entry_id in context, we shouldn't silently no-op —
-        fall through to the create-entry path so the user still gets an entry."""
+    async def test_reauth_without_entry_id_locates_by_unique_id(self) -> None:
+        """HA sometimes omits entry_id from the reauth context. Fall back to
+        matching an existing entry by unique_id against the returned facilities."""
         flow = _make_flow(config_entries.SOURCE_REAUTH, entry_id=None)
-        flow.async_set_unique_id = AsyncMock()
-        flow._abort_if_unique_id_configured = MagicMock()
+
+        existing_entry = MagicMock()
+        existing_entry.entry_id = OLD_ENTRY_ID
+        existing_entry.unique_id = FACILITY.facility_id
+        existing_entry.data = {
+            CONF_TOKEN: "old-token",
+            CONF_FACILITY_ID: FACILITY.facility_id,
+        }
+        flow.hass.config_entries.async_get_entry.return_value = None
+        flow.hass.config_entries.async_entries = MagicMock(return_value=[existing_entry])
 
         fake_client = MagicMock()
         fake_client.get_facilities = AsyncMock(return_value=[FACILITY])
@@ -101,13 +118,52 @@ class TestAsyncFinishReauth:
         ):
             result = await flow._async_finish(NEW_TOKEN)
 
-        # Did not touch the existing-entry helpers
+        flow.hass.config_entries.async_update_entry.assert_called_once()
+        flow.hass.config_entries.async_reload.assert_awaited_once_with(OLD_ENTRY_ID)
+        assert result["type"] == "abort"
+        assert result["reason"] == "reauth_successful"
+
+    async def test_reauth_with_different_bankid_account_aborts_with_wrong_account(
+        self,
+    ) -> None:
+        """If the user signs in with BankID for a different account, the
+        returned facilities will not include the entry's facility_id — we must
+        abort instead of silently retargeting the entry."""
+        flow = _make_flow(config_entries.SOURCE_REAUTH, entry_id=OLD_ENTRY_ID)
+
+        existing_entry = MagicMock()
+        existing_entry.entry_id = OLD_ENTRY_ID
+        existing_entry.unique_id = FACILITY.facility_id
+        existing_entry.data = {
+            CONF_TOKEN: "old-token",
+            CONF_FACILITY_ID: FACILITY.facility_id,
+        }
+        flow.hass.config_entries.async_get_entry.return_value = existing_entry
+
+        stranger_facility = FacilityInfo(
+            facility_id="stranger-uuid-888",
+            street="Annangatan",
+            house_number=2,
+            city="Eskilstuna",
+            meter_id="meter-x",
+            region="SE3",
+            customer_id="cust-2",
+        )
+        fake_client = MagicMock()
+        fake_client.get_facilities = AsyncMock(return_value=[stranger_facility])
+
+        with patch(
+            "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
+        ), patch(
+            "custom_components.malarenergi_powerhub.api.PowerHubApiClient",
+            return_value=fake_client,
+        ):
+            result = await flow._async_finish(NEW_TOKEN)
+
         flow.hass.config_entries.async_update_entry.assert_not_called()
         flow.hass.config_entries.async_reload.assert_not_awaited()
-
-        # Went down the create-entry path instead
-        assert result["type"] == "create_entry"
-        assert result["data"][CONF_TOKEN] == NEW_TOKEN
+        assert result["type"] == "abort"
+        assert result["reason"] == "reauth_wrong_account"
 
 
 class TestAsyncFinishUserFlow:

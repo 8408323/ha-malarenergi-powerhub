@@ -165,9 +165,8 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors={"base": "no_facilities"},
             )
 
-        facility = facilities[0]
-
-        # Reauth path — update existing entry in place
+        # Reauth path — update existing entry in place. Preserve the
+        # entry's original facility_id; only refresh the token.
         if self.source == config_entries.SOURCE_REAUTH:
             entry_id = self.context.get("entry_id")
             existing = (
@@ -175,19 +174,36 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 if entry_id
                 else None
             )
+            # Fallback: locate the entry by unique_id if entry_id is missing.
+            if existing is None:
+                existing = next(
+                    (
+                        e
+                        for e in self.hass.config_entries.async_entries(DOMAIN)
+                        if e.unique_id
+                        and any(f.facility_id == e.unique_id for f in facilities)
+                    ),
+                    None,
+                )
             if existing is not None:
+                # Sanity-check: the entry's facility must still be one the
+                # just-authenticated account can see. If not, the user likely
+                # logged in with a different BankID identity — abort rather
+                # than silently retargeting.
+                existing_facility_id = existing.data.get(CONF_FACILITY_ID)
+                if not any(
+                    f.facility_id == existing_facility_id for f in facilities
+                ):
+                    return self.async_abort(reason="reauth_wrong_account")
                 self.hass.config_entries.async_update_entry(
                     existing,
-                    data={
-                        **existing.data,
-                        CONF_TOKEN: token,
-                        CONF_FACILITY_ID: facility.facility_id,
-                    },
+                    data={**existing.data, CONF_TOKEN: token},
                 )
                 await self.hass.config_entries.async_reload(existing.entry_id)
                 return self.async_abort(reason="reauth_successful")
 
         # Fresh install path — create new entry (and bail out if already configured)
+        facility = facilities[0]
         await self.async_set_unique_id(facility.facility_id)
         self._abort_if_unique_id_configured(updates={CONF_TOKEN: token})
 

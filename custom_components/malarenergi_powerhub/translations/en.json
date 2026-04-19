@@ -18,7 +18,8 @@
     },
     "abort": {
       "already_configured": "This facility is already configured.",
-      "reauth_successful": "Re-authentication successful."
+      "reauth_successful": "Re-authentication successful.",
+      "reauth_wrong_account": "The BankID account you signed in with does not own this facility. Please sign in with the account that originally set up the integration."
     }
   },
   "entity": {
