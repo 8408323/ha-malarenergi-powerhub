@@ -122,7 +122,7 @@ class TestNotificationsCoordinatorReauthGuard:
             "custom_components.malarenergi_powerhub.notifications_coordinator.PowerHubApiClient",
             return_value=client,
         ):
-            with pytest.raises(Exception):
+            with pytest.raises(UpdateFailed):
                 await coord._async_update_data()
 
         entry.async_start_reauth.assert_called_once_with(coord.hass)
@@ -139,11 +139,11 @@ class TestNotificationsCoordinatorReauthGuard:
             "custom_components.malarenergi_powerhub.notifications_coordinator.PowerHubApiClient",
             return_value=client,
         ):
-            with pytest.raises(Exception):
+            with pytest.raises(UpdateFailed):
                 await coord._async_update_data()
-            with pytest.raises(Exception):
+            with pytest.raises(UpdateFailed):
                 await coord._async_update_data()
-            with pytest.raises(Exception):
+            with pytest.raises(UpdateFailed):
                 await coord._async_update_data()
 
         entry.async_start_reauth.assert_called_once()
