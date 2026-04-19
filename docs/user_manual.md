@@ -12,7 +12,7 @@ For installation and BankID onboarding, see [docs/setup.md](setup.md).
 - [Sensors](#sensors)
   - [Energy — Energy dashboard compatible](#energy--energy-dashboard-compatible)
   - [Real-time power](#real-time-power)
-  - [Per-phase power and current](#per-phase-power-and-current)
+  - [Per-phase current](#per-phase-current)
   - [Monthly insights](#monthly-insights)
   - [Device diagnostics](#device-diagnostics)
   - [Account and facility metadata](#account-and-facility-metadata)
@@ -64,15 +64,13 @@ Updated every 60 seconds from the most recent 1-minute power sample.
 | `sensor.powerhub_power_import` | kW | Total instantaneous grid import |
 | `sensor.powerhub_power_export` | kW | Total instantaneous grid export |
 
-### Per-phase power and current
+### Per-phase current
 
 | Entity | Unit | Notes |
 |---|---|---|
-| `sensor.powerhub_power_l1_import` / `l2` / `l3` | kW | Per-phase import |
-| `sensor.powerhub_power_l1_export` / `l2` / `l3` | kW | Per-phase export |
 | `sensor.powerhub_current_l1` / `l2` / `l3` | A | Per-phase current |
 
-> Per-phase values may read 0 A / 0 kW on some firmware revisions while total import/export is non-zero. This is a known upstream decode issue; see [issue tracker](https://github.com/8408323/ha-malarenergi-powerhub/issues).
+> The backend does not serve per-phase *power* for this account type — only total import/export (under *Real-time power*) and per-phase current. The Mälarenergi app itself shows the same split.
 
 ### Monthly insights
 
@@ -275,8 +273,8 @@ The first poll after setup takes up to 60 seconds. If it persists, check *Settin
 **`sensor.powerhub_export_today` stays at 0 even with solar**
 Confirm `binary_sensor.powerhub_has_solar` is `on`. If not, toggle `switch.powerhub_has_solar`. Export data is only published by Mälarenergi once the facility is flagged with solar.
 
-**Per-phase power/current sensors read 0**
-Known limitation — see the note under *Per-phase power and current*. Total import/export are unaffected.
+**No per-phase power sensors**
+The backend does not expose per-phase active power — only per-phase current and total import/export. See *Per-phase current* above.
 
 **Changing a writable entity doesn't stick**
 Values are written then the coordinator requests a refresh. If the server rejects the change (e.g. fuse size out of bounds for your agreement) the sensor reverts on the next poll. Check logs for `API error:` warnings.
