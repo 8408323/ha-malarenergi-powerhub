@@ -299,7 +299,7 @@ class PowerHubSensor(CoordinatorEntity[PowerHubCoordinator], SensorEntity):
         self._attr_unique_id = f"{coordinator.config_entry.entry_id}_{description.key}"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, coordinator.config_entry.entry_id)},
-            "name": "PowerHub",
+            "name": f"PowerHub {coordinator.config_entry.title}",
             "manufacturer": "Bitvis / Mälarenergi",
             "model": "PowerHub (ESP32, Kaifa MA304)",
         }
@@ -361,7 +361,7 @@ class NotificationSensor(CoordinatorEntity[NotificationsCoordinator], SensorEnti
         self._attr_unique_id = f"{entry.entry_id}_latest_notification"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, entry.entry_id)},
-            "name": "PowerHub",
+            "name": f"PowerHub {entry.title}",
             "manufacturer": "Bitvis / Mälarenergi",
             "model": "PowerHub (ESP32, Kaifa MA304)",
         }

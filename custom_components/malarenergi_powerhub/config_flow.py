@@ -210,19 +210,83 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 existing,
                 data={**existing.data, CONF_TOKEN: token},
             )
+            # Same account owns the token — push the refreshed token to
+            # every sibling entry for this account too. Otherwise each
+            # additional facility would need its own reauth flow when
+            # the token expires (they all share one JWT).
+            account_facility_ids = {f.facility_id for f in facilities}
+            for sibling in self.hass.config_entries.async_entries(DOMAIN):
+                if (
+                    sibling.entry_id != existing.entry_id
+                    and sibling.unique_id
+                    and sibling.unique_id in account_facility_ids
+                    and sibling.data.get(CONF_TOKEN) != token
+                ):
+                    self.hass.config_entries.async_update_entry(
+                        sibling,
+                        data={**sibling.data, CONF_TOKEN: token},
+                    )
+                    await self.hass.config_entries.async_reload(
+                        sibling.entry_id
+                    )
             await self.hass.config_entries.async_reload(existing.entry_id)
             return self.async_abort(reason="reauth_successful")
 
-        # Fresh install path — create new entry (and bail out if already configured)
-        facility = facilities[0]
-        await self.async_set_unique_id(facility.facility_id)
-        self._abort_if_unique_id_configured(updates={CONF_TOKEN: token})
+        # Fresh install path — create one entry per unconfigured facility.
+        configured = {
+            e.unique_id
+            for e in self.hass.config_entries.async_entries(DOMAIN)
+            if e.unique_id
+        }
+        new_facilities = [f for f in facilities if f.facility_id not in configured]
 
+        if not new_facilities:
+            return self.async_abort(reason="already_configured")
+
+        # Schedule import flows for every facility after the first. Each
+        # import flow runs independently and creates its own entry with the
+        # shared token — no additional BankID login required.
+        for facility in new_facilities[1:]:
+            self.hass.async_create_task(
+                self.hass.config_entries.flow.async_init(
+                    DOMAIN,
+                    context={"source": config_entries.SOURCE_IMPORT},
+                    data={
+                        CONF_TOKEN: token,
+                        "facility_id": facility.facility_id,
+                        "street": facility.street,
+                        "house_number": facility.house_number,
+                    },
+                )
+            )
+
+        first = new_facilities[0]
+        await self.async_set_unique_id(first.facility_id)
+        self._abort_if_unique_id_configured(updates={CONF_TOKEN: token})
         return self.async_create_entry(
-            title=f"{facility.street} {facility.house_number}",
+            title=f"{first.street} {first.house_number}",
             data={
                 CONF_TOKEN: token,
-                CONF_FACILITY_ID: facility.facility_id,
+                CONF_FACILITY_ID: first.facility_id,
+            },
+        )
+
+    async def async_step_import(
+        self, import_data: dict[str, Any]
+    ) -> config_entries.FlowResult:
+        """Create a config entry for an additional facility from a token
+        that was already obtained in a sibling config flow. Skipped if the
+        facility is already configured (race-safe)."""
+        facility_id = import_data["facility_id"]
+        await self.async_set_unique_id(facility_id)
+        self._abort_if_unique_id_configured(
+            updates={CONF_TOKEN: import_data[CONF_TOKEN]}
+        )
+        return self.async_create_entry(
+            title=f"{import_data['street']} {import_data['house_number']}",
+            data={
+                CONF_TOKEN: import_data[CONF_TOKEN],
+                CONF_FACILITY_ID: facility_id,
             },
         )
 
