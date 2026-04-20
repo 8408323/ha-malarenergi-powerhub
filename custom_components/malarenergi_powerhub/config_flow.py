@@ -253,7 +253,7 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     context={"source": config_entries.SOURCE_IMPORT},
                     data={
                         CONF_TOKEN: token,
-                        "facility_id": facility.facility_id,
+                        CONF_FACILITY_ID: facility.facility_id,
                         "street": facility.street,
                         "house_number": facility.house_number,
                     },
@@ -277,7 +277,7 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Create a config entry for an additional facility from a token
         that was already obtained in a sibling config flow. Skipped if the
         facility is already configured (race-safe)."""
-        facility_id = import_data["facility_id"]
+        facility_id = import_data[CONF_FACILITY_ID]
         await self.async_set_unique_id(facility_id)
         self._abort_if_unique_id_configured(
             updates={CONF_TOKEN: import_data[CONF_TOKEN]}

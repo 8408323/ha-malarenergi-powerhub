@@ -304,7 +304,7 @@ class TestAsyncFinishUserFlow:
         flow.hass.config_entries.flow.async_init.assert_called_once()
         _, kwargs = flow.hass.config_entries.flow.async_init.call_args
         assert kwargs["context"]["source"] == config_entries.SOURCE_IMPORT
-        assert kwargs["data"]["facility_id"] == other.facility_id
+        assert kwargs["data"][CONF_FACILITY_ID] == other.facility_id
         assert kwargs["data"][CONF_TOKEN] == NEW_TOKEN
 
     async def test_user_flow_skips_already_configured_facilities(self) -> None:
@@ -388,7 +388,7 @@ class TestAsyncStepImport:
 
         result = await flow.async_step_import({
             CONF_TOKEN: NEW_TOKEN,
-            "facility_id": "other-uuid-999",
+            CONF_FACILITY_ID: "other-uuid-999",
             "street": "Lillgatan",
             "house_number": 5,
         })
