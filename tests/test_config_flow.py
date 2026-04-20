@@ -402,6 +402,24 @@ class TestAsyncStepImport:
         assert result["data"][CONF_TOKEN] == NEW_TOKEN
         assert result["data"][CONF_FACILITY_ID] == "other-uuid-999"
 
+    async def test_import_aborts_on_missing_required_fields(self) -> None:
+        """An import payload missing any required field should abort
+        cleanly rather than crash with a KeyError."""
+        flow = _make_flow(config_entries.SOURCE_IMPORT)
+        flow.async_set_unique_id = AsyncMock()
+        flow._abort_if_unique_id_configured = MagicMock()
+
+        result = await flow.async_step_import({
+            CONF_TOKEN: NEW_TOKEN,
+            # CONF_FACILITY_ID missing
+            "street": "Lillgatan",
+            "house_number": 5,
+        })
+
+        assert result["type"] == "abort"
+        assert result["reason"] == "invalid_import_data"
+        flow.async_set_unique_id.assert_not_called()
+
 
 class TestReauthSiblingTokenPropagation:
     async def test_reauth_updates_all_sibling_entries_with_new_token(self) -> None:

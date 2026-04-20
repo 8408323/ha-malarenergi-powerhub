@@ -235,6 +235,7 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             # additional facility would need its own reauth flow when
             # the token expires (they all share one JWT).
             account_facility_ids = {f.facility_id for f in facilities}
+            entry_ids_to_reload: list[str] = [existing.entry_id]
             for sibling in self.hass.config_entries.async_entries(DOMAIN):
                 if (
                     sibling.entry_id != existing.entry_id
@@ -246,10 +247,26 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         sibling,
                         data={**sibling.data, CONF_TOKEN: token},
                     )
-                    await self.hass.config_entries.async_reload(
-                        sibling.entry_id
+                    entry_ids_to_reload.append(sibling.entry_id)
+            # Reload the entries concurrently so many-facility accounts
+            # don't serialize 5+ reloads and risk the flow timing out.
+            # Per-entry failures don't block the reauth result: the token
+            # has already been persisted, so we surface reload errors in
+            # logs but still report reauth_successful.
+            results = await asyncio.gather(
+                *(
+                    self.hass.config_entries.async_reload(eid)
+                    for eid in entry_ids_to_reload
+                ),
+                return_exceptions=True,
+            )
+            for eid, result in zip(entry_ids_to_reload, results):
+                if isinstance(result, Exception):
+                    _LOGGER.error(
+                        "Failed to reload entry %s after reauth: %s",
+                        eid,
+                        result,
                     )
-            await self.hass.config_entries.async_reload(existing.entry_id)
             return self.async_abort(reason="reauth_successful")
 
         # Fresh install path — create one entry per unconfigured facility.
@@ -297,15 +314,27 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Create a config entry for an additional facility from a token
         that was already obtained in a sibling config flow. Skipped if the
         facility is already configured (race-safe)."""
-        facility_id = import_data[CONF_FACILITY_ID]
+        # The primary flow in this module builds the payload, so all four
+        # fields should be present. Guard anyway: an old/malformed import
+        # flow (e.g. replayed after an HA version upgrade) shouldn't crash
+        # with a KeyError — abort cleanly instead.
+        facility_id = import_data.get(CONF_FACILITY_ID)
+        token = import_data.get(CONF_TOKEN)
+        street = import_data.get("street")
+        house_number = import_data.get("house_number")
+        if not facility_id or not token or street is None or house_number is None:
+            _LOGGER.error(
+                "Import flow received incomplete data: keys=%s",
+                sorted(import_data.keys()),
+            )
+            return self.async_abort(reason="invalid_import_data")
+
         await self.async_set_unique_id(facility_id)
-        self._abort_if_unique_id_configured(
-            updates={CONF_TOKEN: import_data[CONF_TOKEN]}
-        )
+        self._abort_if_unique_id_configured(updates={CONF_TOKEN: token})
         return self.async_create_entry(
-            title=f"{import_data['street']} {import_data['house_number']}",
+            title=f"{street} {house_number}",
             data={
-                CONF_TOKEN: import_data[CONF_TOKEN],
+                CONF_TOKEN: token,
                 CONF_FACILITY_ID: facility_id,
             },
         )
