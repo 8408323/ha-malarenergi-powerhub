@@ -1,5 +1,6 @@
 {
   "name": "Mälarenergi PowerHub",
   "homeassistant": "2024.6.0",
-  "render_readme": true
+  "render_readme": true,
+  "logo": "https://raw.githubusercontent.com/8408323/ha-malarenergi-powerhub/main/custom_components/malarenergi_powerhub/brand/logo.png"
 }
