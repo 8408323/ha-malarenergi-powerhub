@@ -93,6 +93,8 @@ A QR code is displayed in the dialog:
 4. **Approve** the login request in BankID
 
 > **Note:** The QR code rotates every few seconds. If it expires before you scan it, click **Submit** in the dialog to get a fresh one.
+>
+> **Be patient after approving:** once you approve in BankID, sign-in can take **1–2 minutes** to complete if Mälarenergi's servers are slow. Wait for the dialog to close on its own rather than retrying.
 
 ---
 
@@ -110,6 +112,20 @@ After a successful BankID login, a **PowerHub** device is created under *Setting
 
 The full entity list — including real-time power, per-phase currents, facility metadata, writable limits, and sharing controls — is documented in [user_manual.md](user_manual.md). Sensors refresh every 60 seconds.
 
+### What the device looks like in Home Assistant
+
+Opening the **PowerHub** device under *Settings → Devices & Services → Mälarenergi PowerHub* shows all sensors, configuration entities, and diagnostics:
+
+![PowerHub device — sensors tab](images/09_device_sensors.png)
+
+Configuration entities (writable fuse/power limits, facility metadata, notification toggles) are grouped in the **Configuration** section:
+
+![PowerHub device — configuration tab](images/10_device_configuration.png)
+
+Diagnostic entities (Wi-Fi signal, firmware version, HAN port state, uptime) are grouped in the **Diagnostic** section:
+
+![PowerHub device — diagnostics tab](images/11_device_diagnostics.png)
+
 ---
 
 ## Re-authentication
@@ -117,6 +133,8 @@ The full entity list — including real-time power, per-phase currents, facility
 The JWT token issued by BankID expires after some time. When it does, Home Assistant will show a notification:
 
 > *Mälarenergi PowerHub — re-authentication required*
+
+![Re-authentication required notification](images/12_reauth_required_notification.png)
 
 Click the notification and follow the same BankID QR flow to renew your session.
 
