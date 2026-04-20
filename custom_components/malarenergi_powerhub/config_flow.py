@@ -15,6 +15,14 @@ from .const import CONF_FACILITY_ID, CONF_TOKEN, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
+# On Submit from the QR form we poll these flags, so a just-completed BankID
+# login lands on the same click instead of the user having to click Submit
+# again. 8 * 0.5 s = 4 s — long enough for the 1 s-interval background poller
+# to catch `complete` after the user's scan, short enough to stay well under
+# HA's frontend step timeout.
+SUBMIT_WAIT_ITERATIONS = 8
+SUBMIT_WAIT_INTERVAL = 0.5
+
 
 class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """BankID QR config flow for Mälarenergi PowerHub."""
@@ -143,16 +151,29 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_bankid_qr(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        """Called when user clicks Submit — check status and show refreshed QR."""
+        """Called when user clicks Submit — wait briefly for the background
+        poller to see `complete`, then either finish the flow or show a
+        refreshed QR for another scan."""
         # Guard: if transaction is missing (e.g. flow resumed after HA restart),
         # restart from the beginning so we get a fresh BankID session.
         if not self._transaction_id or not self._poll_task:
             _LOGGER.warning("bankid_qr submit: no transaction, restarting flow")
             return await self.async_step_user()
 
+        # If the user has already scanned the QR on their phone, BankID
+        # typically reports `complete` within a few seconds. Rather than
+        # immediately returning a stale "please scan again" form, hold the
+        # Submit handler for a short window so a just-completed login lands
+        # on the same click.
+        tx_short = self._transaction_id[:8]
+        for _ in range(SUBMIT_WAIT_ITERATIONS):
+            if self._token or self._failed or self._poll_task.done():
+                break
+            await asyncio.sleep(SUBMIT_WAIT_INTERVAL)
+
         _LOGGER.warning(
             "bankid_qr submit: tx=%s has_token=%s failed=%s task_done=%s source=%s",
-            self._transaction_id[:8],
+            tx_short,
             bool(self._token),
             self._failed,
             self._poll_task.done(),
