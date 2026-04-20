@@ -52,6 +52,9 @@ tools/.env
 # Local-only planning notes
 plan.md
 
+# Local-only Claude Code agent guidance
+CLAUDE.md
+
 # mitmproxy state
 .mitmproxy/
 ~/.mitmproxy/
