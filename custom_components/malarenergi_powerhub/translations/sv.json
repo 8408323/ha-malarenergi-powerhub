@@ -7,7 +7,7 @@
       },
       "bankid_qr": {
         "title": "Skanna QR-kod med BankID",
-        "description": "Logga in med Mobilt BankID:\n1. Öppna BankID-appen på din telefon\n2. Tryck **Skicka** för att generera en ny QR-kod\n3. Skanna QR-koden omedelbart med BankID\n4. Godkänn inloggningen i BankID — dialogrutan stängs automatiskt\n\nQR-koden roterar varje sekund — tryck Skicka precis innan du skannar.\n\n**Ha tålamod:** efter godkännande i BankID kan inloggningen ta 1–2 minuter om Mälarenergis servrar är långsamma. Vänta istället för att försöka igen."
+        "description": "Logga in med Mobilt BankID:\n1. Öppna BankID-appen på din telefon\n2. Tryck **Skicka** för att generera en ny QR-kod\n3. Skanna QR-koden omedelbart med BankID\n4. Godkänn inloggningen i BankID — dialogrutan brukar stängas av sig själv inom några sekunder\n\nQR-koden roterar varje sekund — tryck Skicka precis innan du skannar.\n\n**Ha tålamod:** om Mälarenergis servrar är långsamma kan inloggningen ta 1–2 minuter efter godkännandet. Om dialogrutan inte stängts efter någon minut, tryck **Skicka** en gång för att slutföra — skanna inte om."
       }
     },
     "error": {

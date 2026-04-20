@@ -7,7 +7,7 @@
       },
       "bankid_qr": {
         "title": "Scan QR code with BankID",
-        "description": "Sign in with Mobile BankID:\n1. Open the BankID app on your phone\n2. Click **Submit** to generate a fresh QR code\n3. Scan the QR code immediately with BankID\n4. Approve the login in BankID — the dialog will close automatically\n\nThe QR rotates every second — click Submit right before scanning.\n\n**Be patient:** after approving in BankID, sign-in can take 1–2 minutes to complete if Mälarenergi's servers are slow. Please wait rather than retrying."
+        "description": "Sign in with Mobile BankID:\n1. Open the BankID app on your phone\n2. Click **Submit** to generate a fresh QR code\n3. Scan the QR code immediately with BankID\n4. Approve the login in BankID — the dialog usually closes on its own within a few seconds\n\nThe QR rotates every second — click Submit right before scanning.\n\n**Be patient:** if Mälarenergi's servers are slow, sign-in can take 1–2 minutes after approving. If the dialog hasn't closed after a minute or two, click **Submit** once to finalise — do not re-scan."
       }
     },
     "error": {

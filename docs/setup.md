@@ -94,18 +94,18 @@ A QR code is displayed in the dialog:
 
 > **Note:** The QR code rotates every few seconds. If it expires before you scan it, click **Submit** in the dialog to get a fresh one.
 >
-> **Be patient after approving:** once you approve in BankID, sign-in can take **1–2 minutes** to complete if Mälarenergi's servers are slow. Wait for the dialog to close on its own rather than retrying.
+> **Be patient after approving:** once you approve in BankID, sign-in can take **1–2 minutes** to complete if Mälarenergi's servers are slow. If the dialog hasn't closed after a minute or two, click **Submit** once to finalise — do not re-scan.
 
 ---
 
 ## Step 7 — Done!
 
-After a successful BankID login, a **PowerHub** device is created under *Settings → Devices & Services → Mälarenergi PowerHub*. Among its entities, these three are Energy-dashboard compatible:
+After a successful BankID login, a **PowerHub** device is created under *Settings → Devices & Services → Mälarenergi PowerHub*. The two energy sensors below can be used directly in Home Assistant's **Energy dashboard**; the spot price sensor is a monetary sensor (not an Energy-dashboard source, but useful for automations and cost cards):
 
 | Entity | Description | Unit |
 |---|---|---|
-| `sensor.powerhub_import_today` | Grid import today (midnight → now) | kWh |
-| `sensor.powerhub_export_today` | Grid export today (solar) | kWh |
+| `sensor.powerhub_import_today` | Grid import today (midnight → now) — Energy-dashboard compatible | kWh |
+| `sensor.powerhub_export_today` | Grid export today (solar) — Energy-dashboard compatible | kWh |
 | `sensor.powerhub_spot_price` | Current Nordpool spot price for your region | öre/kWh |
 
 ![Integration configured with sensors](images/08_integration_success.png)
