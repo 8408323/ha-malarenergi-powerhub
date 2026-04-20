@@ -85,20 +85,49 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Background: keep polling BankID, store latest QR / token / failed."""
         session = async_get_clientsession(self.hass)
         assert self._transaction_id is not None
+        tx_short = self._transaction_id[:8]
+        _LOGGER.warning("BankID poller starting (tx=%s)", tx_short)
+        poll_count = 0
         try:
             async for status, qr, token in bankid_poll(session, self._transaction_id):
+                poll_count += 1
+                # Log every 10th pending poll + every non-pending poll so the
+                # log doesn't drown but we can still see rotation progress.
+                if status != "pending" or poll_count % 10 == 1:
+                    _LOGGER.warning(
+                        "BankID poll #%d tx=%s status=%s has_qr=%s has_token=%s",
+                        poll_count,
+                        tx_short,
+                        status,
+                        bool(qr),
+                        bool(token),
+                    )
                 if status == "pending" and qr:
                     self._qr_code = qr
                 elif status == "complete" and token:
+                    _LOGGER.warning(
+                        "BankID auth complete after %d polls (tx=%s)",
+                        poll_count,
+                        tx_short,
+                    )
                     self._token = token
                     return
                 elif status == "failed":
+                    _LOGGER.warning(
+                        "BankID auth failed after %d polls (tx=%s)",
+                        poll_count,
+                        tx_short,
+                    )
                     self._failed = True
                     return
         except asyncio.CancelledError:
-            pass
+            _LOGGER.warning(
+                "BankID poller cancelled after %d polls (tx=%s)",
+                poll_count,
+                tx_short,
+            )
         except Exception as err:
-            _LOGGER.error("BankID polling error: %s", err)
+            _LOGGER.error("BankID polling error (tx=%s): %s", tx_short, err)
             self._failed = True
 
     def _show_qr_form(self) -> config_entries.ConfigFlowResult:
@@ -118,7 +147,17 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # Guard: if transaction is missing (e.g. flow resumed after HA restart),
         # restart from the beginning so we get a fresh BankID session.
         if not self._transaction_id or not self._poll_task:
+            _LOGGER.warning("bankid_qr submit: no transaction, restarting flow")
             return await self.async_step_user()
+
+        _LOGGER.warning(
+            "bankid_qr submit: tx=%s has_token=%s failed=%s task_done=%s source=%s",
+            self._transaction_id[:8],
+            bool(self._token),
+            self._failed,
+            self._poll_task.done(),
+            self.source,
+        )
 
         if self._token:
             self._cancel_task()
@@ -142,6 +181,11 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         reason="reauth_successful" so HA dismisses the "re-auth required"
         notification.
         """
+        _LOGGER.warning(
+            "BankID _async_finish entered: source=%s context_keys=%s",
+            self.source,
+            list(self.context.keys()),
+        )
         from .api import PowerHubApiClient
         session = async_get_clientsession(self.hass)
         client = PowerHubApiClient(session, token)
