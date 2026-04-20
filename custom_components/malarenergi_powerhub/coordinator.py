@@ -4,7 +4,9 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, replace as dataclass_replace
 from datetime import datetime, timedelta, timezone
+from typing import Awaitable, TypeVar, overload
 
+from aiohttp import ClientResponseError
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -72,6 +74,33 @@ def _now_ms() -> int:
     return int(datetime.now(timezone.utc).timestamp() * 1000)
 
 
+_T = TypeVar("_T")
+
+
+@overload
+async def _optional(coro: Awaitable[_T], name: str) -> _T | None: ...
+@overload
+async def _optional(coro: Awaitable[_T], name: str, *, default: _T) -> _T: ...
+async def _optional(
+    coro: Awaitable[_T], name: str, *, default: _T | None = None
+) -> _T | None:
+    """Await an optional endpoint; map 404 to `default`, re-raise everything else.
+
+    404 is the expected response for accounts whose PowerHub device isn't
+    fully provisioned. Other errors (5xx, timeouts, protocol) should still
+    fail the coordinator tick so the user sees the problem instead of
+    getting silently stale/missing data. AuthError propagates so the
+    reauth guard runs.
+    """
+    try:
+        return await coro
+    except ClientResponseError as err:
+        if err.status == 404:
+            _LOGGER.debug("Optional endpoint %s returned 404", name)
+            return default
+        raise
+
+
 class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
     """Coordinator that polls the Bitvis Flow API."""
 
@@ -84,6 +113,11 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
         self._cached_agreements: list[Agreement] | None = None
         self._cached_facility_info: FacilityInfo | None = None
         self._facility_info_resolved = False
+        # True once we've asked HA to start a reauth flow; reset after a
+        # successful poll. Prevents spamming async_start_reauth (and its
+        # log line) on every 60-second tick while the user is scanning the
+        # BankID QR code.
+        self._reauth_pending = False
         super().__init__(
             hass,
             _LOGGER,
@@ -187,14 +221,25 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
             invitations = await client.get_invitations()
             invitees = await client.get_invitees(self._facility_id)
 
-            # Power backend: real-time power, diagnostics, facility control
-            current_power = await power_client.get_current_power(self._facility_id)
-            current_power_phases = await power_client.get_current_power_phases(
-                self._facility_id
+            # Power backend: real-time power, diagnostics, facility control.
+            # These endpoints can 404 for accounts whose PowerHub device isn't
+            # fully provisioned — treat as "no data" instead of failing the tick.
+            current_power = await _optional(
+                power_client.get_current_power(self._facility_id), "current_power"
             )
-            diagnostics = await power_client.get_diagnostics(self._facility_id)
-            facility_control = await power_client.get_facility_control(self._facility_id)
-            fcr_status = await power_client.get_fcr_status(self._facility_id)
+            current_power_phases = await _optional(
+                power_client.get_current_power_phases(self._facility_id),
+                "current_power_phases",
+            )
+            diagnostics = await _optional(
+                power_client.get_diagnostics(self._facility_id), "diagnostics"
+            )
+            facility_control = await _optional(
+                power_client.get_facility_control(self._facility_id), "facility_control"
+            )
+            fcr_status = await _optional(
+                power_client.get_fcr_status(self._facility_id), "fcr_status"
+            )
 
             # Hourly energy for today (from midnight Stockholm time until now)
             import zoneinfo
@@ -204,18 +249,28 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
             day_start_utc = now_local.replace(
                 hour=0, minute=0, second=0, microsecond=0
             ).astimezone(timezone.utc)
-            hourly_energy_today = await power_client.get_hourly_energy(
-                self._facility_id,
-                start=day_start_utc,
-                end=datetime.now(tz=timezone.utc),
+            hourly_energy_today = await _optional(
+                power_client.get_hourly_energy(
+                    self._facility_id,
+                    start=day_start_utc,
+                    end=datetime.now(tz=timezone.utc),
+                ),
+                "hourly_energy_today",
+                default=[],
             )
 
         except AuthError:
-            _LOGGER.warning("Token expired — triggering re-auth")
-            self._entry.async_start_reauth(self.hass)
+            if not self._reauth_pending:
+                _LOGGER.warning("Token expired — triggering re-auth")
+                self._entry.async_start_reauth(self.hass)
+                self._reauth_pending = True
             raise UpdateFailed("Token expired, re-authentication required")
         except Exception as err:
             raise UpdateFailed(f"API error: {err}") from err
+
+        # Poll succeeded — if the user just completed re-auth, clear the flag
+        # so a future token expiry triggers a fresh reauth flow.
+        self._reauth_pending = False
 
         return PowerHubData(
             consumption_today_kwh=consumption_kwh,

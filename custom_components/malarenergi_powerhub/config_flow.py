@@ -15,6 +15,14 @@ from .const import CONF_FACILITY_ID, CONF_TOKEN, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
+# On Submit from the QR form we poll these flags, so a just-completed BankID
+# login lands on the same click instead of the user having to click Submit
+# again. 8 * 0.5 s = 4 s — long enough for the 1 s-interval background poller
+# to catch `complete` after the user's scan, short enough to stay well under
+# HA's frontend step timeout.
+SUBMIT_WAIT_ITERATIONS = 8
+SUBMIT_WAIT_INTERVAL = 0.5
+
 
 class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """BankID QR config flow for Mälarenergi PowerHub."""
@@ -39,7 +47,7 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
-    ) -> config_entries.FlowResult:
+    ) -> config_entries.ConfigFlowResult:
         """Start BankID session, fetch first QR synchronously, then poll in bg."""
         self._cancel_task()
         self._token = None
@@ -101,7 +109,7 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             _LOGGER.error("BankID polling error: %s", err)
             self._failed = True
 
-    def _show_qr_form(self) -> config_entries.FlowResult:
+    def _show_qr_form(self) -> config_entries.ConfigFlowResult:
         return self.async_show_form(
             step_id="bankid_qr",
             data_schema=vol.Schema({
@@ -113,12 +121,24 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_bankid_qr(
         self, user_input: dict[str, Any] | None = None
-    ) -> config_entries.FlowResult:
-        """Called when user clicks Submit — check status and show refreshed QR."""
+    ) -> config_entries.ConfigFlowResult:
+        """Called when user clicks Submit — wait briefly for the background
+        poller to see `complete`, then either finish the flow or show a
+        refreshed QR for another scan."""
         # Guard: if transaction is missing (e.g. flow resumed after HA restart),
         # restart from the beginning so we get a fresh BankID session.
         if not self._transaction_id or not self._poll_task:
             return await self.async_step_user()
+
+        # If the user has already scanned the QR on their phone, BankID
+        # typically reports `complete` within a few seconds. Rather than
+        # immediately returning a stale "please scan again" form, hold the
+        # Submit handler for a short window so a just-completed login lands
+        # on the same click.
+        for _ in range(SUBMIT_WAIT_ITERATIONS):
+            if self._token or self._failed or self._poll_task.done():
+                break
+            await asyncio.sleep(SUBMIT_WAIT_INTERVAL)
 
         if self._token:
             self._cancel_task()
@@ -134,8 +154,14 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # Return updated QR (background task keeps _qr_code fresh)
         return self._show_qr_form()
 
-    async def _async_finish(self, token: str) -> config_entries.FlowResult:
-        """Create config entry after successful BankID login."""
+    async def _async_finish(self, token: str) -> config_entries.ConfigFlowResult:
+        """Complete the flow after successful BankID login.
+
+        For a fresh install: create a new config entry.
+        For a reauth: update the existing entry's token, reload, and abort with
+        reason="reauth_successful" so HA dismisses the "re-auth required"
+        notification.
+        """
         from .api import PowerHubApiClient
         session = async_get_clientsession(self.hass)
         client = PowerHubApiClient(session, token)
@@ -159,20 +185,162 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors={"base": "no_facilities"},
             )
 
-        facility = facilities[0]
-        await self.async_set_unique_id(facility.facility_id)
-        self._abort_if_unique_id_configured(updates={CONF_TOKEN: token})
+        # Reauth path — update existing entry in place. Preserve the
+        # entry's original facility_id; only refresh the token. If we can't
+        # unambiguously identify which entry is being reauthed, abort with a
+        # reauth-specific reason rather than falling through to create_entry
+        # (which would mutate unrelated configuration).
+        if self.source == config_entries.SOURCE_REAUTH:
+            entry_id = self.context.get("entry_id")
+            existing = (
+                self.hass.config_entries.async_get_entry(entry_id)
+                if entry_id
+                else None
+            )
+            # Fallback: locate the entry by unique_id against the returned
+            # facilities. Require exactly one match — more than one means we
+            # cannot safely choose which entry to update.
+            if existing is None:
+                candidates = [
+                    e
+                    for e in self.hass.config_entries.async_entries(DOMAIN)
+                    if e.unique_id
+                    and any(f.facility_id == e.unique_id for f in facilities)
+                ]
+                if len(candidates) == 1:
+                    existing = candidates[0]
+                elif len(candidates) > 1:
+                    return self.async_abort(reason="reauth_ambiguous")
 
+            if existing is None:
+                # No entry identifiable as the reauth target — abort instead
+                # of silently creating a new entry.
+                return self.async_abort(reason="reauth_unresolved")
+
+            # Sanity-check: the entry's facility must still be one the
+            # just-authenticated account can see. If not, the user likely
+            # logged in with a different BankID identity — abort rather
+            # than silently retargeting.
+            existing_facility_id = existing.data.get(CONF_FACILITY_ID)
+            if not any(
+                f.facility_id == existing_facility_id for f in facilities
+            ):
+                return self.async_abort(reason="reauth_wrong_account")
+            self.hass.config_entries.async_update_entry(
+                existing,
+                data={**existing.data, CONF_TOKEN: token},
+            )
+            # Same account owns the token — push the refreshed token to
+            # every sibling entry for this account too. Otherwise each
+            # additional facility would need its own reauth flow when
+            # the token expires (they all share one JWT).
+            account_facility_ids = {f.facility_id for f in facilities}
+            entry_ids_to_reload: list[str] = [existing.entry_id]
+            for sibling in self.hass.config_entries.async_entries(DOMAIN):
+                if (
+                    sibling.entry_id != existing.entry_id
+                    and sibling.unique_id
+                    and sibling.unique_id in account_facility_ids
+                    and sibling.data.get(CONF_TOKEN) != token
+                ):
+                    self.hass.config_entries.async_update_entry(
+                        sibling,
+                        data={**sibling.data, CONF_TOKEN: token},
+                    )
+                    entry_ids_to_reload.append(sibling.entry_id)
+            # Reload the entries concurrently so many-facility accounts
+            # don't serialize 5+ reloads and risk the flow timing out.
+            # Per-entry failures don't block the reauth result: the token
+            # has already been persisted, so we surface reload errors in
+            # logs but still report reauth_successful.
+            results = await asyncio.gather(
+                *(
+                    self.hass.config_entries.async_reload(eid)
+                    for eid in entry_ids_to_reload
+                ),
+                return_exceptions=True,
+            )
+            for eid, result in zip(entry_ids_to_reload, results):
+                if isinstance(result, Exception):
+                    _LOGGER.error(
+                        "Failed to reload entry %s after reauth: %s",
+                        eid,
+                        result,
+                    )
+            return self.async_abort(reason="reauth_successful")
+
+        # Fresh install path — create one entry per unconfigured facility.
+        configured = {
+            e.unique_id
+            for e in self.hass.config_entries.async_entries(DOMAIN)
+            if e.unique_id
+        }
+        new_facilities = [f for f in facilities if f.facility_id not in configured]
+
+        if not new_facilities:
+            return self.async_abort(reason="already_configured")
+
+        # Schedule import flows for every facility after the first. Each
+        # import flow runs independently and creates its own entry with the
+        # shared token — no additional BankID login required.
+        for facility in new_facilities[1:]:
+            self.hass.async_create_task(
+                self.hass.config_entries.flow.async_init(
+                    DOMAIN,
+                    context={"source": config_entries.SOURCE_IMPORT},
+                    data={
+                        CONF_TOKEN: token,
+                        CONF_FACILITY_ID: facility.facility_id,
+                        "street": facility.street,
+                        "house_number": facility.house_number,
+                    },
+                )
+            )
+
+        first = new_facilities[0]
+        await self.async_set_unique_id(first.facility_id)
+        self._abort_if_unique_id_configured(updates={CONF_TOKEN: token})
         return self.async_create_entry(
-            title=f"{facility.street} {facility.house_number}",
+            title=f"{first.street} {first.house_number}",
             data={
                 CONF_TOKEN: token,
-                CONF_FACILITY_ID: facility.facility_id,
+                CONF_FACILITY_ID: first.facility_id,
+            },
+        )
+
+    async def async_step_import(
+        self, import_data: dict[str, Any]
+    ) -> config_entries.ConfigFlowResult:
+        """Create a config entry for an additional facility from a token
+        that was already obtained in a sibling config flow. Skipped if the
+        facility is already configured (race-safe)."""
+        # The primary flow in this module builds the payload, so all four
+        # fields should be present. Guard anyway: an old/malformed import
+        # flow (e.g. replayed after an HA version upgrade) shouldn't crash
+        # with a KeyError — abort cleanly instead.
+        facility_id = import_data.get(CONF_FACILITY_ID)
+        token = import_data.get(CONF_TOKEN)
+        street = import_data.get("street")
+        house_number = import_data.get("house_number")
+        if not facility_id or not token or street is None or house_number is None:
+            _LOGGER.error(
+                "Import flow received incomplete data: keys=%s",
+                sorted(import_data.keys()),
+            )
+            return self.async_abort(reason="invalid_import_data")
+
+        await self.async_set_unique_id(facility_id)
+        self._abort_if_unique_id_configured(updates={CONF_TOKEN: token})
+        return self.async_create_entry(
+            title=f"{street} {house_number}",
+            data={
+                CONF_TOKEN: token,
+                CONF_FACILITY_ID: facility_id,
             },
         )
 
     async def async_step_reauth(
         self, user_input: dict[str, Any] | None = None
-    ) -> config_entries.FlowResult:
+    ) -> config_entries.ConfigFlowResult:
         """Re-authenticate when token expires."""
         return await self.async_step_user()

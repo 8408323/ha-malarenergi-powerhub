@@ -36,6 +36,7 @@ class NotificationsCoordinator(DataUpdateCoordinator[NotificationData]):
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         self._token = entry.data[CONF_TOKEN]
         self._entry = entry
+        self._reauth_pending = False
         super().__init__(
             hass,
             _LOGGER,
@@ -50,8 +51,12 @@ class NotificationsCoordinator(DataUpdateCoordinator[NotificationData]):
         try:
             notifications = await client.get_notifications()
         except AuthError:
-            _LOGGER.warning("Token expired fetching notifications — triggering re-auth")
-            self._entry.async_start_reauth(self.hass)
+            if not self._reauth_pending:
+                _LOGGER.warning(
+                    "Token expired fetching notifications — triggering re-auth"
+                )
+                self._entry.async_start_reauth(self.hass)
+                self._reauth_pending = True
             raise UpdateFailed("Token expired, re-authentication required")
         except ClientResponseError as err:
             if err.status == 400:
@@ -64,6 +69,10 @@ class NotificationsCoordinator(DataUpdateCoordinator[NotificationData]):
             raise UpdateFailed(f"Notifications API error: {err}") from err
         except Exception as err:
             raise UpdateFailed(f"Notifications API error: {err}") from err
+
+        # Poll succeeded — clear the reauth-pending flag so a future token
+        # expiry can trigger a fresh reauth flow.
+        self._reauth_pending = False
 
         if not notifications:
             return NotificationData(
