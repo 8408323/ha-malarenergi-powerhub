@@ -240,6 +240,8 @@ class TestAsyncFinishUserFlow:
         flow = _make_flow(config_entries.SOURCE_USER)
         flow.async_set_unique_id = AsyncMock()
         flow._abort_if_unique_id_configured = MagicMock()
+        flow.hass.config_entries.async_entries = MagicMock(return_value=[])
+        flow.hass.async_create_task = MagicMock()
 
         fake_client = MagicMock()
         fake_client.get_facilities = AsyncMock(return_value=[FACILITY])
@@ -256,7 +258,221 @@ class TestAsyncFinishUserFlow:
         flow._abort_if_unique_id_configured.assert_called_once_with(
             updates={CONF_TOKEN: NEW_TOKEN}
         )
+        # Only one facility → no import flows scheduled
+        flow.hass.async_create_task.assert_not_called()
         assert result["type"] == "create_entry"
         assert result["title"] == "Storgatan 1"
         assert result["data"][CONF_TOKEN] == NEW_TOKEN
         assert result["data"][CONF_FACILITY_ID] == FACILITY.facility_id
+
+    async def test_user_flow_with_two_facilities_schedules_import_for_second(
+        self,
+    ) -> None:
+        flow = _make_flow(config_entries.SOURCE_USER)
+        flow.async_set_unique_id = AsyncMock()
+        flow._abort_if_unique_id_configured = MagicMock()
+        flow.hass.config_entries.async_entries = MagicMock(return_value=[])
+        flow.hass.async_create_task = MagicMock()
+        flow.hass.config_entries.flow.async_init = MagicMock()
+
+        other = FacilityInfo(
+            facility_id="other-uuid-999",
+            street="Lillgatan",
+            house_number=5,
+            city="Västerås",
+            meter_id="meter-2",
+            region="SE3",
+            customer_id="cust-1",
+        )
+        fake_client = MagicMock()
+        fake_client.get_facilities = AsyncMock(return_value=[FACILITY, other])
+
+        with patch(
+            "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
+        ), patch(
+            "custom_components.malarenergi_powerhub.api.PowerHubApiClient",
+            return_value=fake_client,
+        ):
+            result = await flow._async_finish(NEW_TOKEN)
+
+        # First facility → inline create_entry
+        assert result["type"] == "create_entry"
+        assert result["data"][CONF_FACILITY_ID] == FACILITY.facility_id
+
+        # Second facility → scheduled as an import flow
+        flow.hass.async_create_task.assert_called_once()
+        flow.hass.config_entries.flow.async_init.assert_called_once()
+        _, kwargs = flow.hass.config_entries.flow.async_init.call_args
+        assert kwargs["context"]["source"] == config_entries.SOURCE_IMPORT
+        assert kwargs["data"][CONF_FACILITY_ID] == other.facility_id
+        assert kwargs["data"][CONF_TOKEN] == NEW_TOKEN
+
+    async def test_user_flow_skips_already_configured_facilities(self) -> None:
+        """If one of two facilities is already configured, only the new one
+        gets an entry — the configured one is untouched."""
+        flow = _make_flow(config_entries.SOURCE_USER)
+        flow.async_set_unique_id = AsyncMock()
+        flow._abort_if_unique_id_configured = MagicMock()
+        flow.hass.async_create_task = MagicMock()
+        flow.hass.config_entries.flow.async_init = MagicMock()
+
+        # FACILITY is already configured; `other` is new
+        configured_entry = MagicMock()
+        configured_entry.unique_id = FACILITY.facility_id
+        flow.hass.config_entries.async_entries = MagicMock(
+            return_value=[configured_entry]
+        )
+
+        other = FacilityInfo(
+            facility_id="other-uuid-999",
+            street="Lillgatan",
+            house_number=5,
+            city="Västerås",
+            meter_id="meter-2",
+            region="SE3",
+            customer_id="cust-1",
+        )
+        fake_client = MagicMock()
+        fake_client.get_facilities = AsyncMock(return_value=[FACILITY, other])
+
+        with patch(
+            "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
+        ), patch(
+            "custom_components.malarenergi_powerhub.api.PowerHubApiClient",
+            return_value=fake_client,
+        ):
+            result = await flow._async_finish(NEW_TOKEN)
+
+        # The new facility (other) is created inline, not FACILITY
+        assert result["type"] == "create_entry"
+        assert result["data"][CONF_FACILITY_ID] == other.facility_id
+        # No import flow scheduled — the only new facility was created inline
+        flow.hass.async_create_task.assert_not_called()
+
+    async def test_user_flow_aborts_when_all_facilities_already_configured(
+        self,
+    ) -> None:
+        flow = _make_flow(config_entries.SOURCE_USER)
+        flow.async_set_unique_id = AsyncMock()
+        flow._abort_if_unique_id_configured = MagicMock()
+        flow.hass.async_create_task = MagicMock()
+
+        configured_entry = MagicMock()
+        configured_entry.unique_id = FACILITY.facility_id
+        flow.hass.config_entries.async_entries = MagicMock(
+            return_value=[configured_entry]
+        )
+
+        fake_client = MagicMock()
+        fake_client.get_facilities = AsyncMock(return_value=[FACILITY])
+
+        with patch(
+            "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
+        ), patch(
+            "custom_components.malarenergi_powerhub.api.PowerHubApiClient",
+            return_value=fake_client,
+        ):
+            result = await flow._async_finish(NEW_TOKEN)
+
+        flow.hass.async_create_task.assert_not_called()
+        flow.async_set_unique_id.assert_not_awaited()
+        assert result["type"] == "abort"
+        assert result["reason"] == "already_configured"
+
+
+class TestAsyncStepImport:
+    async def test_import_creates_entry_from_prefetched_facility(self) -> None:
+        flow = _make_flow(config_entries.SOURCE_IMPORT)
+        flow.async_set_unique_id = AsyncMock()
+        flow._abort_if_unique_id_configured = MagicMock()
+
+        result = await flow.async_step_import({
+            CONF_TOKEN: NEW_TOKEN,
+            CONF_FACILITY_ID: "other-uuid-999",
+            "street": "Lillgatan",
+            "house_number": 5,
+        })
+
+        flow.async_set_unique_id.assert_awaited_once_with("other-uuid-999")
+        flow._abort_if_unique_id_configured.assert_called_once_with(
+            updates={CONF_TOKEN: NEW_TOKEN}
+        )
+        assert result["type"] == "create_entry"
+        assert result["title"] == "Lillgatan 5"
+        assert result["data"][CONF_TOKEN] == NEW_TOKEN
+        assert result["data"][CONF_FACILITY_ID] == "other-uuid-999"
+
+    async def test_import_aborts_on_missing_required_fields(self) -> None:
+        """An import payload missing any required field should abort
+        cleanly rather than crash with a KeyError."""
+        flow = _make_flow(config_entries.SOURCE_IMPORT)
+        flow.async_set_unique_id = AsyncMock()
+        flow._abort_if_unique_id_configured = MagicMock()
+
+        result = await flow.async_step_import({
+            CONF_TOKEN: NEW_TOKEN,
+            # CONF_FACILITY_ID missing
+            "street": "Lillgatan",
+            "house_number": 5,
+        })
+
+        assert result["type"] == "abort"
+        assert result["reason"] == "invalid_import_data"
+        flow.async_set_unique_id.assert_not_called()
+
+
+class TestReauthSiblingTokenPropagation:
+    async def test_reauth_updates_all_sibling_entries_with_new_token(self) -> None:
+        """When reauth succeeds, every entry belonging to the same account
+        (same token) gets the new token written — otherwise siblings would
+        each need their own reauth flow on the next expiry."""
+        flow = _make_flow(config_entries.SOURCE_REAUTH, entry_id=OLD_ENTRY_ID)
+
+        existing_entry = MagicMock()
+        existing_entry.entry_id = OLD_ENTRY_ID
+        existing_entry.unique_id = FACILITY.facility_id
+        existing_entry.data = {
+            CONF_TOKEN: "old-token",
+            CONF_FACILITY_ID: FACILITY.facility_id,
+        }
+        sibling_entry = MagicMock()
+        sibling_entry.entry_id = "sibling-entry-id"
+        sibling_entry.unique_id = "other-uuid-999"
+        sibling_entry.data = {
+            CONF_TOKEN: "old-token",
+            CONF_FACILITY_ID: "other-uuid-999",
+        }
+        flow.hass.config_entries.async_get_entry.return_value = existing_entry
+        flow.hass.config_entries.async_entries = MagicMock(
+            return_value=[existing_entry, sibling_entry]
+        )
+
+        other = FacilityInfo(
+            facility_id="other-uuid-999",
+            street="Lillgatan",
+            house_number=5,
+            city="Västerås",
+            meter_id="meter-2",
+            region="SE3",
+            customer_id="cust-1",
+        )
+        fake_client = MagicMock()
+        fake_client.get_facilities = AsyncMock(return_value=[FACILITY, other])
+
+        with patch(
+            "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
+        ), patch(
+            "custom_components.malarenergi_powerhub.api.PowerHubApiClient",
+            return_value=fake_client,
+        ):
+            result = await flow._async_finish(NEW_TOKEN)
+
+        # Both entries updated (existing + sibling)
+        assert flow.hass.config_entries.async_update_entry.call_count == 2
+        # Both reloaded
+        reload_calls = flow.hass.config_entries.async_reload.await_args_list
+        reloaded_ids = {call.args[0] for call in reload_calls}
+        assert reloaded_ids == {OLD_ENTRY_ID, "sibling-entry-id"}
+
+        assert result["type"] == "abort"
+        assert result["reason"] == "reauth_successful"

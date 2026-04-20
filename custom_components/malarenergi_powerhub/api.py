@@ -19,7 +19,7 @@ import logging
 import struct
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import AsyncGenerator, Iterator
+from typing import Any, AsyncGenerator, Iterator
 
 import aiohttp
 
@@ -171,7 +171,7 @@ class PowerHubApiClient:
     def _headers(self) -> dict:
         return {"Authorization": f"Bearer {self._token}"}
 
-    async def _get(self, path: str, **params) -> object:
+    async def _get(self, path: str, **params) -> Any:
         url = f"{BASE_URL}{path}"
         async with self._session.get(
             url,
@@ -184,7 +184,7 @@ class PowerHubApiClient:
             resp.raise_for_status()
             return await resp.json(content_type=None)
 
-    async def _post(self, path: str, body: dict) -> object:
+    async def _post(self, path: str, body: dict) -> Any:
         url = f"{BASE_URL}{path}"
         async with self._session.post(
             url,
@@ -788,7 +788,7 @@ class PowerApiClient:
     def _headers(self) -> dict:
         return {"Authorization": f"Bearer {self._token}"}
 
-    async def _get_json(self, path: str, **params) -> object:
+    async def _get_json(self, path: str, **params) -> Any:
         url = f"{POWER_BASE_URL}{path}"
         async with self._session.get(
             url,

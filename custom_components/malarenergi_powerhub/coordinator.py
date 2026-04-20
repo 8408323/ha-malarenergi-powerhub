@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, replace as dataclass_replace
 from datetime import datetime, timedelta, timezone
+from typing import Awaitable, TypeVar, overload
 
 from aiohttp import ClientResponseError
 from homeassistant.config_entries import ConfigEntry
@@ -73,7 +74,16 @@ def _now_ms() -> int:
     return int(datetime.now(timezone.utc).timestamp() * 1000)
 
 
-async def _optional(coro, name: str, default=None):
+_T = TypeVar("_T")
+
+
+@overload
+async def _optional(coro: Awaitable[_T], name: str) -> _T | None: ...
+@overload
+async def _optional(coro: Awaitable[_T], name: str, *, default: _T) -> _T: ...
+async def _optional(
+    coro: Awaitable[_T], name: str, *, default: _T | None = None
+) -> _T | None:
     """Await an optional endpoint; map 404 to `default`, re-raise everything else.
 
     404 is the expected response for accounts whose PowerHub device isn't
