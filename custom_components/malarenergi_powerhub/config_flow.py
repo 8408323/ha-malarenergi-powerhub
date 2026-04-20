@@ -39,7 +39,7 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
-    ) -> config_entries.FlowResult:
+    ) -> config_entries.ConfigFlowResult:
         """Start BankID session, fetch first QR synchronously, then poll in bg."""
         self._cancel_task()
         self._token = None
@@ -101,7 +101,7 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             _LOGGER.error("BankID polling error: %s", err)
             self._failed = True
 
-    def _show_qr_form(self) -> config_entries.FlowResult:
+    def _show_qr_form(self) -> config_entries.ConfigFlowResult:
         return self.async_show_form(
             step_id="bankid_qr",
             data_schema=vol.Schema({
@@ -113,7 +113,7 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_bankid_qr(
         self, user_input: dict[str, Any] | None = None
-    ) -> config_entries.FlowResult:
+    ) -> config_entries.ConfigFlowResult:
         """Called when user clicks Submit — check status and show refreshed QR."""
         # Guard: if transaction is missing (e.g. flow resumed after HA restart),
         # restart from the beginning so we get a fresh BankID session.
@@ -134,7 +134,7 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # Return updated QR (background task keeps _qr_code fresh)
         return self._show_qr_form()
 
-    async def _async_finish(self, token: str) -> config_entries.FlowResult:
+    async def _async_finish(self, token: str) -> config_entries.ConfigFlowResult:
         """Complete the flow after successful BankID login.
 
         For a fresh install: create a new config entry.
@@ -273,7 +273,7 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_import(
         self, import_data: dict[str, Any]
-    ) -> config_entries.FlowResult:
+    ) -> config_entries.ConfigFlowResult:
         """Create a config entry for an additional facility from a token
         that was already obtained in a sibling config flow. Skipped if the
         facility is already configured (race-safe)."""
@@ -292,6 +292,6 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_reauth(
         self, user_input: dict[str, Any] | None = None
-    ) -> config_entries.FlowResult:
+    ) -> config_entries.ConfigFlowResult:
         """Re-authenticate when token expires."""
         return await self.async_step_user()

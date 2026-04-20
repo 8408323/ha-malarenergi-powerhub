@@ -121,8 +121,9 @@ class PowerHubSelect(CoordinatorEntity[PowerHubCoordinator], SelectEntity):
     ) -> None:
         super().__init__(coordinator)
         self.entity_description = description
+        assert coordinator.config_entry is not None
         self._attr_unique_id = f"{coordinator.config_entry.entry_id}_{description.key}"
-        self._attr_options = list(description.options)
+        self._attr_options = list(description.options or [])
         self._attr_device_info = {
             "identifiers": {(DOMAIN, coordinator.config_entry.entry_id)},
             "name": f"PowerHub {coordinator.config_entry.title}",
