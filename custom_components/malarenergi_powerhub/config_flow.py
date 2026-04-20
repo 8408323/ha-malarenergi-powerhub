@@ -15,13 +15,12 @@ from .const import CONF_FACILITY_ID, CONF_TOKEN, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-# On Submit from the QR form we poll these flags, so a just-completed BankID
-# login lands on the same click instead of the user having to click Submit
-# again. 8 * 0.5 s = 4 s — long enough for the 1 s-interval background poller
-# to catch `complete` after the user's scan, short enough to stay well under
-# HA's frontend step timeout.
-SUBMIT_WAIT_ITERATIONS = 8
-SUBMIT_WAIT_INTERVAL = 0.5
+# On Submit from the QR form we briefly poll these flags so a just-completed
+# BankID login lands on the same click. Kept short (~1 s) so that if completion
+# hasn't arrived yet the user gets a fresh QR fast instead of staring at a
+# frozen dialog.
+SUBMIT_WAIT_ITERATIONS = 10
+SUBMIT_WAIT_INTERVAL = 0.1
 
 
 class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):

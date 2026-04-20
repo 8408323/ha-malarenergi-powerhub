@@ -91,10 +91,11 @@ A QR code is displayed in the dialog:
 2. Tap **Scan QR code** (or the QR icon)
 3. Point your camera at the QR code on screen
 4. **Approve** the login request in BankID
+5. Click **Submit** in the dialog to finalise sign-in
 
 > **Note:** The QR code rotates every few seconds. If it expires before you scan it, click **Submit** in the dialog to get a fresh one.
 >
-> **Be patient after approving:** once you approve in BankID, sign-in can take **1–2 minutes** to complete if Mälarenergi's servers are slow. If the dialog hasn't closed after a minute or two, click **Submit** once to finalise — do not re-scan.
+> **Be patient after approving:** once you approve in BankID, sign-in can take **1–2 minutes** to complete if Mälarenergi's servers are slow. Keep clicking **Submit** every few seconds until the dialog closes — do not re-scan.
 
 ---
 
