@@ -4,6 +4,7 @@ Full switch entity tests require the HA runtime (CoordinatorEntity); these tests
 cover the description tables so any wiring mistake (wrong attribute name, typo)
 fails in CI.
 """
+
 from __future__ import annotations
 
 from custom_components.malarenergi_powerhub.api import (

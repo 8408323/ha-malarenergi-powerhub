@@ -1,4 +1,5 @@
 """DataUpdateCoordinator for Mälarenergi PowerHub."""
+
 from __future__ import annotations
 
 import logging
@@ -39,31 +40,35 @@ _LOGGER = logging.getLogger(__name__)
 @dataclass
 class PowerHubData:
     """Snapshot of data from the PowerHub API."""
-    consumption_today_kwh: float | None    # kWh imported from grid today so far
-    production_today_kwh: float | None     # kWh exported to grid today so far
-    spot_price_now: float | None           # Current Nordpool spot price (öre/kWh)
-    attributes: FacilityAttributes | None  # Static facility attributes (solar, battery, etc.)
-    invitations: list[Invitation]          # Active sharing invitations
-    invitees: list[Invitee]               # People with access to the facility
+
+    consumption_today_kwh: float | None  # kWh imported from grid today so far
+    production_today_kwh: float | None  # kWh exported to grid today so far
+    spot_price_now: float | None  # Current Nordpool spot price (öre/kWh)
+    attributes: (
+        FacilityAttributes | None
+    )  # Static facility attributes (solar, battery, etc.)
+    invitations: list[Invitation]  # Active sharing invitations
+    invitees: list[Invitee]  # People with access to the facility
     # Account / facility metadata
-    profile: AccountProfile | None         # Account holder name, email, phone
-    agreements: list[Agreement]            # Supply agreements
-    facility_info: FacilityInfo | None     # Address, meter ID, region
+    profile: AccountProfile | None  # Account holder name, email, phone
+    agreements: list[Agreement]  # Supply agreements
+    facility_info: FacilityInfo | None  # Address, meter ID, region
     notification_settings: NotificationSettings | None  # Push notification prefs
-    monthly_insights: MonthlyInsights | None            # Current-month price/usage stats
-    production_ytd_kwh: float | None                    # kWh exported to grid this year
+    monthly_insights: MonthlyInsights | None  # Current-month price/usage stats
+    production_ytd_kwh: float | None  # kWh exported to grid this year
     # Power backend (real-time)
-    current_power: PowerTelemetry | None      # Most recent 1-min total power sample
+    current_power: PowerTelemetry | None  # Most recent 1-min total power sample
     current_power_phases: PhaseTelemetry | None  # Most recent per-phase sample
-    diagnostics: PowerDiagnostics | None      # Device status
+    diagnostics: PowerDiagnostics | None  # Device status
     facility_control: FacilityControl | None  # Fuse/power limits
-    fcr_status: FcrStatus | None              # FCR enablement
-    hourly_energy_today: list[HourlyEnergy]   # Hourly energy buckets (today)
+    fcr_status: FcrStatus | None  # FCR enablement
+    hourly_energy_today: list[HourlyEnergy]  # Hourly energy buckets (today)
 
 
 def _day_start_ms() -> int:
     """Unix timestamp in ms for start of today in Europe/Stockholm."""
     import zoneinfo
+
     tz = zoneinfo.ZoneInfo("Europe/Stockholm")
     now = datetime.now(tz)
     start = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -172,6 +177,7 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
 
             # Monthly insights for the current month
             import zoneinfo as _zi
+
             _tz = _zi.ZoneInfo("Europe/Stockholm")
             _now_local = datetime.now(_tz)
             _month_start = _now_local.replace(
@@ -190,10 +196,13 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
             consumption_points = await client.get_today_consumption(
                 self._facility_id, day_ms
             )
-            past_consumption = [p for p in consumption_points if p.timestamp_ms <= now_ms]
+            past_consumption = [
+                p for p in consumption_points if p.timestamp_ms <= now_ms
+            ]
             consumption_kwh = (
                 round(sum(p.value_wh for p in past_consumption) / 1000, 3)
-                if past_consumption else None
+                if past_consumption
+                else None
             )
 
             # Production (export) today — API returns Wh per bucket; convert to kWh
@@ -203,13 +212,12 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
             past_production = [p for p in production_points if p.timestamp_ms <= now_ms]
             production_kwh = (
                 round(sum(p.value_wh for p in past_production) / 1000, 3)
-                if past_production else None
+                if past_production
+                else None
             )
 
             # Current spot price — find the 15-min bucket containing now
-            spot_points = await client.get_spot_price_today(
-                self._facility_id, day_ms
-            )
+            spot_points = await client.get_spot_price_today(self._facility_id, day_ms)
             spot_now: float | None = None
             if spot_points:
                 # Find the most recent bucket before now
@@ -243,8 +251,10 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
 
             # Hourly energy for today (from midnight Stockholm time until now)
             import zoneinfo
+
             tz = zoneinfo.ZoneInfo("Europe/Stockholm")
             from datetime import datetime as _dt
+
             now_local = _dt.now(tz)
             day_start_utc = now_local.replace(
                 hour=0, minute=0, second=0, microsecond=0

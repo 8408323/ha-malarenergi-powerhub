@@ -1,4 +1,5 @@
 """Number platform — editable numeric facility attributes and power limits."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -10,7 +11,12 @@ from homeassistant.components.number import (
     NumberMode,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EntityCategory, UnitOfArea, UnitOfElectricCurrent, UnitOfPower
+from homeassistant.const import (
+    EntityCategory,
+    UnitOfArea,
+    UnitOfElectricCurrent,
+    UnitOfPower,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity

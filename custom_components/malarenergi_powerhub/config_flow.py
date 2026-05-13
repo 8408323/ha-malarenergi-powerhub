@@ -1,4 +1,5 @@
 """Config flow for Mälarenergi PowerHub — BankID QR authentication."""
+
 from __future__ import annotations
 
 import asyncio
@@ -111,11 +112,13 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def _show_qr_form(self) -> config_entries.ConfigFlowResult:
         return self.async_show_form(
             step_id="bankid_qr",
-            data_schema=vol.Schema({
-                vol.Optional("qr"): QrCodeSelector(
-                    QrCodeSelectorConfig(data=self._qr_code or "")
-                ),
-            }),
+            data_schema=vol.Schema(
+                {
+                    vol.Optional("qr"): QrCodeSelector(
+                        QrCodeSelectorConfig(data=self._qr_code or "")
+                    ),
+                }
+            ),
         )
 
     async def async_step_bankid_qr(
@@ -162,6 +165,7 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         notification.
         """
         from .api import PowerHubApiClient
+
         session = async_get_clientsession(self.hass)
         client = PowerHubApiClient(session, token)
         try:
@@ -192,9 +196,7 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if self.source == config_entries.SOURCE_REAUTH:
             entry_id = self.context.get("entry_id")
             existing = (
-                self.hass.config_entries.async_get_entry(entry_id)
-                if entry_id
-                else None
+                self.hass.config_entries.async_get_entry(entry_id) if entry_id else None
             )
             # Fallback: locate the entry by unique_id against the returned
             # facilities. Require exactly one match — more than one means we
@@ -221,9 +223,7 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             # logged in with a different BankID identity — abort rather
             # than silently retargeting.
             existing_facility_id = existing.data.get(CONF_FACILITY_ID)
-            if not any(
-                f.facility_id == existing_facility_id for f in facilities
-            ):
+            if not any(f.facility_id == existing_facility_id for f in facilities):
                 return self.async_abort(reason="reauth_wrong_account")
             self.hass.config_entries.async_update_entry(
                 existing,
