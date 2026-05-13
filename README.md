@@ -38,11 +38,16 @@ The integration stores the JWT Bearer token in the HA config entry. When the tok
 
 ## Installation
 
-### HACS (recommended — once listed)
+### HACS (recommended)
 
-1. Add this repo as a custom repository in HACS.
-2. Install *Mälarenergi PowerHub*.
-3. Restart Home Assistant.
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=8408323&repository=ha-malarenergi-powerhub&category=integration)
+
+Or manually:
+
+1. In HACS, go to **Integrations → ⋮ → Custom repositories**.
+2. Add `https://github.com/8408323/ha-malarenergi-powerhub` as an **Integration**.
+3. Search for **Mälarenergi PowerHub** and click **Download**.
+4. Restart Home Assistant.
 
 ### Manual
 
