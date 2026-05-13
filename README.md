@@ -17,24 +17,11 @@ Home Assistant custom integration for [Mälarenergi PowerHub](https://www.malare
 
 The device has **no local API** — all communication goes through Bitvis's cloud (confirmed by full TCP port scan: 0 open ports). This integration uses the same REST API as the Mälarenergi iPhone/Android app.
 
-## Features
+## Support
 
-- HA Energy dashboard compatible import/export/spot-price sensors
-- Real-time power and per-phase current (1-minute resolution)
-- Monthly insights: your average price vs. market, year-to-date consumption and production, baseload estimate
-- Device diagnostics: Wi-Fi signal, firmware, uptime, HAN port state
-- Writable fuse/power limits and notification preferences
-- Push notification mirroring (Mälarenergi → HA sensor)
-- Facility sharing services (create / revoke invitations)
-- Automatic token re-auth when JWT expires
+If you find this integration useful, you can buy me a coffee ☕
 
-See the **[user manual](docs/user_manual.md)** for the full entity list and usage.
-
-## Authentication
-
-Login uses **Swedish BankID** (same as the Mälarenergi app). During setup a QR code is displayed in the HA config flow — scan it with the BankID app on your phone.
-
-The integration stores the JWT Bearer token in the HA config entry. When the token expires, HA triggers a re-auth flow automatically.
+[![Buy me a coffee](https://img.buymeacoffee.com/button-api/?text=Buy+me+a+coffee&emoji=&slug=jhara&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff)](https://www.buymeacoffee.com/jhara)
 
 ## Installation
 
@@ -61,6 +48,25 @@ Or manually:
 3. Scan the BankID QR code that appears with the BankID app.
 
 See the **[full setup guide](docs/setup.md)** for step-by-step instructions with screenshots.
+
+## Features
+
+- HA Energy dashboard compatible import/export/spot-price sensors
+- Real-time power and per-phase current (1-minute resolution)
+- Monthly insights: your average price vs. market, year-to-date consumption and production, baseload estimate
+- Device diagnostics: Wi-Fi signal, firmware, uptime, HAN port state
+- Writable fuse/power limits and notification preferences
+- Push notification mirroring (Mälarenergi → HA sensor)
+- Facility sharing services (create / revoke invitations)
+- Automatic token re-auth when JWT expires
+
+See the **[user manual](docs/user_manual.md)** for the full entity list and usage.
+
+## Authentication
+
+Login uses **Swedish BankID** (same as the Mälarenergi app). During setup a QR code is displayed in the HA config flow — scan it with the BankID app on your phone.
+
+The integration stores the JWT Bearer token in the HA config entry. When the token expires, HA triggers a re-auth flow automatically.
 
 ## Entities
 
@@ -91,12 +97,6 @@ CAPTURE_PHONE_IP=192.168.1.x mitmdump -s tools/capture.py --listen-port 8080 --s
 ```
 
 See [docs/reverse_engineering.md](docs/reverse_engineering.md) for full findings on the cloud API.
-
-## Support
-
-If you find this integration useful, you can buy me a coffee ☕
-
-[![Buy me a coffee](https://img.buymeacoffee.com/button-api/?text=Buy+me+a+coffee&emoji=&slug=jhara&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff)](https://www.buymeacoffee.com/jhara)
 
 ## Contributing
 
