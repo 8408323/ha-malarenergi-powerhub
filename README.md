@@ -87,6 +87,12 @@ CAPTURE_PHONE_IP=192.168.1.x mitmdump -s tools/capture.py --listen-port 8080 --s
 
 See [docs/reverse_engineering.md](docs/reverse_engineering.md) for full findings on the cloud API.
 
+## Support
+
+If you find this integration useful, you can buy me a coffee ☕
+
+[![Buy Me A Coffee](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/YOUR_USERNAME)
+
 ## Contributing
 
 Pull requests are welcome. Please open an issue first to discuss what you'd like to change.
