@@ -8,11 +8,6 @@ import aiohttp
 import pytest
 from aioresponses import aioresponses
 
-import sys
-import pathlib
-
-sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
-
 from custom_components.malarenergi_powerhub.api import (
     BASE_URL,
     POWER_BASE_URL,

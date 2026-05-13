@@ -9,11 +9,6 @@ reloaded, and the flow aborts with reason="reauth_successful".
 
 from __future__ import annotations
 
-import sys
-import pathlib
-
-sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
-
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from homeassistant import config_entries
