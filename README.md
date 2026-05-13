@@ -91,7 +91,7 @@ See [docs/reverse_engineering.md](docs/reverse_engineering.md) for full findings
 
 If you find this integration useful, you can buy me a coffee ☕
 
-[![Buy Me A Coffee](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/YOUR_USERNAME)
+[![Buy Me A Coffee](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/jhara)
 
 ## Contributing
 
