@@ -1,4 +1,5 @@
 """Tests for pure value_fn / to_attr_value lambdas in select.py."""
+
 from __future__ import annotations
 
 from custom_components.malarenergi_powerhub.api import FacilityAttributes

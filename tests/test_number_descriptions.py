@@ -1,4 +1,5 @@
 """Tests for pure value_fn lambdas in number.py."""
+
 from __future__ import annotations
 
 from custom_components.malarenergi_powerhub.api import (

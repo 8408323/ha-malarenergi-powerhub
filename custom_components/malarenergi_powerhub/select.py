@@ -1,4 +1,5 @@
 """Select platform — editable enum facility attributes."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -105,9 +106,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator: PowerHubCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities(
-        PowerHubSelect(coordinator, desc) for desc in SELECTS
-    )
+    async_add_entities(PowerHubSelect(coordinator, desc) for desc in SELECTS)
 
 
 class PowerHubSelect(CoordinatorEntity[PowerHubCoordinator], SelectEntity):

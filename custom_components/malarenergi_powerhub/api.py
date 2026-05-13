@@ -12,6 +12,7 @@ BankID authentication flow:
          → { status: "complete", token: "<JWT>" }
   3. Use token as:  Authorization: Bearer <token>
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -52,6 +53,7 @@ class FacilityInfo:
 @dataclass
 class MeterData:
     """One data point from consumption/production meter."""
+
     timestamp_ms: int
     value_wh: float  # Wh
 
@@ -59,13 +61,15 @@ class MeterData:
 @dataclass
 class LiveData:
     """Most recent meter reading (latest data point of today)."""
-    consumption_wh: float | None   # Wh consumed today so far
-    production_wh: float | None    # Wh produced today so far
+
+    consumption_wh: float | None  # Wh consumed today so far
+    production_wh: float | None  # Wh produced today so far
 
 
 @dataclass
 class MeterResponse:
     """Full envelope returned by consumption/production meter endpoints."""
+
     facility_id: str
     start_ms: int
     end_ms: int
@@ -79,12 +83,13 @@ class MeterResponse:
 @dataclass
 class FacilityAttributes:
     """Physical attributes of a facility."""
-    heating_type: str          # e.g. "DISTRICT_HEATING"
-    fuse_size: int             # Ampere
+
+    heating_type: str  # e.g. "DISTRICT_HEATING"
+    fuse_size: int  # Ampere
     occupants: int
-    area: int                  # m²
-    facility_type: str         # e.g. "APARTMENT" / "HOUSE"
-    ev_type: str | None        # e.g. "NONE"
+    area: int  # m²
+    facility_type: str  # e.g. "APARTMENT" / "HOUSE"
+    ev_type: str | None  # e.g. "NONE"
     has_battery: bool
     has_solar: bool
 
@@ -92,6 +97,7 @@ class FacilityAttributes:
 @dataclass
 class AccountProfile:
     """Mälarenergi account holder information."""
+
     name: str
     phone: str
     email: str
@@ -101,38 +107,42 @@ class AccountProfile:
 @dataclass
 class Agreement:
     """Active supply agreement."""
+
     agreement_number: str
     supply_service_name: str
     supply_start_date_ms: int
-    price_model: str           # e.g. "SPOT"
-    utility: str               # e.g. "ELECTRICITY"
+    price_model: str  # e.g. "SPOT"
+    utility: str  # e.g. "ELECTRICITY"
     facility_id: str
 
 
 @dataclass
 class Invitation:
     """Sharing invitation created by this account."""
+
     invitation_id: str
-    expires: str               # ISO 8601 timestamp
-    created: str               # ISO 8601 timestamp
+    expires: str  # ISO 8601 timestamp
+    created: str  # ISO 8601 timestamp
     claimed: bool
-    code: str | None = None    # Short alphanumeric code; null once claimed
+    code: str | None = None  # Short alphanumeric code; null once claimed
     accessed_facilities: list[str] = field(default_factory=list)
 
 
 @dataclass
 class InvitationCreated:
     """Result returned when a sharing invitation is created."""
+
     invitation_id: str
-    code: str             # Short alphanumeric code for manual entry (e.g. "ELX4CULD")
-    created: str          # ISO 8601 timestamp
-    expires: str          # ISO 8601 timestamp
+    code: str  # Short alphanumeric code for manual entry (e.g. "ELX4CULD")
+    created: str  # ISO 8601 timestamp
+    expires: str  # ISO 8601 timestamp
     accessed_facilities: list[dict]
 
 
 @dataclass
 class Invitee:
     """Person who has been granted access to a facility."""
+
     invitee_id: str
     claimer_name: str
     facility_id: str
@@ -142,13 +152,16 @@ class Invitee:
 @dataclass
 class MonthlyInsights:
     """Monthly energy insights comparison."""
+
     facility_id: str
     month_timestamp_ms: int
-    your_average_price: float | None      # öre/kWh or kr/kWh; None for production meter
-    monthly_average_price: float | None   # öre/kWh or kr/kWh - market average; None for production
-    price_trend: str | None               # "ABOVE" / "BELOW"; None for production
-    current_year_value: float             # kWh year-to-date
-    previous_year_value: float | None     # kWh same period last year
+    your_average_price: float | None  # öre/kWh or kr/kWh; None for production meter
+    monthly_average_price: (
+        float | None
+    )  # öre/kWh or kr/kWh - market average; None for production
+    price_trend: str | None  # "ABOVE" / "BELOW"; None for production
+    current_year_value: float  # kWh year-to-date
+    previous_year_value: float | None  # kWh same period last year
     year_percentage_change: float | None
     year_trend: str | None
     daily_peaks: list[dict]
@@ -156,8 +169,8 @@ class MonthlyInsights:
     baseload_kwh: float
     baseload_percentage: float
     total_kwh: float
-    off_peak_score: float | None          # None for production meter
-    off_peak_rating: str | None           # e.g. "GOOD" / "AVERAGE" / "POOR"
+    off_peak_score: float | None  # None for production meter
+    off_peak_rating: str | None  # e.g. "GOOD" / "AVERAGE" / "POOR"
 
 
 class PowerHubApiClient:
@@ -235,15 +248,17 @@ class PowerHubApiClient:
                 continue
             seen.add(fid)
             meta = f.get("metadata") or {}
-            results.append(FacilityInfo(
-                facility_id=fid,
-                street=f.get("street", ""),
-                house_number=f.get("houseNumber", 0),
-                city=f.get("city", ""),
-                meter_id=meta.get("meterId", ""),
-                region=meta.get("region", "SE3"),
-                customer_id=f.get("facilityOwnerId", ""),
-            ))
+            results.append(
+                FacilityInfo(
+                    facility_id=fid,
+                    street=f.get("street", ""),
+                    house_number=f.get("houseNumber", 0),
+                    city=f.get("city", ""),
+                    meter_id=meta.get("meterId", ""),
+                    region=meta.get("region", "SE3"),
+                    customer_id=f.get("facilityOwnerId", ""),
+                )
+            )
         return results
 
     async def get_profile(self) -> AccountProfile:
@@ -391,7 +406,9 @@ class PowerHubApiClient:
     # Energy data
     # ------------------------------------------------------------------
 
-    async def get_today_consumption(self, facility_id: str, timestamp_ms: int) -> list[MeterData]:
+    async def get_today_consumption(
+        self, facility_id: str, timestamp_ms: int
+    ) -> list[MeterData]:
         """Get consumption for a single day (15-min buckets)."""
         data = await self._get(
             f"/facility/{facility_id}/facility_consumption_meter",
@@ -401,7 +418,9 @@ class PowerHubApiClient:
         )
         return [MeterData(d["timestamp"], d["value"]) for d in data.get("data", [])]
 
-    async def get_today_production(self, facility_id: str, timestamp_ms: int) -> list[MeterData]:
+    async def get_today_production(
+        self, facility_id: str, timestamp_ms: int
+    ) -> list[MeterData]:
         """Get production (solar) for a single day (15-min buckets)."""
         data = await self._get(
             f"/facility/{facility_id}/facility_production_meter",
@@ -411,7 +430,9 @@ class PowerHubApiClient:
         )
         return [MeterData(d["timestamp"], d["value"]) for d in data.get("data", [])]
 
-    async def get_spot_price_today(self, facility_id: str, timestamp_ms: int) -> list[dict]:
+    async def get_spot_price_today(
+        self, facility_id: str, timestamp_ms: int
+    ) -> list[dict]:
         """Get Nordpool spot price for a day (15-min buckets, öre/kWh or kr/kWh)."""
         data = await self._get(
             f"/facility/{facility_id}/nordpool_spot_price",
@@ -421,7 +442,9 @@ class PowerHubApiClient:
         )
         return data.get("data", [])
 
-    async def get_month_consumption(self, facility_id: str, month_start_ms: int) -> MeterResponse:
+    async def get_month_consumption(
+        self, facility_id: str, month_start_ms: int
+    ) -> MeterResponse:
         """Get consumption for a full month (daily buckets)."""
         return await self._get_meter(
             f"/facility/{facility_id}/facility_consumption_meter",
@@ -429,7 +452,9 @@ class PowerHubApiClient:
             month_start_ms,
         )
 
-    async def get_month_production(self, facility_id: str, month_start_ms: int) -> MeterResponse:
+    async def get_month_production(
+        self, facility_id: str, month_start_ms: int
+    ) -> MeterResponse:
         """Get production for a full month (daily buckets)."""
         return await self._get_meter(
             f"/facility/{facility_id}/facility_production_meter",
@@ -437,7 +462,9 @@ class PowerHubApiClient:
             month_start_ms,
         )
 
-    async def get_year_consumption(self, facility_id: str, year_start_ms: int) -> MeterResponse:
+    async def get_year_consumption(
+        self, facility_id: str, year_start_ms: int
+    ) -> MeterResponse:
         """Get consumption for a full year (monthly buckets)."""
         return await self._get_meter(
             f"/facility/{facility_id}/facility_consumption_meter",
@@ -445,7 +472,9 @@ class PowerHubApiClient:
             year_start_ms,
         )
 
-    async def get_year_production(self, facility_id: str, year_start_ms: int) -> MeterResponse:
+    async def get_year_production(
+        self, facility_id: str, year_start_ms: int
+    ) -> MeterResponse:
         """Get production (solar export) for a full year (monthly buckets)."""
         return await self._get_meter(
             f"/facility/{facility_id}/facility_production_meter",
@@ -514,8 +543,12 @@ class PowerHubApiClient:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    async def _get_meter(self, path: str, interval: str, timestamp_ms: int) -> MeterResponse:
-        data = await self._get(path, interval=interval, type="START", timestamp=timestamp_ms)
+    async def _get_meter(
+        self, path: str, interval: str, timestamp_ms: int
+    ) -> MeterResponse:
+        data = await self._get(
+            path, interval=interval, type="START", timestamp=timestamp_ms
+        )
         return MeterResponse(
             facility_id=data.get("facilityid", ""),
             start_ms=data.get("start", 0),
@@ -546,9 +579,10 @@ class PowerHubDevice:
 @dataclass
 class PowerTelemetry:
     """One 1-minute sample from the Power telemetry endpoint."""
+
     timestamp: datetime
-    power_import_kw: float   # power_active_delivered_to_client_kw
-    power_export_kw: float   # power_active_delivered_by_client_kw
+    power_import_kw: float  # power_active_delivered_to_client_kw
+    power_export_kw: float  # power_active_delivered_by_client_kw
 
 
 @dataclass
@@ -559,6 +593,7 @@ class PhaseTelemetry:
     per-phase power fields in the query are accepted but never populated in the
     response, so we don't expose them.
     """
+
     timestamp: datetime
     current_l1_a: float
     current_l2_a: float
@@ -568,6 +603,7 @@ class PhaseTelemetry:
 @dataclass
 class HourlyEnergy:
     """One hourly energy bucket from the aggregated energy endpoint."""
+
     bucket_start: datetime
     window_start: datetime
     window_end: datetime
@@ -581,14 +617,14 @@ class PowerDiagnostics:
     uptime_s: int
     wifi_rssi_dbm: int
     sw_version: str
-    han_port_state: str      # "ACTIVE" / "INACTIVE"
+    han_port_state: str  # "ACTIVE" / "INACTIVE"
 
 
 @dataclass
 class FacilityControl:
     fuse_limit_a: float
     power_limit_kw: float
-    action_on_fuse_limit: str   # "NOTIFY" / "CUT"
+    action_on_fuse_limit: str  # "NOTIFY" / "CUT"
     action_on_power_limit: str
 
 
@@ -621,10 +657,18 @@ class NotificationSettings:
         return cls(
             notify_total_power=bool(data.get("notifyTotalPower", False)),
             notify_phase_load=bool(data.get("notifyPhaseLoad", False)),
-            notify_control_disabled_exceeded_phase=bool(data.get("notifyControlDisabledExceededPhase", False)),
-            notify_control_disabled_exceeded_power=bool(data.get("notifyControlDisabledExceededPower", False)),
-            notify_control_enabled_exceeded_phase=bool(data.get("notifyControlEnabledExceededPhase", False)),
-            notify_control_enabled_exceeded_power=bool(data.get("notifyControlEnabledExceededPower", False)),
+            notify_control_disabled_exceeded_phase=bool(
+                data.get("notifyControlDisabledExceededPhase", False)
+            ),
+            notify_control_disabled_exceeded_power=bool(
+                data.get("notifyControlDisabledExceededPower", False)
+            ),
+            notify_control_enabled_exceeded_phase=bool(
+                data.get("notifyControlEnabledExceededPhase", False)
+            ),
+            notify_control_enabled_exceeded_power=bool(
+                data.get("notifyControlEnabledExceededPower", False)
+            ),
         )
 
 
@@ -633,8 +677,9 @@ def _read_varint(data: bytes, pos: int) -> tuple[int, int]:
     val = 0
     shift = 0
     while pos < len(data):
-        b = data[pos]; pos += 1
-        val |= (b & 0x7f) << shift
+        b = data[pos]
+        pos += 1
+        val |= (b & 0x7F) << shift
         shift += 7
         if not (b & 0x80):
             break
@@ -663,7 +708,7 @@ def _parse_submessage(sub: bytes) -> dict[int, int | float | bytes]:
             sp += 4
         elif wire == 2:
             length, sp = _read_varint(sub, sp)
-            fields[field_num] = sub[sp:sp + length]
+            fields[field_num] = sub[sp : sp + length]
             sp += length
         elif wire == 1:
             sp += 8  # skip 64-bit
@@ -684,7 +729,7 @@ def _iter_delimited(raw: bytes) -> Iterator[dict[int, int | float | bytes]]:
         sub_len, pos = _read_varint(raw, pos)
         if pos + sub_len > n:
             return
-        yield _parse_submessage(raw[pos:pos + sub_len])
+        yield _parse_submessage(raw[pos : pos + sub_len])
         pos += sub_len
 
 
@@ -697,11 +742,13 @@ def _decode_telemetry_proto(raw: bytes) -> list[PowerTelemetry]:
     for fields in _iter_delimited(raw):
         ts_s = fields.get(1)
         if isinstance(ts_s, int):
-            results.append(PowerTelemetry(
-                timestamp=datetime.fromtimestamp(ts_s, tz=timezone.utc),
-                power_import_kw=float(fields.get(6, 0.0)),
-                power_export_kw=float(fields.get(7, 0.0)),
-            ))
+            results.append(
+                PowerTelemetry(
+                    timestamp=datetime.fromtimestamp(ts_s, tz=timezone.utc),
+                    power_import_kw=float(fields.get(6, 0.0)),
+                    power_export_kw=float(fields.get(7, 0.0)),
+                )
+            )
     return results
 
 
@@ -715,12 +762,14 @@ def _decode_phase_telemetry_proto(raw: bytes) -> list[PhaseTelemetry]:
     for f in _iter_delimited(raw):
         ts_s = f.get(1)
         if isinstance(ts_s, int):
-            results.append(PhaseTelemetry(
-                timestamp=datetime.fromtimestamp(ts_s, tz=timezone.utc),
-                current_l1_a=float(f.get(17, 0.0)),
-                current_l2_a=float(f.get(18, 0.0)),
-                current_l3_a=float(f.get(19, 0.0)),
-            ))
+            results.append(
+                PhaseTelemetry(
+                    timestamp=datetime.fromtimestamp(ts_s, tz=timezone.utc),
+                    current_l1_a=float(f.get(17, 0.0)),
+                    current_l2_a=float(f.get(18, 0.0)),
+                    current_l3_a=float(f.get(19, 0.0)),
+                )
+            )
     return results
 
 
@@ -753,27 +802,33 @@ def _decode_hourly_energy_proto(raw: bytes) -> list[HourlyEnergy]:
         length, pos = _read_varint(raw, pos)
         if pos + length > n:
             break
-        f = _parse_submessage(raw[pos:pos + length])
+        f = _parse_submessage(raw[pos : pos + length])
         pos += length
 
         bucket_raw = f.get(1)
         win_start_raw = f.get(3)
         win_end_raw = f.get(4)
-        if not (isinstance(bucket_raw, bytes) and isinstance(win_start_raw, bytes) and isinstance(win_end_raw, bytes)):
+        if not (
+            isinstance(bucket_raw, bytes)
+            and isinstance(win_start_raw, bytes)
+            and isinstance(win_end_raw, bytes)
+        ):
             continue
         bucket_ts = _ts_from_submsg(bucket_raw)
         win_start_ts = _ts_from_submsg(win_start_raw)
         win_end_ts = _ts_from_submsg(win_end_raw)
         if bucket_ts is None or win_start_ts is None or win_end_ts is None:
             continue
-        results.append(HourlyEnergy(
-            bucket_start=datetime.fromtimestamp(bucket_ts, tz=timezone.utc),
-            window_start=datetime.fromtimestamp(win_start_ts, tz=timezone.utc),
-            window_end=datetime.fromtimestamp(win_end_ts, tz=timezone.utc),
-            sample_count=int(f.get(2, 0)),
-            energy_import_wh=float(f.get(7, 0.0)),
-            energy_export_wh=float(f.get(10, 0.0)),
-        ))
+        results.append(
+            HourlyEnergy(
+                bucket_start=datetime.fromtimestamp(bucket_ts, tz=timezone.utc),
+                window_start=datetime.fromtimestamp(win_start_ts, tz=timezone.utc),
+                window_end=datetime.fromtimestamp(win_end_ts, tz=timezone.utc),
+                sample_count=int(f.get(2, 0)),
+                energy_import_wh=float(f.get(7, 0.0)),
+                energy_export_wh=float(f.get(10, 0.0)),
+            )
+        )
     return results
 
 
@@ -968,12 +1023,15 @@ class PowerApiClient:
                 raise AuthError("Token expired or invalid")
             resp.raise_for_status()
             result = await resp.json(content_type=None)
-            return NotificationSettings.from_dict(result if isinstance(result, dict) else {})
+            return NotificationSettings.from_dict(
+                result if isinstance(result, dict) else {}
+            )
 
 
 # ------------------------------------------------------------------
 # BankID authentication
 # ------------------------------------------------------------------
+
 
 async def bankid_start(session: aiohttp.ClientSession) -> tuple[str, str]:
     """Start a BankID auth session.

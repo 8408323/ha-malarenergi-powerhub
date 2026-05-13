@@ -3,6 +3,7 @@
 The coordinator itself depends on HomeAssistant runtime (hass, ConfigEntry).
 These tests cover only the module-level helpers that can run standalone.
 """
+
 from __future__ import annotations
 
 import zoneinfo
