@@ -1,4 +1,5 @@
 """Sensor platform for Mälarenergi PowerHub."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -70,7 +71,9 @@ SENSORS: tuple[PowerHubSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfPower.KILO_WATT,
         suggested_display_precision=3,
-        value_fn=lambda d: round(d.current_power.power_import_kw, 3) if d.current_power else None,
+        value_fn=lambda d: (
+            round(d.current_power.power_import_kw, 3) if d.current_power else None
+        ),
     ),
     PowerHubSensorDescription(
         key="power_export",
@@ -79,7 +82,9 @@ SENSORS: tuple[PowerHubSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfPower.KILO_WATT,
         suggested_display_precision=3,
-        value_fn=lambda d: round(d.current_power.power_export_kw, 3) if d.current_power else None,
+        value_fn=lambda d: (
+            round(d.current_power.power_export_kw, 3) if d.current_power else None
+        ),
     ),
     # ── Per-phase current ────────────────────────────────────────────────
     PowerHubSensorDescription(
@@ -89,7 +94,11 @@ SENSORS: tuple[PowerHubSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         suggested_display_precision=2,
-        value_fn=lambda d: round(d.current_power_phases.current_l1_a, 2) if d.current_power_phases else None,
+        value_fn=lambda d: (
+            round(d.current_power_phases.current_l1_a, 2)
+            if d.current_power_phases
+            else None
+        ),
     ),
     PowerHubSensorDescription(
         key="current_l2",
@@ -98,7 +107,11 @@ SENSORS: tuple[PowerHubSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         suggested_display_precision=2,
-        value_fn=lambda d: round(d.current_power_phases.current_l2_a, 2) if d.current_power_phases else None,
+        value_fn=lambda d: (
+            round(d.current_power_phases.current_l2_a, 2)
+            if d.current_power_phases
+            else None
+        ),
     ),
     PowerHubSensorDescription(
         key="current_l3",
@@ -107,7 +120,11 @@ SENSORS: tuple[PowerHubSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         suggested_display_precision=2,
-        value_fn=lambda d: round(d.current_power_phases.current_l3_a, 2) if d.current_power_phases else None,
+        value_fn=lambda d: (
+            round(d.current_power_phases.current_l3_a, 2)
+            if d.current_power_phases
+            else None
+        ),
     ),
     # ── Device diagnostics ───────────────────────────────────────────────
     PowerHubSensorDescription(
@@ -137,7 +154,9 @@ SENSORS: tuple[PowerHubSensorDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         device_class=SensorDeviceClass.POWER,
         native_unit_of_measurement=UnitOfPower.KILO_WATT,
-        value_fn=lambda d: d.facility_control.power_limit_kw if d.facility_control else None,
+        value_fn=lambda d: (
+            d.facility_control.power_limit_kw if d.facility_control else None
+        ),
     ),
     PowerHubSensorDescription(
         key="fcr_enabled",
@@ -164,7 +183,8 @@ SENSORS: tuple[PowerHubSensorDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda d: (
             f"{d.facility_info.street} {d.facility_info.house_number}"
-            if d.facility_info else None
+            if d.facility_info
+            else None
         ),
     ),
     PowerHubSensorDescription(
@@ -207,8 +227,11 @@ SENSORS: tuple[PowerHubSensorDescription, ...] = (
         state_class=None,
         native_unit_of_measurement="öre/kWh",
         suggested_display_precision=2,
-        value_fn=lambda d: round(d.monthly_insights.your_average_price, 2)
-            if d.monthly_insights and d.monthly_insights.your_average_price is not None else None,
+        value_fn=lambda d: (
+            round(d.monthly_insights.your_average_price, 2)
+            if d.monthly_insights and d.monthly_insights.your_average_price is not None
+            else None
+        ),
     ),
     PowerHubSensorDescription(
         key="market_avg_price_this_month",
@@ -217,8 +240,12 @@ SENSORS: tuple[PowerHubSensorDescription, ...] = (
         state_class=None,
         native_unit_of_measurement="öre/kWh",
         suggested_display_precision=2,
-        value_fn=lambda d: round(d.monthly_insights.monthly_average_price, 2)
-            if d.monthly_insights and d.monthly_insights.monthly_average_price is not None else None,
+        value_fn=lambda d: (
+            round(d.monthly_insights.monthly_average_price, 2)
+            if d.monthly_insights
+            and d.monthly_insights.monthly_average_price is not None
+            else None
+        ),
     ),
     PowerHubSensorDescription(
         key="consumption_ytd",
@@ -227,8 +254,9 @@ SENSORS: tuple[PowerHubSensorDescription, ...] = (
         state_class=SensorStateClass.TOTAL_INCREASING,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         suggested_display_precision=3,
-        value_fn=lambda d: d.monthly_insights.current_year_value
-            if d.monthly_insights else None,
+        value_fn=lambda d: (
+            d.monthly_insights.current_year_value if d.monthly_insights else None
+        ),
     ),
     PowerHubSensorDescription(
         key="production_ytd",
@@ -246,8 +274,9 @@ SENSORS: tuple[PowerHubSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfPower.KILO_WATT,
         suggested_display_precision=3,
-        value_fn=lambda d: d.monthly_insights.baseload_kw
-            if d.monthly_insights else None,
+        value_fn=lambda d: (
+            d.monthly_insights.baseload_kw if d.monthly_insights else None
+        ),
     ),
     # ── Sharing (diagnostic) ─────────────────────────────────────────────
     PowerHubSensorDescription(
@@ -261,9 +290,10 @@ SENSORS: tuple[PowerHubSensorDescription, ...] = (
         key="invitees",
         translation_key="invitees",
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda d: ", ".join(
-            inv.claimer_name for inv in d.invitees if inv.claimer_name
-        ) or str(len(d.invitees)),
+        value_fn=lambda d: (
+            ", ".join(inv.claimer_name for inv in d.invitees if inv.claimer_name)
+            or str(len(d.invitees))
+        ),
     ),
 )
 
@@ -396,7 +426,9 @@ class NotificationSensor(CoordinatorEntity[NotificationsCoordinator], SensorEnti
                 "type": n.get("type"),
                 "created": datetime.fromtimestamp(
                     n["created"] / 1000, tz=timezone.utc
-                ).isoformat() if n.get("created") else None,
+                ).isoformat()
+                if n.get("created")
+                else None,
             }
             for n in data.all_notifications
         ]

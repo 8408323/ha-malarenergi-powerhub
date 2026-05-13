@@ -1,4 +1,5 @@
 """Switch platform — toggleable boolean facility attributes and notification settings."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -100,7 +101,9 @@ async def async_setup_entry(
     entities: list[SwitchEntity] = [
         PowerHubSwitch(coordinator, desc) for desc in ATTRIBUTE_SWITCHES
     ]
-    entities += [NotificationSwitch(coordinator, desc) for desc in NOTIFICATION_SWITCHES]
+    entities += [
+        NotificationSwitch(coordinator, desc) for desc in NOTIFICATION_SWITCHES
+    ]
     async_add_entities(entities)
 
 

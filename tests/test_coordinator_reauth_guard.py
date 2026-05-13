@@ -4,10 +4,8 @@ Verifies that async_start_reauth is only called once per AuthError state
 (not on every poll), and that the flag resets after a successful poll so
 future token expiries still trigger a fresh reauth flow.
 """
-from __future__ import annotations
 
-import sys, pathlib
-sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
+from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -53,9 +51,11 @@ def _make_coordinator_env(cls):
 class TestPowerHubCoordinatorReauthGuard:
     async def test_first_auth_error_triggers_reauth(self) -> None:
         coord, entry = _make_coordinator_env(PowerHubCoordinator)
-        coord._make_client = MagicMock(return_value=MagicMock(
-            get_facility_attributes=AsyncMock(side_effect=AuthError("expired")),
-        ))
+        coord._make_client = MagicMock(
+            return_value=MagicMock(
+                get_facility_attributes=AsyncMock(side_effect=AuthError("expired")),
+            )
+        )
         coord._make_power_client = MagicMock()
 
         # Force first branch to execute get_facility_attributes by clearing the cache
@@ -69,9 +69,11 @@ class TestPowerHubCoordinatorReauthGuard:
 
     async def test_subsequent_auth_errors_do_not_re_trigger(self) -> None:
         coord, entry = _make_coordinator_env(PowerHubCoordinator)
-        coord._make_client = MagicMock(return_value=MagicMock(
-            get_facility_attributes=AsyncMock(side_effect=AuthError("expired")),
-        ))
+        coord._make_client = MagicMock(
+            return_value=MagicMock(
+                get_facility_attributes=AsyncMock(side_effect=AuthError("expired")),
+            )
+        )
         coord._make_power_client = MagicMock()
         coord._cached_attributes = None
 
@@ -116,11 +118,14 @@ class TestNotificationsCoordinatorReauthGuard:
         client = MagicMock()
         client.get_notifications = AsyncMock(side_effect=AuthError("expired"))
 
-        with patch(
-            "custom_components.malarenergi_powerhub.notifications_coordinator.async_get_clientsession"
-        ), patch(
-            "custom_components.malarenergi_powerhub.notifications_coordinator.PowerHubApiClient",
-            return_value=client,
+        with (
+            patch(
+                "custom_components.malarenergi_powerhub.notifications_coordinator.async_get_clientsession"
+            ),
+            patch(
+                "custom_components.malarenergi_powerhub.notifications_coordinator.PowerHubApiClient",
+                return_value=client,
+            ),
         ):
             with pytest.raises(UpdateFailed):
                 await coord._async_update_data()
@@ -133,11 +138,14 @@ class TestNotificationsCoordinatorReauthGuard:
         client = MagicMock()
         client.get_notifications = AsyncMock(side_effect=AuthError("expired"))
 
-        with patch(
-            "custom_components.malarenergi_powerhub.notifications_coordinator.async_get_clientsession"
-        ), patch(
-            "custom_components.malarenergi_powerhub.notifications_coordinator.PowerHubApiClient",
-            return_value=client,
+        with (
+            patch(
+                "custom_components.malarenergi_powerhub.notifications_coordinator.async_get_clientsession"
+            ),
+            patch(
+                "custom_components.malarenergi_powerhub.notifications_coordinator.PowerHubApiClient",
+                return_value=client,
+            ),
         ):
             with pytest.raises(UpdateFailed):
                 await coord._async_update_data()
@@ -154,11 +162,14 @@ class TestNotificationsCoordinatorReauthGuard:
         client = MagicMock()
         client.get_notifications = AsyncMock(return_value=[])
 
-        with patch(
-            "custom_components.malarenergi_powerhub.notifications_coordinator.async_get_clientsession"
-        ), patch(
-            "custom_components.malarenergi_powerhub.notifications_coordinator.PowerHubApiClient",
-            return_value=client,
+        with (
+            patch(
+                "custom_components.malarenergi_powerhub.notifications_coordinator.async_get_clientsession"
+            ),
+            patch(
+                "custom_components.malarenergi_powerhub.notifications_coordinator.PowerHubApiClient",
+                return_value=client,
+            ),
         ):
             await coord._async_update_data()
 

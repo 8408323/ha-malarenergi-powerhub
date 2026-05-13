@@ -1,4 +1,5 @@
 """Separate coordinator for PowerHub push notifications (polls every 5 min)."""
+
 from __future__ import annotations
 
 import logging
@@ -23,11 +24,12 @@ NOTIFICATIONS_SCAN_INTERVAL = 300  # 5 minutes
 @dataclass
 class NotificationData:
     """Most recent notification from the Mälarenergi backend."""
+
     title: str | None
     body: str | None
-    notification_type: str | None   # e.g. "PRICE"
+    notification_type: str | None  # e.g. "PRICE"
     created_ms: int | None
-    all_notifications: list[dict]   # Full list for extra_state_attributes
+    all_notifications: list[dict]  # Full list for extra_state_attributes
 
 
 class NotificationsCoordinator(DataUpdateCoordinator[NotificationData]):
@@ -61,10 +63,16 @@ class NotificationsCoordinator(DataUpdateCoordinator[NotificationData]):
         except ClientResponseError as err:
             if err.status == 400:
                 # API rejects placeholder firebase_token — return empty data silently
-                _LOGGER.debug("Notifications API returned 400 (firebase_token not accepted): %s", err)
+                _LOGGER.debug(
+                    "Notifications API returned 400 (firebase_token not accepted): %s",
+                    err,
+                )
                 return NotificationData(
-                    title=None, body=None, notification_type=None,
-                    created_ms=None, all_notifications=[],
+                    title=None,
+                    body=None,
+                    notification_type=None,
+                    created_ms=None,
+                    all_notifications=[],
                 )
             raise UpdateFailed(f"Notifications API error: {err}") from err
         except Exception as err:

@@ -1,4 +1,5 @@
 """Mälarenergi PowerHub integration for Home Assistant."""
+
 from __future__ import annotations
 
 import logging
@@ -19,22 +20,33 @@ from .notifications_coordinator import NotificationsCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.SWITCH, Platform.NUMBER, Platform.SELECT]
+PLATFORMS: list[Platform] = [
+    Platform.SENSOR,
+    Platform.SWITCH,
+    Platform.NUMBER,
+    Platform.SELECT,
+]
 
 SERVICE_CREATE_INVITATION = "create_invitation"
 SERVICE_DELETE_INVITATION = "delete_invitation"
 
-_CREATE_SCHEMA = vol.Schema({
-    vol.Optional(CONF_FACILITY_ID): cv.string,
-    vol.Optional("share_all_devices", default=True): cv.boolean,
-})
+_CREATE_SCHEMA = vol.Schema(
+    {
+        vol.Optional(CONF_FACILITY_ID): cv.string,
+        vol.Optional("share_all_devices", default=True): cv.boolean,
+    }
+)
 
-_DELETE_SCHEMA = vol.Schema({
-    vol.Required("invitation_id"): cv.string,
-})
+_DELETE_SCHEMA = vol.Schema(
+    {
+        vol.Required("invitation_id"): cv.string,
+    }
+)
 
 
-def _get_client(hass: HomeAssistant, facility_id: str | None) -> tuple[PowerHubApiClient, str]:
+def _get_client(
+    hass: HomeAssistant, facility_id: str | None
+) -> tuple[PowerHubApiClient, str]:
     """Return (client, facility_id) for the first matching config entry."""
     for entry in hass.config_entries.async_entries(DOMAIN):
         fid = entry.data[CONF_FACILITY_ID]
@@ -67,7 +79,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             _LOGGER.error("create_invitation service failed: %s", err)
             return
         try:
-            result = await client.create_invitation(fid, share_all_devices=share_all_devices)
+            result = await client.create_invitation(
+                fid, share_all_devices=share_all_devices
+            )
         except Exception as err:
             _LOGGER.error("create_invitation API call failed: %s", err)
             raise HomeAssistantError(f"Failed to create invitation: {err}") from err
@@ -116,12 +130,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     if not hass.services.has_service(DOMAIN, SERVICE_CREATE_INVITATION):
         hass.services.async_register(
-            DOMAIN, SERVICE_CREATE_INVITATION, handle_create_invitation,
+            DOMAIN,
+            SERVICE_CREATE_INVITATION,
+            handle_create_invitation,
             schema=_CREATE_SCHEMA,
         )
     if not hass.services.has_service(DOMAIN, SERVICE_DELETE_INVITATION):
         hass.services.async_register(
-            DOMAIN, SERVICE_DELETE_INVITATION, handle_delete_invitation,
+            DOMAIN,
+            SERVICE_DELETE_INVITATION,
+            handle_delete_invitation,
             schema=_DELETE_SCHEMA,
         )
 
