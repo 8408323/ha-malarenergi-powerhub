@@ -633,7 +633,8 @@ def _read_varint(data: bytes, pos: int) -> tuple[int, int]:
     val = 0
     shift = 0
     while pos < len(data):
-        b = data[pos]; pos += 1
+        b = data[pos]
+        pos += 1
         val |= (b & 0x7f) << shift
         shift += 7
         if not (b & 0x80):
