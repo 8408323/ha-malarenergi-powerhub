@@ -95,6 +95,7 @@ def test_every_notification_switch_reads_its_named_field() -> None:
 
 # ── PowerHubSwitch entity ─────────────────────────────────────────────────────
 
+
 def _make_coord_with_attrs(**attr_overrides) -> MagicMock:
     coord = MagicMock()
     coord.config_entry.entry_id = "entry-id"
@@ -156,6 +157,7 @@ def test_powerhub_switch_unique_id() -> None:
 
 
 # ── NotificationSwitch entity ─────────────────────────────────────────────────
+
 
 def test_notification_switch_is_on_reflects_setting() -> None:
     desc = next(d for d in NOTIFICATION_SWITCHES if d.key == "notify_total_power")

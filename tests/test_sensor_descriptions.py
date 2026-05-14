@@ -160,6 +160,7 @@ def _make_coord(data: PowerHubData | None = None) -> MagicMock:
 
 # ── SENSORS description table ─────────────────────────────────────────────────
 
+
 def test_sensors_have_unique_keys() -> None:
     keys = [d.key for d in SENSORS]
     assert len(keys) == len(set(keys))
@@ -171,6 +172,7 @@ def test_all_sensors_have_callable_value_fn() -> None:
 
 
 # ── value_fn with full data ───────────────────────────────────────────────────
+
 
 def test_import_today_value_fn() -> None:
     d = _make_data(consumption_today_kwh=12.34)
@@ -397,7 +399,14 @@ def test_invitees_value_fn_shows_name() -> None:
 
 def test_invitees_value_fn_shows_count_when_no_name() -> None:
     d = _make_data(
-        invitees=[Invitee(invitee_id="x", claimer_name="", facility_id="f1", share_all_devices=False)]
+        invitees=[
+            Invitee(
+                invitee_id="x",
+                claimer_name="",
+                facility_id="f1",
+                share_all_devices=False,
+            )
+        ]
     )
     desc = next(s for s in SENSORS if s.key == "invitees")
     # Empty claimer_name → falls through to count
@@ -411,6 +420,7 @@ def test_invitees_value_fn_empty() -> None:
 
 
 # ── PowerHubSensor entity ─────────────────────────────────────────────────────
+
 
 def test_powerhub_sensor_native_value_returns_correct_value() -> None:
     desc = next(s for s in SENSORS if s.key == "import_today")
@@ -480,6 +490,7 @@ def test_powerhub_sensor_invitees_extra_attrs() -> None:
 
 # ── NotificationSensor entity ─────────────────────────────────────────────────
 
+
 def _make_notif_coord(data: NotificationData | None = None) -> MagicMock:
     coord = MagicMock()
     coord.data = data
@@ -533,7 +544,12 @@ def test_notification_sensor_extra_attrs_basic() -> None:
         notification_type="POWER",
         created_ms=1700000000000,
         all_notifications=[
-            {"title": "Alert", "body": "High power usage.", "type": "POWER", "created": 1700000000000}
+            {
+                "title": "Alert",
+                "body": "High power usage.",
+                "type": "POWER",
+                "created": 1700000000000,
+            }
         ],
     )
     sensor = NotificationSensor(_make_notif_coord(data), _make_notif_entry())

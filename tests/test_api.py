@@ -1415,7 +1415,7 @@ class TestParseSubmessageEdgeCases:
     def test_wire_type_1_64bit_is_skipped(self):
         """Wire type 1 (64-bit fixed) — field is silently skipped."""
         # tag = (field_num=1 << 3) | 1 = 9 → varint 0x09, then 8 bytes
-        raw = b"\x09" + b"\xAB" * 8
+        raw = b"\x09" + b"\xab" * 8
         fields = _parse_submessage(raw)
         assert 1 not in fields  # field was skipped, not stored
 
@@ -1468,11 +1468,7 @@ class TestDecodeHourlyEnergyProtoEdgeCases:
         tag_f3_ld = b"\x1a"
         tag_f4_ld = b"\x22"
         empty_sub = b"\x00"  # length=0 submessage
-        inner = (
-            tag_f1_ld + empty_sub
-            + tag_f3_ld + empty_sub
-            + tag_f4_ld + empty_sub
-        )
+        inner = tag_f1_ld + empty_sub + tag_f3_ld + empty_sub + tag_f4_ld + empty_sub
         outer = b"\x0a" + bytes([len(inner)]) + inner
         results = _decode_hourly_energy_proto(outer)
         assert results == []

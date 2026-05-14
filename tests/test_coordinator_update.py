@@ -176,7 +176,10 @@ def _make_power_client_mock(**overrides) -> MagicMock:
     )
     client.get_diagnostics = AsyncMock(
         return_value=PowerDiagnostics(
-            uptime_s=3600, wifi_rssi_dbm=-55, sw_version="1.2.3", han_port_state="ACTIVE"
+            uptime_s=3600,
+            wifi_rssi_dbm=-55,
+            sw_version="1.2.3",
+            han_port_state="ACTIVE",
         )
     )
     client.get_facility_control = AsyncMock(return_value=_make_facility_control())
@@ -300,7 +303,7 @@ async def test_async_update_data_spot_price_picks_most_recent_past_bucket() -> N
     now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
     spot_points = [
         {"timestamp": now_ms - 1_800_000, "value": 80.0},  # 30 min ago
-        {"timestamp": now_ms - 900_000, "value": 90.0},   # 15 min ago (most recent)
+        {"timestamp": now_ms - 900_000, "value": 90.0},  # 15 min ago (most recent)
         {"timestamp": now_ms + 900_000, "value": 100.0},  # future
     ]
     api = _make_api_client_mock()
