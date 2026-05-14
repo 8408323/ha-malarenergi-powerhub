@@ -21,8 +21,6 @@ from custom_components.malarenergi_powerhub.api import (
     FacilityInfo,
     FcrStatus,
     HourlyEnergy,
-    Invitation,
-    Invitee,
     MeterData,
     MonthlyInsights,
     NotificationSettings,
