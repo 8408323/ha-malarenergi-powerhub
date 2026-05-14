@@ -196,7 +196,9 @@ def test_attribute_numbers_have_valid_bounds() -> None:
 # ── async_setup_entry ─────────────────────────────────────────────────────────────────────────────────────────────────
 
 
-async def test_async_setup_entry_creates_powerhub_and_powercontrol_number_entities() -> None:
+async def test_async_setup_entry_creates_powerhub_and_powercontrol_number_entities() -> (
+    None
+):
     coord = _make_number_coord()
     hass = MagicMock()
     entry = MagicMock()

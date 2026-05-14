@@ -219,7 +219,9 @@ def test_notification_switch_unique_id() -> None:
 # ── async_setup_entry ─────────────────────────────────────────────────────────────────────────────────────────────────
 
 
-async def test_async_setup_entry_creates_powerhubswitch_and_notificationswitch_entities() -> None:
+async def test_async_setup_entry_creates_powerhubswitch_and_notificationswitch_entities() -> (
+    None
+):
     coord = _make_coord_with_attrs()
     hass = MagicMock()
     entry = MagicMock()

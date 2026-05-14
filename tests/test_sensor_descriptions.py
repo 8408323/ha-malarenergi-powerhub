@@ -590,7 +590,9 @@ def test_notification_sensor_unique_id() -> None:
 # ── async_setup_entry ─────────────────────────────────────────────────────────────────────────────────────────────────
 
 
-async def test_async_setup_entry_creates_sensor_and_notification_sensor_entities() -> None:
+async def test_async_setup_entry_creates_sensor_and_notification_sensor_entities() -> (
+    None
+):
     coord = _make_coord()
     notif_coord = _make_notif_coord()
     hass = MagicMock()
