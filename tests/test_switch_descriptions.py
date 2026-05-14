@@ -1,11 +1,10 @@
-"""Tests for pure value_fn lambdas in switch.py.
-
-Full switch entity tests require the HA runtime (CoordinatorEntity); these tests
-cover the description tables so any wiring mistake (wrong attribute name, typo)
-fails in CI.
-"""
+"""Tests for value_fn lambdas and entity classes in switch.py."""
 
 from __future__ import annotations
+
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from custom_components.malarenergi_powerhub.api import (
     FacilityAttributes,
@@ -14,6 +13,8 @@ from custom_components.malarenergi_powerhub.api import (
 from custom_components.malarenergi_powerhub.switch import (
     ATTRIBUTE_SWITCHES,
     NOTIFICATION_SWITCHES,
+    NotificationSwitch,
+    PowerHubSwitch,
 )
 
 
@@ -90,3 +91,120 @@ def test_every_notification_switch_reads_its_named_field() -> None:
             assert desc.value_fn(notif) is expected, (
                 f"{desc.key} read wrong field when {target.notif_field} was set"
             )
+
+
+# ── PowerHubSwitch entity ─────────────────────────────────────────────────────
+
+def _make_coord_with_attrs(**attr_overrides) -> MagicMock:
+    coord = MagicMock()
+    coord.config_entry.entry_id = "entry-id"
+    coord.config_entry.title = "Home"
+    coord.data = MagicMock()
+    coord.data.attributes = _make_attrs(**attr_overrides)
+    coord.data.notification_settings = _make_notif()
+    coord.async_update_attributes = AsyncMock()
+    coord.async_update_notification_settings = AsyncMock()
+    return coord
+
+
+def test_powerhub_switch_is_on_reflects_attribute() -> None:
+    desc = next(d for d in ATTRIBUTE_SWITCHES if d.key == "has_solar")
+    coord = _make_coord_with_attrs(has_solar=True)
+    switch = PowerHubSwitch(coord, desc)
+    assert switch.is_on is True
+
+
+def test_powerhub_switch_is_on_none_when_no_data() -> None:
+    desc = next(d for d in ATTRIBUTE_SWITCHES if d.key == "has_solar")
+    coord = _make_coord_with_attrs()
+    coord.data = None
+    switch = PowerHubSwitch(coord, desc)
+    assert switch.is_on is None
+
+
+def test_powerhub_switch_is_on_none_when_no_attributes() -> None:
+    desc = next(d for d in ATTRIBUTE_SWITCHES if d.key == "has_solar")
+    coord = _make_coord_with_attrs()
+    coord.data.attributes = None
+    switch = PowerHubSwitch(coord, desc)
+    assert switch.is_on is None
+
+
+@pytest.mark.asyncio
+async def test_powerhub_switch_turn_on_calls_coordinator() -> None:
+    desc = next(d for d in ATTRIBUTE_SWITCHES if d.key == "has_solar")
+    coord = _make_coord_with_attrs(has_solar=False)
+    switch = PowerHubSwitch(coord, desc)
+    await switch.async_turn_on()
+    coord.async_update_attributes.assert_awaited_once_with(has_solar=True)
+
+
+@pytest.mark.asyncio
+async def test_powerhub_switch_turn_off_calls_coordinator() -> None:
+    desc = next(d for d in ATTRIBUTE_SWITCHES if d.key == "has_solar")
+    coord = _make_coord_with_attrs(has_solar=True)
+    switch = PowerHubSwitch(coord, desc)
+    await switch.async_turn_off()
+    coord.async_update_attributes.assert_awaited_once_with(has_solar=False)
+
+
+def test_powerhub_switch_unique_id() -> None:
+    desc = next(d for d in ATTRIBUTE_SWITCHES if d.key == "has_solar")
+    coord = _make_coord_with_attrs()
+    switch = PowerHubSwitch(coord, desc)
+    assert switch._attr_unique_id == "entry-id_has_solar"
+
+
+# ── NotificationSwitch entity ─────────────────────────────────────────────────
+
+def test_notification_switch_is_on_reflects_setting() -> None:
+    desc = next(d for d in NOTIFICATION_SWITCHES if d.key == "notify_total_power")
+    coord = _make_coord_with_attrs()
+    coord.data.notification_settings = _make_notif(notify_total_power=True)
+    switch = NotificationSwitch(coord, desc)
+    assert switch.is_on is True
+
+
+def test_notification_switch_is_on_none_when_no_data() -> None:
+    desc = next(d for d in NOTIFICATION_SWITCHES if d.key == "notify_total_power")
+    coord = _make_coord_with_attrs()
+    coord.data = None
+    switch = NotificationSwitch(coord, desc)
+    assert switch.is_on is None
+
+
+def test_notification_switch_is_on_none_when_no_notif_settings() -> None:
+    desc = next(d for d in NOTIFICATION_SWITCHES if d.key == "notify_total_power")
+    coord = _make_coord_with_attrs()
+    coord.data.notification_settings = None
+    switch = NotificationSwitch(coord, desc)
+    assert switch.is_on is None
+
+
+@pytest.mark.asyncio
+async def test_notification_switch_turn_on_calls_coordinator() -> None:
+    desc = next(d for d in NOTIFICATION_SWITCHES if d.key == "notify_total_power")
+    coord = _make_coord_with_attrs()
+    switch = NotificationSwitch(coord, desc)
+    await switch.async_turn_on()
+    coord.async_update_notification_settings.assert_awaited_once_with(
+        notify_total_power=True
+    )
+
+
+@pytest.mark.asyncio
+async def test_notification_switch_turn_off_calls_coordinator() -> None:
+    desc = next(d for d in NOTIFICATION_SWITCHES if d.key == "notify_total_power")
+    coord = _make_coord_with_attrs()
+    switch = NotificationSwitch(coord, desc)
+    await switch.async_turn_off()
+    coord.async_update_notification_settings.assert_awaited_once_with(
+        notify_total_power=False
+    )
+
+
+def test_notification_switch_unique_id() -> None:
+    desc = next(d for d in NOTIFICATION_SWITCHES if d.key == "notify_total_power")
+    coord = _make_coord_with_attrs()
+    switch = NotificationSwitch(coord, desc)
+    assert switch._attr_unique_id == "entry-id_notify_total_power"
