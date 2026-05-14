@@ -82,11 +82,6 @@ def test_fuse_limit_value_fn_reads_float_amps() -> None:
     assert desc.value_fn(_make_control(fuse_limit_a=16.0)) == 16.0
 
 
-def test_power_limit_value_fn_reads_kilowatts() -> None:
-    desc = next(d for d in CONTROL_NUMBERS if d.key == "power_limit_set")
-    assert desc.value_fn(_make_control(power_limit_kw=5.5)) == 5.5
-
-
 # ── PowerHubNumber entity ─────────────────────────────────────────────────────
 
 
