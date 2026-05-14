@@ -8,6 +8,8 @@ import aiohttp
 import pytest
 from aioresponses import aioresponses
 
+from unittest.mock import patch
+
 from custom_components.malarenergi_powerhub.api import (
     BASE_URL,
     POWER_BASE_URL,
@@ -28,6 +30,8 @@ from custom_components.malarenergi_powerhub.api import (
     _decode_hourly_energy_proto,
     _decode_phase_telemetry_proto,
     _decode_telemetry_proto,
+    _iter_delimited,
+    _parse_submessage,
     bankid_start,
     bankid_poll,
 )
@@ -1189,3 +1193,295 @@ class TestUpdateFacilityAttributes:
                 )
                 with pytest.raises(AuthError):
                     await client.update_facility_attributes(FACILITY_ID, _make_attrs())
+
+
+# ---------------------------------------------------------------------------
+# Previously-uncovered PowerHubApiClient methods
+# ---------------------------------------------------------------------------
+
+
+class TestGetProfile:
+    async def test_returns_account_profile(self):
+        async with aiohttp.ClientSession() as session:
+            client = PowerHubApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.get(
+                    f"{BASE_URL}/account/profile",
+                    payload={
+                        "name": "Anna Andersson",
+                        "phone": "+46701234567",
+                        "email": "anna@example.com",
+                        "customerNumber": "CUS-001",
+                    },
+                )
+                result = await client.get_profile()
+        assert result.name == "Anna Andersson"
+        assert result.phone == "+46701234567"
+        assert result.email == "anna@example.com"
+        assert result.customer_number == "CUS-001"
+
+
+class TestGetAgreements:
+    async def test_returns_parsed_agreements(self):
+        async with aiohttp.ClientSession() as session:
+            client = PowerHubApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.get(
+                    f"{BASE_URL}/account/agreement",
+                    payload=[
+                        {
+                            "agreementNumber": "AGR-001",
+                            "supplyServiceName": "Rörligt elpris",
+                            "supplyStartDate": 1_700_000_000_000,
+                            "attributes": {
+                                "agreementPriceModel": "SPOT",
+                                "utility": "electricity",
+                            },
+                            "facility": {"facilityid": FACILITY_ID},
+                        }
+                    ],
+                )
+                agreements = await client.get_agreements()
+        assert len(agreements) == 1
+        a = agreements[0]
+        assert a.agreement_number == "AGR-001"
+        assert a.supply_service_name == "Rörligt elpris"
+        assert a.price_model == "SPOT"
+        assert a.facility_id == FACILITY_ID
+
+    async def test_non_list_response_returns_empty(self):
+        async with aiohttp.ClientSession() as session:
+            client = PowerHubApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.get(f"{BASE_URL}/account/agreement", payload={})
+                agreements = await client.get_agreements()
+        assert agreements == []
+
+
+class TestGetFacilityAttributes:
+    async def test_returns_parsed_attributes(self):
+        async with aiohttp.ClientSession() as session:
+            client = PowerHubApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.get(
+                    f"{BASE_URL}/facility/{FACILITY_ID}/attributes",
+                    payload={
+                        "heatingType": "DISTRICT",
+                        "fuseSize": "A25",
+                        "occupants": 3,
+                        "area": 120,
+                        "type": "HOUSE",
+                        "evType": "VOLVO",
+                        "battery": True,
+                        "solar": True,
+                    },
+                )
+                attrs = await client.get_facility_attributes(FACILITY_ID)
+        assert attrs.fuse_size == 25
+        assert attrs.heating_type == "DISTRICT"
+        assert attrs.occupants == 3
+        assert attrs.has_battery is True
+        assert attrs.has_solar is True
+
+    async def test_invalid_fuse_size_falls_back_to_zero(self):
+        """fuseSize that can't be parsed after stripping leading letter → 0."""
+        async with aiohttp.ClientSession() as session:
+            client = PowerHubApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.get(
+                    f"{BASE_URL}/facility/{FACILITY_ID}/attributes",
+                    payload={"fuseSize": "UNKNOWN", "occupants": 0, "area": 0},
+                )
+                attrs = await client.get_facility_attributes(FACILITY_ID)
+        assert attrs.fuse_size == 0
+
+
+class TestGetInvitees:
+    async def test_returns_list_of_invitees(self):
+        async with aiohttp.ClientSession() as session:
+            client = PowerHubApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.get(
+                    f"{BASE_URL}/facility/{FACILITY_ID}/invitees",
+                    payload=[
+                        {
+                            "id": "inv-1",
+                            "claimerName": "Bob",
+                            "facilityId": FACILITY_ID,
+                            "shareAllDevices": True,
+                        }
+                    ],
+                )
+                invitees = await client.get_invitees(FACILITY_ID)
+        assert len(invitees) == 1
+        assert invitees[0].claimer_name == "Bob"
+        assert invitees[0].share_all_devices is True
+
+
+class TestGetTodayProduction:
+    async def test_returns_meter_data_points(self):
+        async with aiohttp.ClientSession() as session:
+            client = PowerHubApiClient(session, FAKE_TOKEN)
+            TS = 1_700_000_000_000
+            with aioresponses() as m:
+                m.get(
+                    f"{BASE_URL}/facility/{FACILITY_ID}/facility_production_meter"
+                    f"?interval=DAY&type=START&timestamp={TS}",
+                    payload={"data": [{"timestamp": TS, "value": 0.5}]},
+                )
+                result = await client.get_today_production(FACILITY_ID, TS)
+        assert len(result) == 1
+        assert result[0].value_wh == 0.5
+
+    async def test_returns_empty_list_when_no_data(self):
+        async with aiohttp.ClientSession() as session:
+            client = PowerHubApiClient(session, FAKE_TOKEN)
+            TS = 1_700_000_000_000
+            with aioresponses() as m:
+                m.get(
+                    f"{BASE_URL}/facility/{FACILITY_ID}/facility_production_meter"
+                    f"?interval=DAY&type=START&timestamp={TS}",
+                    payload={},
+                )
+                result = await client.get_today_production(FACILITY_ID, TS)
+        assert result == []
+
+
+class TestGetYearProduction:
+    async def test_returns_meter_response(self):
+        async with aiohttp.ClientSession() as session:
+            client = PowerHubApiClient(session, FAKE_TOKEN)
+            TS = 1_700_000_000_000
+            with aioresponses() as m:
+                m.get(
+                    f"{BASE_URL}/facility/{FACILITY_ID}/facility_production_meter"
+                    f"?interval=YEAR&type=START&timestamp={TS}",
+                    payload={
+                        "facilityid": FACILITY_ID,
+                        "start": TS,
+                        "end": TS + 1000,
+                        "count": 1,
+                        "min": 0.0,
+                        "max": 10.0,
+                        "avg": 5.0,
+                        "data": [{"timestamp": TS, "value": 10.0}],
+                    },
+                )
+                result = await client.get_year_production(FACILITY_ID, TS)
+        assert result.avg == 5.0
+        assert len(result.data) == 1
+        assert result.data[0].value_wh == 10.0
+
+
+class TestGetNotifications:
+    async def test_returns_list_of_notifications(self):
+        async with aiohttp.ClientSession() as session:
+            client = PowerHubApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.get(
+                    f"{BASE_URL}/notifications"
+                    "?firebase_token=ha-integration"
+                    "&topics=operatingStatus%2CtodaySpotPrice%2Cgeneric"
+                    "&page=1&page_size=25",
+                    payload=[
+                        {"title": "Test", "body": "Body", "type": "PRICE", "created": 1}
+                    ],
+                )
+                result = await client.get_notifications()
+        assert len(result) == 1
+        assert result[0]["title"] == "Test"
+
+    async def test_non_list_response_returns_empty(self):
+        async with aiohttp.ClientSession() as session:
+            client = PowerHubApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.get(
+                    f"{BASE_URL}/notifications"
+                    "?firebase_token=ha-integration"
+                    "&topics=operatingStatus%2CtodaySpotPrice%2Cgeneric"
+                    "&page=1&page_size=25",
+                    payload={"error": "not a list"},
+                )
+                result = await client.get_notifications()
+        assert result == []
+
+
+# ---------------------------------------------------------------------------
+# Protobuf parser edge cases
+# ---------------------------------------------------------------------------
+
+
+class TestParseSubmessageEdgeCases:
+    def test_wire_type_1_64bit_is_skipped(self):
+        """Wire type 1 (64-bit fixed) — field is silently skipped."""
+        # tag = (field_num=1 << 3) | 1 = 9 → varint 0x09, then 8 bytes
+        raw = b"\x09" + b"\xab" * 8
+        fields = _parse_submessage(raw)
+        assert 1 not in fields  # field was skipped, not stored
+
+    def test_unknown_wire_type_breaks_parser(self):
+        """Unknown wire type (>= 6) — parser stops early (breaks)."""
+        # tag = (field_num=1 << 3) | 6 = 14 → varint 0x0e
+        raw = b"\x0e\x01\x02\x03"
+        fields = _parse_submessage(raw)
+        # Parser broke on the unknown wire type; no fields decoded
+        assert fields == {}
+
+
+class TestIterDelimitedEdgeCases:
+    def test_truncated_buffer_returns_early(self):
+        """If the length prefix promises more bytes than remain, stop silently."""
+        # Length prefix of 100 but only 2 bytes follow
+        raw = b"\x64" + b"\x01\x02"  # varint(100) + 2 bytes
+        results = list(_iter_delimited(raw))
+        assert results == []
+
+
+class TestDecodeHourlyEnergyProtoEdgeCases:
+    def test_breaks_on_non_length_delimited_outer_tag(self):
+        """If the outer tag wire type is not 2, decoder stops."""
+        # tag = (field_num=1 << 3) | 0 = 8 → varint(8) with wire=0
+        raw = b"\x08\x01"  # field 1, varint wire, value=1
+        results = _decode_hourly_energy_proto(raw)
+        assert results == []
+
+    def test_breaks_on_truncated_record_length(self):
+        """If stated record length exceeds remaining bytes, decoder stops."""
+        # Outer tag 0x0a (field 1, wire 2), then length=100 but only 2 bytes
+        raw = b"\x0a\x64\x01\x02"
+        results = _decode_hourly_energy_proto(raw)
+        assert results == []
+
+    def test_skips_record_with_non_bytes_timestamp_fields(self):
+        """If inner timestamp field is not length-delimited (bytes), skip record."""
+        # Build a record where field 1 is encoded as varint (wire=0) not wire=2
+        # tag(f1,wire=0)=0x08, varint value 1000
+        inner = b"\x08" + b"\xe8\x07"  # field 1 as varint 1000
+        outer = b"\x0a" + bytes([len(inner)]) + inner
+        results = _decode_hourly_energy_proto(outer)
+        assert results == []
+
+    def test_skips_record_when_timestamp_submsg_is_empty(self):
+        """If a timestamp submessage is empty, _ts_from_submsg returns None → skip."""
+        # Build outer record with field 1, 3, 4 all as empty bytes submessages
+        tag_f1_ld = b"\x0a"
+        tag_f3_ld = b"\x1a"
+        tag_f4_ld = b"\x22"
+        empty_sub = b"\x00"  # length=0 submessage
+        inner = tag_f1_ld + empty_sub + tag_f3_ld + empty_sub + tag_f4_ld + empty_sub
+        outer = b"\x0a" + bytes([len(inner)]) + inner
+        results = _decode_hourly_energy_proto(outer)
+        assert results == []
+
+
+class TestBankIdPollExhaustion:
+    async def test_yields_failed_when_poll_timeout_exhausted(self):
+        """When POLL_TIMEOUT is 0, the while loop never runs and the safety
+        ``yield "failed", None, None`` at the end is hit."""
+        txid = "pending-txid"
+        with patch("custom_components.malarenergi_powerhub.api.POLL_TIMEOUT", -1):
+            async with aiohttp.ClientSession() as session:
+                results = []
+                async for status, qr, token in bankid_poll(session, txid):
+                    results.append((status, qr, token))
+        assert results == [("failed", None, None)]
