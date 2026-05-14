@@ -31,10 +31,12 @@ from custom_components.malarenergi_powerhub.coordinator import PowerHubData
 from custom_components.malarenergi_powerhub.notifications_coordinator import (
     NotificationData,
 )
+from custom_components.malarenergi_powerhub.const import DOMAIN
 from custom_components.malarenergi_powerhub.sensor import (
     SENSORS,
     NotificationSensor,
     PowerHubSensor,
+    async_setup_entry,
 )
 
 
@@ -583,3 +585,23 @@ def test_notification_sensor_extra_attrs_no_created_when_ms_none() -> None:
 def test_notification_sensor_unique_id() -> None:
     sensor = NotificationSensor(_make_notif_coord(), _make_notif_entry())
     assert sensor._attr_unique_id == "notif-entry-id_latest_notification"
+
+
+# ── async_setup_entry ─────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+async def test_async_setup_entry_creates_sensor_and_notification_sensor_entities() -> (
+    None
+):
+    coord = _make_coord()
+    notif_coord = _make_notif_coord()
+    hass = MagicMock()
+    entry = MagicMock()
+    entry.entry_id = "entry-id"
+    hass.data = {DOMAIN: {"entry-id": coord, "entry-id_notifications": notif_coord}}
+
+    added: list = []
+    await async_setup_entry(hass, entry, lambda entities: added.extend(entities))
+
+    assert any(isinstance(e, PowerHubSensor) for e in added)
+    assert any(isinstance(e, NotificationSensor) for e in added)

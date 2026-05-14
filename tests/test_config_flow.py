@@ -9,6 +9,7 @@ reloaded, and the flow aborts with reason="reauth_successful".
 
 from __future__ import annotations
 
+import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from homeassistant import config_entries
@@ -918,3 +919,117 @@ class TestAsyncStepReauth:
 
         flow.async_step_user.assert_awaited_once()
         assert result == step_user_result
+
+
+# ── async_remove ──────────────────────────────────────────────────────────────
+
+
+class TestAsyncRemove:
+    async def test_async_remove_calls_cancel_task(self) -> None:
+        flow = PowerHubConfigFlow()
+        flow._cancel_task = MagicMock()
+        await flow.async_remove()
+        flow._cancel_task.assert_called_once()
+
+
+# ── async_step_user: first poll complete ──────────────────────────────────────
+
+
+class TestAsyncStepUserFirstPollComplete:
+    async def test_first_poll_complete_immediately_calls_async_finish(
+        self,
+    ) -> None:
+        """If bankid_poll yields 'complete' as the very first status, async_finish
+        is called without starting the background poll task."""
+        flow = _make_user_flow()
+        finish_result = {"type": "create_entry", "title": "x", "data": {}}
+        flow._async_finish = AsyncMock(return_value=finish_result)
+
+        with (
+            patch(
+                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
+            ),
+            patch(
+                "custom_components.malarenergi_powerhub.config_flow.bankid_start",
+                AsyncMock(return_value=("txn-123", "auto")),
+            ),
+            patch(
+                "custom_components.malarenergi_powerhub.config_flow.bankid_poll",
+                _make_async_gen(("complete", None, "jwt-token")),
+            ),
+        ):
+            result = await flow.async_step_user()
+
+        flow._async_finish.assert_awaited_once_with("jwt-token")
+        assert result == finish_result
+
+
+# ── _run_poller: CancelledError ───────────────────────────────────────────────
+
+
+class TestRunPollerCancelledError:
+    async def test_cancelled_error_is_silently_ignored(self) -> None:
+        """asyncio.CancelledError from bankid_poll is caught and swallowed."""
+        flow = _make_user_flow()
+        flow._transaction_id = "txn-123"
+
+        async def _cancelling_poll(session, txn_id):
+            raise asyncio.CancelledError()
+            yield  # pragma: no cover — unreachable; marks function as async generator
+
+        with (
+            patch(
+                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
+            ),
+            patch(
+                "custom_components.malarenergi_powerhub.config_flow.bankid_poll",
+                _cancelling_poll,
+            ),
+        ):
+            await flow._run_poller()  # must not raise
+
+        assert flow._failed is False
+        assert flow._token is None
+
+
+# ── _async_finish reauth: reload failure ──────────────────────────────────────
+
+
+class TestAsyncFinishReauthReloadFailure:
+    async def test_reload_failure_is_logged_but_reauth_still_succeeds(
+        self,
+    ) -> None:
+        """If async_reload raises, the error is logged but reauth_successful
+        is still returned (the token was already persisted)."""
+        flow = _make_flow(config_entries.SOURCE_REAUTH, entry_id=OLD_ENTRY_ID)
+
+        existing_entry = MagicMock()
+        existing_entry.entry_id = OLD_ENTRY_ID
+        existing_entry.unique_id = FACILITY.facility_id
+        existing_entry.data = {
+            CONF_TOKEN: "old-token",
+            CONF_FACILITY_ID: FACILITY.facility_id,
+        }
+        flow.hass.config_entries.async_get_entry.return_value = existing_entry
+        flow.hass.config_entries.async_entries = MagicMock(return_value=[])
+        # Simulate reload failure
+        flow.hass.config_entries.async_reload = AsyncMock(
+            side_effect=RuntimeError("reload failed")
+        )
+
+        fake_client = MagicMock()
+        fake_client.get_facilities = AsyncMock(return_value=[FACILITY])
+
+        with (
+            patch(
+                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
+            ),
+            patch(
+                "custom_components.malarenergi_powerhub.api.PowerHubApiClient",
+                return_value=fake_client,
+            ),
+        ):
+            result = await flow._async_finish(NEW_TOKEN)
+
+        assert result["type"] == "abort"
+        assert result["reason"] == "reauth_successful"

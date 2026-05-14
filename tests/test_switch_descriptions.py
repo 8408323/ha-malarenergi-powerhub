@@ -18,6 +18,10 @@ from custom_components.malarenergi_powerhub.switch import (
 )
 
 
+from custom_components.malarenergi_powerhub.const import DOMAIN
+from custom_components.malarenergi_powerhub.switch import async_setup_entry
+
+
 def _make_attrs(**overrides) -> FacilityAttributes:
     base = dict(
         heating_type="DISTRICT_HEATING",
@@ -210,3 +214,22 @@ def test_notification_switch_unique_id() -> None:
     coord = _make_coord_with_attrs()
     switch = NotificationSwitch(coord, desc)
     assert switch._attr_unique_id == "entry-id_notify_total_power"
+
+
+# ── async_setup_entry ─────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+async def test_async_setup_entry_creates_powerhubswitch_and_notificationswitch_entities() -> (
+    None
+):
+    coord = _make_coord_with_attrs()
+    hass = MagicMock()
+    entry = MagicMock()
+    entry.entry_id = "entry-id"
+    hass.data = {DOMAIN: {"entry-id": coord}}
+
+    added: list = []
+    await async_setup_entry(hass, entry, lambda entities: added.extend(entities))
+
+    assert any(isinstance(e, PowerHubSwitch) for e in added)
+    assert any(isinstance(e, NotificationSwitch) for e in added)
