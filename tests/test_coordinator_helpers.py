@@ -8,9 +8,22 @@ from __future__ import annotations
 
 import zoneinfo
 from datetime import datetime, timezone
-from unittest.mock import patch
+import pytest
+from aiohttp import ClientResponseError
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from unittest.mock import MagicMock, patch
 
-from custom_components.malarenergi_powerhub.coordinator import _day_start_ms, _now_ms
+from custom_components.malarenergi_powerhub.api import PowerApiClient, PowerHubApiClient
+from custom_components.malarenergi_powerhub.const import CONF_FACILITY_ID, CONF_TOKEN
+from custom_components.malarenergi_powerhub.coordinator import (
+    _day_start_ms,
+    _now_ms,
+    _optional,
+    PowerHubCoordinator,
+)
+from custom_components.malarenergi_powerhub.notifications_coordinator import (
+    NotificationsCoordinator,
+)
 
 
 _STHLM = zoneinfo.ZoneInfo("Europe/Stockholm")
@@ -69,3 +82,108 @@ def test_now_ms_is_greater_than_day_start_ms_during_normal_day() -> None:
     """After midnight Stockholm, _now_ms should exceed _day_start_ms."""
     # This is only false in the first millisecond of the day; in practice safe.
     assert _now_ms() >= _day_start_ms()
+
+
+# ── _optional ────────────────────────────────────────────────────────────────
+
+
+async def test_optional_returns_value_on_success() -> None:
+    async def _coro():
+        return "ok"
+
+    assert await _optional(_coro(), "ep") == "ok"
+
+
+async def test_optional_404_returns_none() -> None:
+    async def _coro():
+        raise ClientResponseError(None, (), status=404)
+
+    assert await _optional(_coro(), "ep") is None
+
+
+async def test_optional_404_returns_custom_default() -> None:
+    async def _coro():
+        raise ClientResponseError(None, (), status=404)
+
+    assert await _optional(_coro(), "ep", default=42) == 42
+
+
+async def test_optional_non_404_reraises() -> None:
+    async def _coro():
+        raise ClientResponseError(None, (), status=500)
+
+    with pytest.raises(ClientResponseError):
+        await _optional(_coro(), "ep")
+
+
+# ── PowerHubCoordinator.__init__ ──────────────────────────────────────────────
+
+
+def test_power_hub_coordinator_init_sets_all_fields() -> None:
+    entry = MagicMock()
+    entry.data = {CONF_TOKEN: "my-token", CONF_FACILITY_ID: "facility-1"}
+
+    with patch.object(DataUpdateCoordinator, "__init__", return_value=None):
+        coord = PowerHubCoordinator(MagicMock(), entry)
+
+    assert coord._token == "my-token"
+    assert coord._facility_id == "facility-1"
+    assert coord._entry is entry
+    assert coord._cached_attributes is None
+    assert coord._cached_profile is None
+    assert coord._cached_agreements is None
+    assert coord._cached_facility_info is None
+    assert coord._facility_info_resolved is False
+    assert coord._reauth_pending is False
+
+
+# ── PowerHubCoordinator._make_client / _make_power_client ─────────────────────
+
+
+def test_make_client_returns_powerhub_api_client() -> None:
+    entry = MagicMock()
+    entry.data = {CONF_TOKEN: "tok", CONF_FACILITY_ID: "fid"}
+
+    with patch.object(DataUpdateCoordinator, "__init__", return_value=None):
+        coord = PowerHubCoordinator(MagicMock(), entry)
+    coord.hass = MagicMock()
+
+    with patch(
+        "custom_components.malarenergi_powerhub.coordinator.async_get_clientsession",
+        return_value=MagicMock(),
+    ):
+        client = coord._make_client()
+
+    assert isinstance(client, PowerHubApiClient)
+
+
+def test_make_power_client_returns_power_api_client() -> None:
+    entry = MagicMock()
+    entry.data = {CONF_TOKEN: "tok", CONF_FACILITY_ID: "fid"}
+
+    with patch.object(DataUpdateCoordinator, "__init__", return_value=None):
+        coord = PowerHubCoordinator(MagicMock(), entry)
+    coord.hass = MagicMock()
+
+    with patch(
+        "custom_components.malarenergi_powerhub.coordinator.async_get_clientsession",
+        return_value=MagicMock(),
+    ):
+        client = coord._make_power_client()
+
+    assert isinstance(client, PowerApiClient)
+
+
+# ── NotificationsCoordinator.__init__ ─────────────────────────────────────────
+
+
+def test_notifications_coordinator_init_sets_all_fields() -> None:
+    entry = MagicMock()
+    entry.data = {CONF_TOKEN: "notif-token"}
+
+    with patch.object(DataUpdateCoordinator, "__init__", return_value=None):
+        coord = NotificationsCoordinator(MagicMock(), entry)
+
+    assert coord._token == "notif-token"
+    assert coord._entry is entry
+    assert coord._reauth_pending is False
