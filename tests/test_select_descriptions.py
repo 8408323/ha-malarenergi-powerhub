@@ -1,6 +1,10 @@
-"""Tests for pure value_fn / to_attr_value lambdas in select.py."""
+"""Tests for value_fn / to_attr_value lambdas and entity class in select.py."""
 
 from __future__ import annotations
+
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from custom_components.malarenergi_powerhub.api import FacilityAttributes
 from custom_components.malarenergi_powerhub.select import (
@@ -9,6 +13,7 @@ from custom_components.malarenergi_powerhub.select import (
     FUSE_OPTIONS,
     HEATING_TYPE_OPTIONS,
     SELECTS,
+    PowerHubSelect,
     _fuse_to_attr,
 )
 
@@ -87,6 +92,96 @@ def test_all_option_lists_are_non_empty() -> None:
     assert HEATING_TYPE_OPTIONS
     assert FACILITY_TYPE_OPTIONS
     assert EV_TYPE_OPTIONS
+
+
+# ── PowerHubSelect entity ─────────────────────────────────────────────────────
+
+
+def _make_select_coord(**attr_overrides) -> MagicMock:
+    coord = MagicMock()
+    coord.config_entry.entry_id = "entry-id"
+    coord.config_entry.title = "Home"
+    coord.data = MagicMock()
+    base = dict(
+        heating_type="DISTRICT_HEATING",
+        fuse_size=20,
+        occupants=2,
+        area=80,
+        facility_type="APARTMENT",
+        ev_type="NONE",
+        has_battery=False,
+        has_solar=False,
+    )
+    base.update(attr_overrides)
+    coord.data.attributes = FacilityAttributes(**base)
+    coord.async_update_attributes = AsyncMock()
+    return coord
+
+
+def test_powerhub_select_current_option_returns_valid_option() -> None:
+    desc = next(d for d in SELECTS if d.key == "heating_type")
+    select = PowerHubSelect(_make_select_coord(heating_type="ELECTRIC"), desc)
+    assert select.current_option == "ELECTRIC"
+
+
+def test_powerhub_select_current_option_none_when_no_data() -> None:
+    desc = next(d for d in SELECTS if d.key == "heating_type")
+    coord = _make_select_coord()
+    coord.data = None
+    select = PowerHubSelect(coord, desc)
+    assert select.current_option is None
+
+
+def test_powerhub_select_current_option_none_when_no_attributes() -> None:
+    desc = next(d for d in SELECTS if d.key == "heating_type")
+    coord = _make_select_coord()
+    coord.data.attributes = None
+    select = PowerHubSelect(coord, desc)
+    assert select.current_option is None
+
+
+def test_powerhub_select_current_option_none_when_value_not_in_options() -> None:
+    """An unknown value from the API renders the entity unavailable (None)."""
+    desc = next(d for d in SELECTS if d.key == "heating_type")
+    select = PowerHubSelect(_make_select_coord(heating_type="UNKNOWN_FUTURE"), desc)
+    assert select.current_option is None
+
+
+def test_powerhub_select_fuse_size_current_option() -> None:
+    desc = next(d for d in SELECTS if d.key == "fuse_size")
+    select = PowerHubSelect(_make_select_coord(fuse_size=25), desc)
+    assert select.current_option == "A25"
+
+
+@pytest.mark.asyncio
+async def test_powerhub_select_async_select_option_calls_coordinator() -> None:
+    desc = next(d for d in SELECTS if d.key == "heating_type")
+    coord = _make_select_coord()
+    select = PowerHubSelect(coord, desc)
+    await select.async_select_option("ELECTRIC")
+    coord.async_update_attributes.assert_awaited_once_with(heating_type="ELECTRIC")
+
+
+@pytest.mark.asyncio
+async def test_powerhub_select_fuse_size_converts_option_to_int() -> None:
+    """fuse_size uses to_attr_value to parse "A20" → 20 before the API call."""
+    desc = next(d for d in SELECTS if d.key == "fuse_size")
+    coord = _make_select_coord()
+    select = PowerHubSelect(coord, desc)
+    await select.async_select_option("A20")
+    coord.async_update_attributes.assert_awaited_once_with(fuse_size=20)
+
+
+def test_powerhub_select_unique_id() -> None:
+    desc = next(d for d in SELECTS if d.key == "heating_type")
+    select = PowerHubSelect(_make_select_coord(), desc)
+    assert select._attr_unique_id == "entry-id_heating_type"
+
+
+def test_powerhub_select_options_populated_from_description() -> None:
+    desc = next(d for d in SELECTS if d.key == "fuse_size")
+    select = PowerHubSelect(_make_select_coord(), desc)
+    assert select._attr_options == list(FUSE_OPTIONS)
 
 
 def test_select_options_cover_value_fn_output() -> None:

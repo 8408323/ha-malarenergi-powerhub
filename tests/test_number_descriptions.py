@@ -1,6 +1,10 @@
-"""Tests for pure value_fn lambdas in number.py."""
+"""Tests for value_fn lambdas and entity classes in number.py."""
 
 from __future__ import annotations
+
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from custom_components.malarenergi_powerhub.api import (
     FacilityAttributes,
@@ -9,6 +13,8 @@ from custom_components.malarenergi_powerhub.api import (
 from custom_components.malarenergi_powerhub.number import (
     ATTRIBUTE_NUMBERS,
     CONTROL_NUMBERS,
+    PowerControlNumber,
+    PowerHubNumber,
 )
 
 
@@ -76,7 +82,104 @@ def test_fuse_limit_value_fn_reads_float_amps() -> None:
     assert desc.value_fn(_make_control(fuse_limit_a=16.0)) == 16.0
 
 
-def test_power_limit_value_fn_reads_kilowatts() -> None:
+# ── PowerHubNumber entity ─────────────────────────────────────────────────────
+
+
+def _make_number_coord(**attr_overrides) -> MagicMock:
+    coord = MagicMock()
+    coord.config_entry.entry_id = "entry-id"
+    coord.config_entry.title = "Home"
+    coord.data = MagicMock()
+    coord.data.attributes = _make_attrs(**attr_overrides)
+    coord.data.facility_control = _make_control()
+    coord.async_update_attributes = AsyncMock()
+    coord.async_update_facility_control = AsyncMock()
+    return coord
+
+
+def test_powerhub_number_native_value_reads_attribute() -> None:
+    desc = next(d for d in ATTRIBUTE_NUMBERS if d.key == "area")
+    coord = _make_number_coord(area=95)
+    number = PowerHubNumber(coord, desc)
+    assert number.native_value == 95
+
+
+def test_powerhub_number_native_value_none_when_no_data() -> None:
+    desc = next(d for d in ATTRIBUTE_NUMBERS if d.key == "area")
+    coord = _make_number_coord()
+    coord.data = None
+    number = PowerHubNumber(coord, desc)
+    assert number.native_value is None
+
+
+def test_powerhub_number_native_value_none_when_no_attributes() -> None:
+    desc = next(d for d in ATTRIBUTE_NUMBERS if d.key == "area")
+    coord = _make_number_coord()
+    coord.data.attributes = None
+    number = PowerHubNumber(coord, desc)
+    assert number.native_value is None
+
+
+@pytest.mark.asyncio
+async def test_powerhub_number_set_native_value_calls_coordinator() -> None:
+    desc = next(d for d in ATTRIBUTE_NUMBERS if d.key == "area")
+    coord = _make_number_coord()
+    number = PowerHubNumber(coord, desc)
+    await number.async_set_native_value(100.0)
+    coord.async_update_attributes.assert_awaited_once_with(area=100)
+
+
+def test_powerhub_number_unique_id() -> None:
+    desc = next(d for d in ATTRIBUTE_NUMBERS if d.key == "area")
+    coord = _make_number_coord()
+    number = PowerHubNumber(coord, desc)
+    assert number._attr_unique_id == "entry-id_area"
+
+
+# ── PowerControlNumber entity ─────────────────────────────────────────────────
+
+
+def test_power_control_number_native_value_reads_control() -> None:
+    desc = next(d for d in CONTROL_NUMBERS if d.key == "power_limit_set")
+    coord = _make_number_coord()
+    coord.data.facility_control = _make_control(power_limit_kw=7.5)
+    number = PowerControlNumber(coord, desc)
+    assert number.native_value == 7.5
+
+
+def test_power_control_number_native_value_none_when_no_data() -> None:
+    desc = next(d for d in CONTROL_NUMBERS if d.key == "power_limit_set")
+    coord = _make_number_coord()
+    coord.data = None
+    number = PowerControlNumber(coord, desc)
+    assert number.native_value is None
+
+
+def test_power_control_number_native_value_none_when_no_control() -> None:
+    desc = next(d for d in CONTROL_NUMBERS if d.key == "power_limit_set")
+    coord = _make_number_coord()
+    coord.data.facility_control = None
+    number = PowerControlNumber(coord, desc)
+    assert number.native_value is None
+
+
+@pytest.mark.asyncio
+async def test_power_control_number_set_value_calls_coordinator() -> None:
+    desc = next(d for d in CONTROL_NUMBERS if d.key == "power_limit_set")
+    coord = _make_number_coord()
+    number = PowerControlNumber(coord, desc)
+    await number.async_set_native_value(8.0)
+    coord.async_update_facility_control.assert_awaited_once_with(power_limit_kw=8.0)
+
+
+def test_power_control_number_unique_id() -> None:
+    desc = next(d for d in CONTROL_NUMBERS if d.key == "power_limit_set")
+    coord = _make_number_coord()
+    number = PowerControlNumber(coord, desc)
+    assert number._attr_unique_id == "entry-id_power_limit_set"
+
+
+def test_power_limit_value_fn_reads_kilowatts_end() -> None:
     desc = next(d for d in CONTROL_NUMBERS if d.key == "power_limit_set")
     assert desc.value_fn(_make_control(power_limit_kw=7.5)) == 7.5
 
