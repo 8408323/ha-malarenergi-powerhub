@@ -96,6 +96,7 @@ def test_all_option_lists_are_non_empty() -> None:
 
 # ── PowerHubSelect entity ─────────────────────────────────────────────────────
 
+
 def _make_select_coord(**attr_overrides) -> MagicMock:
     coord = MagicMock()
     coord.config_entry.entry_id = "entry-id"

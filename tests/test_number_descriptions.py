@@ -89,6 +89,7 @@ def test_power_limit_value_fn_reads_kilowatts() -> None:
 
 # ── PowerHubNumber entity ─────────────────────────────────────────────────────
 
+
 def _make_number_coord(**attr_overrides) -> MagicMock:
     coord = MagicMock()
     coord.config_entry.entry_id = "entry-id"
@@ -141,6 +142,7 @@ def test_powerhub_number_unique_id() -> None:
 
 
 # ── PowerControlNumber entity ─────────────────────────────────────────────────
+
 
 def test_power_control_number_native_value_reads_control() -> None:
     desc = next(d for d in CONTROL_NUMBERS if d.key == "power_limit_set")
