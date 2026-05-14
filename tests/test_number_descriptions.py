@@ -10,11 +10,13 @@ from custom_components.malarenergi_powerhub.api import (
     FacilityAttributes,
     FacilityControl,
 )
+from custom_components.malarenergi_powerhub.const import DOMAIN
 from custom_components.malarenergi_powerhub.number import (
     ATTRIBUTE_NUMBERS,
     CONTROL_NUMBERS,
     PowerControlNumber,
     PowerHubNumber,
+    async_setup_entry,
 )
 
 
@@ -189,3 +191,22 @@ def test_attribute_numbers_have_valid_bounds() -> None:
     for desc in ATTRIBUTE_NUMBERS + CONTROL_NUMBERS:
         assert desc.native_min_value < desc.native_max_value
         assert desc.native_step > 0
+
+
+# ── async_setup_entry ─────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+async def test_async_setup_entry_creates_powerhub_and_powercontrol_number_entities() -> (
+    None
+):
+    coord = _make_number_coord()
+    hass = MagicMock()
+    entry = MagicMock()
+    entry.entry_id = "entry-id"
+    hass.data = {DOMAIN: {"entry-id": coord}}
+
+    added: list = []
+    await async_setup_entry(hass, entry, lambda entities: added.extend(entities))
+
+    assert any(isinstance(e, PowerHubNumber) for e in added)
+    assert any(isinstance(e, PowerControlNumber) for e in added)

@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from custom_components.malarenergi_powerhub.api import FacilityAttributes
+from custom_components.malarenergi_powerhub.const import DOMAIN
 from custom_components.malarenergi_powerhub.select import (
     EV_TYPE_OPTIONS,
     FACILITY_TYPE_OPTIONS,
@@ -15,6 +16,7 @@ from custom_components.malarenergi_powerhub.select import (
     SELECTS,
     PowerHubSelect,
     _fuse_to_attr,
+    async_setup_entry,
 )
 
 
@@ -192,3 +194,20 @@ def test_select_options_cover_value_fn_output() -> None:
     heat = next(d for d in SELECTS if d.key == "heating_type")
     for opt in HEATING_TYPE_OPTIONS:
         assert heat.value_fn(_make_attrs(heating_type=opt)) == opt
+
+
+# ── async_setup_entry ─────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+async def test_async_setup_entry_creates_powerhubselect_entities() -> None:
+    coord = _make_select_coord()
+    hass = MagicMock()
+    entry = MagicMock()
+    entry.entry_id = "entry-id"
+    hass.data = {DOMAIN: {"entry-id": coord}}
+
+    added: list = []
+    await async_setup_entry(hass, entry, lambda entities: added.extend(entities))
+
+    assert len(added) > 0
+    assert all(isinstance(e, PowerHubSelect) for e in added)

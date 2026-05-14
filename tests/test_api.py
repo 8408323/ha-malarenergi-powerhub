@@ -1427,6 +1427,14 @@ class TestParseSubmessageEdgeCases:
         # Parser broke on the unknown wire type; no fields decoded
         assert fields == {}
 
+    def test_truncated_32bit_field_breaks_parser(self):
+        """Wire type 5 (32-bit fixed) with fewer than 4 bytes remaining — breaks."""
+        # tag = (field_num=1 << 3) | 5 = 13 = 0x0D, then only 2 bytes (need 4)
+        raw = bytes([0x0D]) + b"\x01\x02"
+        fields = _parse_submessage(raw)
+        # Truncated 32-bit field: parser broke, field 1 not stored
+        assert 1 not in fields
+
 
 class TestIterDelimitedEdgeCases:
     def test_truncated_buffer_returns_early(self):
