@@ -509,3 +509,412 @@ class TestReauthSiblingTokenPropagation:
 
         assert result["type"] == "abort"
         assert result["reason"] == "reauth_successful"
+
+
+# ── _async_finish error paths (AuthError / generic exception / no facilities) ─
+
+
+class TestAsyncFinishErrors:
+    async def test_auth_error_on_get_facilities_shows_invalid_auth(self) -> None:
+        flow = _make_flow(config_entries.SOURCE_USER)
+        fake_client = MagicMock()
+        from custom_components.malarenergi_powerhub.api import AuthError
+
+        fake_client.get_facilities = AsyncMock(side_effect=AuthError("bad token"))
+
+        with (
+            patch(
+                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
+            ),
+            patch(
+                "custom_components.malarenergi_powerhub.api.PowerHubApiClient",
+                return_value=fake_client,
+            ),
+        ):
+            result = await flow._async_finish(NEW_TOKEN)
+
+        assert result["type"] == "form"
+        assert result["errors"] == {"base": "invalid_auth"}
+
+    async def test_generic_error_on_get_facilities_shows_cannot_connect(self) -> None:
+        flow = _make_flow(config_entries.SOURCE_USER)
+        fake_client = MagicMock()
+        fake_client.get_facilities = AsyncMock(
+            side_effect=RuntimeError("connection refused")
+        )
+
+        with (
+            patch(
+                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
+            ),
+            patch(
+                "custom_components.malarenergi_powerhub.api.PowerHubApiClient",
+                return_value=fake_client,
+            ),
+        ):
+            result = await flow._async_finish(NEW_TOKEN)
+
+        assert result["type"] == "form"
+        assert result["errors"] == {"base": "cannot_connect"}
+
+    async def test_empty_facilities_list_shows_no_facilities(self) -> None:
+        flow = _make_flow(config_entries.SOURCE_USER)
+        flow.hass.config_entries.async_entries = MagicMock(return_value=[])
+        fake_client = MagicMock()
+        fake_client.get_facilities = AsyncMock(return_value=[])
+
+        with (
+            patch(
+                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
+            ),
+            patch(
+                "custom_components.malarenergi_powerhub.api.PowerHubApiClient",
+                return_value=fake_client,
+            ),
+        ):
+            result = await flow._async_finish(NEW_TOKEN)
+
+        assert result["type"] == "form"
+        assert result["errors"] == {"base": "no_facilities"}
+
+
+# ── _cancel_task ──────────────────────────────────────────────────────────────
+
+
+class TestCancelTask:
+    def test_cancel_task_cancels_running_task(self) -> None:
+        flow = PowerHubConfigFlow()
+        task = MagicMock()
+        task.done.return_value = False
+        flow._poll_task = task
+
+        flow._cancel_task()
+
+        task.cancel.assert_called_once()
+        assert flow._poll_task is None
+
+    def test_cancel_task_does_not_cancel_already_done_task(self) -> None:
+        flow = PowerHubConfigFlow()
+        task = MagicMock()
+        task.done.return_value = True
+        flow._poll_task = task
+
+        flow._cancel_task()
+
+        task.cancel.assert_not_called()
+        assert flow._poll_task is None
+
+    def test_cancel_task_with_no_task_is_noop(self) -> None:
+        flow = PowerHubConfigFlow()
+        flow._poll_task = None
+        flow._cancel_task()  # Should not raise
+
+
+# ── async_step_user ───────────────────────────────────────────────────────────
+
+
+def _make_user_flow() -> PowerHubConfigFlow:
+    """Build a flow suitable for testing async_step_user."""
+    flow = PowerHubConfigFlow()
+    flow.context = {"source": config_entries.SOURCE_USER}
+    flow.hass = MagicMock()
+    flow.hass.async_create_task = MagicMock()
+    return flow
+
+
+def _make_async_gen(*items):
+    """Return an async-generator factory that yields the given items."""
+
+    async def _gen(session, transaction_id):
+        for item in items:
+            yield item
+
+    return _gen
+
+
+class TestAsyncStepUser:
+    async def test_bankid_start_failure_shows_cannot_connect(self) -> None:
+        flow = _make_user_flow()
+
+        with (
+            patch(
+                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
+            ),
+            patch(
+                "custom_components.malarenergi_powerhub.config_flow.bankid_start",
+                AsyncMock(side_effect=RuntimeError("network error")),
+            ),
+        ):
+            result = await flow.async_step_user()
+
+        assert result["type"] == "form"
+        assert result["errors"] == {"base": "cannot_connect"}
+
+    async def test_first_poll_pending_shows_qr_form(self) -> None:
+        flow = _make_user_flow()
+
+        with (
+            patch(
+                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
+            ),
+            patch(
+                "custom_components.malarenergi_powerhub.config_flow.bankid_start",
+                AsyncMock(return_value=("txn-123", "auto")),
+            ),
+            patch(
+                "custom_components.malarenergi_powerhub.config_flow.bankid_poll",
+                _make_async_gen(("pending", "qr-data", None)),
+            ),
+        ):
+            result = await flow.async_step_user()
+
+        assert result["type"] == "form"
+        assert result["step_id"] == "bankid_qr"
+        assert flow._transaction_id == "txn-123"
+        assert flow._qr_code == "qr-data"
+        flow.hass.async_create_task.assert_called_once()
+
+    async def test_first_poll_failed_shows_bankid_failed_error(self) -> None:
+        flow = _make_user_flow()
+
+        with (
+            patch(
+                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
+            ),
+            patch(
+                "custom_components.malarenergi_powerhub.config_flow.bankid_start",
+                AsyncMock(return_value=("txn-123", "auto")),
+            ),
+            patch(
+                "custom_components.malarenergi_powerhub.config_flow.bankid_poll",
+                _make_async_gen(("failed", None, None)),
+            ),
+        ):
+            result = await flow.async_step_user()
+
+        assert result["type"] == "form"
+        assert result["errors"] == {"base": "bankid_failed"}
+
+    async def test_first_poll_exception_shows_cannot_connect(self) -> None:
+        flow = _make_user_flow()
+
+        async def _exploding_poll(session, txn_id):
+            raise RuntimeError("unexpected")
+            yield  # makes it an async generator
+
+        with (
+            patch(
+                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
+            ),
+            patch(
+                "custom_components.malarenergi_powerhub.config_flow.bankid_start",
+                AsyncMock(return_value=("txn-123", "auto")),
+            ),
+            patch(
+                "custom_components.malarenergi_powerhub.config_flow.bankid_poll",
+                _exploding_poll,
+            ),
+        ):
+            result = await flow.async_step_user()
+
+        assert result["type"] == "form"
+        assert result["errors"] == {"base": "cannot_connect"}
+
+
+# ── _run_poller ────────────────────────────────────────────────────────────────
+
+
+class TestRunPoller:
+    async def test_pending_updates_qr_code(self) -> None:
+        flow = _make_user_flow()
+        flow._transaction_id = "txn-123"
+        flow._qr_code = None
+
+        with (
+            patch(
+                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
+            ),
+            patch(
+                "custom_components.malarenergi_powerhub.config_flow.bankid_poll",
+                _make_async_gen(
+                    ("pending", "qr-v1", None),
+                    ("pending", "qr-v2", None),
+                ),
+            ),
+        ):
+            await flow._run_poller()
+
+        assert flow._qr_code == "qr-v2"
+        assert flow._token is None
+        assert flow._failed is False
+
+    async def test_complete_sets_token(self) -> None:
+        flow = _make_user_flow()
+        flow._transaction_id = "txn-123"
+
+        with (
+            patch(
+                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
+            ),
+            patch(
+                "custom_components.malarenergi_powerhub.config_flow.bankid_poll",
+                _make_async_gen(("complete", None, "jwt-token-value")),
+            ),
+        ):
+            await flow._run_poller()
+
+        assert flow._token == "jwt-token-value"
+        assert flow._failed is False
+
+    async def test_failed_sets_failed_flag(self) -> None:
+        flow = _make_user_flow()
+        flow._transaction_id = "txn-123"
+
+        with (
+            patch(
+                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
+            ),
+            patch(
+                "custom_components.malarenergi_powerhub.config_flow.bankid_poll",
+                _make_async_gen(("failed", None, None)),
+            ),
+        ):
+            await flow._run_poller()
+
+        assert flow._failed is True
+        assert flow._token is None
+
+    async def test_exception_sets_failed_flag(self) -> None:
+        flow = _make_user_flow()
+        flow._transaction_id = "txn-123"
+
+        async def _exploding_poll(session, txn_id):
+            raise RuntimeError("boom")
+            yield  # makes it an async generator
+
+        with (
+            patch(
+                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
+            ),
+            patch(
+                "custom_components.malarenergi_powerhub.config_flow.bankid_poll",
+                _exploding_poll,
+            ),
+        ):
+            await flow._run_poller()
+
+        assert flow._failed is True
+
+
+# ── async_step_bankid_qr ──────────────────────────────────────────────────────
+
+
+class TestAsyncStepBankidQr:
+    async def test_no_transaction_id_restarts_user_step(self) -> None:
+        flow = _make_user_flow()
+        flow._transaction_id = None
+        flow._poll_task = None
+        # async_step_user will try bankid_start — mock it to return a form
+        with (
+            patch(
+                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
+            ),
+            patch(
+                "custom_components.malarenergi_powerhub.config_flow.bankid_start",
+                AsyncMock(side_effect=RuntimeError("no session")),
+            ),
+        ):
+            result = await flow.async_step_bankid_qr()
+
+        # Step falls back to step_user which fails → shows user form
+        assert result["type"] == "form"
+
+    async def test_token_available_triggers_finish(self) -> None:
+        flow = _make_user_flow()
+        flow._transaction_id = "txn-123"
+        poll_task = MagicMock()
+        poll_task.done.return_value = False
+        flow._poll_task = poll_task
+        flow._token = NEW_TOKEN
+        flow._failed = False
+
+        finish_result = {"type": "create_entry", "title": "x", "data": {}}
+        flow._async_finish = AsyncMock(return_value=finish_result)
+        flow._cancel_task = MagicMock()
+
+        result = await flow.async_step_bankid_qr()
+
+        flow._cancel_task.assert_called_once()
+        flow._async_finish.assert_awaited_once_with(NEW_TOKEN)
+        assert result == finish_result
+
+    async def test_failed_flag_restarts_user_step(self) -> None:
+        flow = _make_user_flow()
+        flow._transaction_id = "txn-123"
+        poll_task = MagicMock()
+        poll_task.done.return_value = False
+        flow._poll_task = poll_task
+        flow._token = None
+        flow._failed = True
+
+        step_user_result = {"type": "form", "step_id": "user"}
+        flow.async_step_user = AsyncMock(return_value=step_user_result)
+        flow._cancel_task = MagicMock()
+
+        result = await flow.async_step_bankid_qr()
+
+        flow._cancel_task.assert_called_once()
+        flow.async_step_user.assert_awaited_once()
+        assert result == step_user_result
+
+    async def test_poll_task_done_without_token_restarts_user_step(self) -> None:
+        flow = _make_user_flow()
+        flow._transaction_id = "txn-123"
+        poll_task = MagicMock()
+        poll_task.done.return_value = True  # Task ended without success
+        flow._poll_task = poll_task
+        flow._token = None
+        flow._failed = False
+
+        step_user_result = {"type": "form", "step_id": "user"}
+        flow.async_step_user = AsyncMock(return_value=step_user_result)
+
+        result = await flow.async_step_bankid_qr()
+
+        flow.async_step_user.assert_awaited_once()
+        assert result == step_user_result
+
+    async def test_no_token_or_failure_shows_refreshed_qr(self) -> None:
+        flow = _make_user_flow()
+        flow._transaction_id = "txn-123"
+        poll_task = MagicMock()
+        poll_task.done.return_value = False
+        flow._poll_task = poll_task
+        flow._token = None
+        flow._failed = False
+        flow._qr_code = "fresh-qr-data"
+
+        with patch("asyncio.sleep", AsyncMock()):
+            result = await flow.async_step_bankid_qr()
+
+        assert result["type"] == "form"
+        assert result["step_id"] == "bankid_qr"
+
+
+# ── async_step_reauth ─────────────────────────────────────────────────────────
+
+
+class TestAsyncStepReauth:
+    async def test_reauth_delegates_to_step_user(self) -> None:
+        flow = PowerHubConfigFlow()
+        flow.context = {"source": config_entries.SOURCE_REAUTH}
+        flow.hass = MagicMock()
+        flow.hass.async_create_task = MagicMock()
+
+        step_user_result = {"type": "form", "step_id": "user"}
+        flow.async_step_user = AsyncMock(return_value=step_user_result)
+
+        result = await flow.async_step_reauth(None)
+
+        flow.async_step_user.assert_awaited_once()
+        assert result == step_user_result
