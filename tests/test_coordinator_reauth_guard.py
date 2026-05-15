@@ -10,7 +10,6 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from custom_components.malarenergi_powerhub.api import AuthError
@@ -119,9 +118,7 @@ class TestNotificationsCoordinatorReauthGuard:
         client.get_notifications = AsyncMock(side_effect=AuthError("expired"))
 
         with (
-            patch(
-                "custom_components.malarenergi_powerhub.notifications_coordinator.async_get_clientsession"
-            ),
+            patch("custom_components.malarenergi_powerhub.notifications_coordinator.async_get_clientsession"),
             patch(
                 "custom_components.malarenergi_powerhub.notifications_coordinator.PowerHubApiClient",
                 return_value=client,
@@ -139,9 +136,7 @@ class TestNotificationsCoordinatorReauthGuard:
         client.get_notifications = AsyncMock(side_effect=AuthError("expired"))
 
         with (
-            patch(
-                "custom_components.malarenergi_powerhub.notifications_coordinator.async_get_clientsession"
-            ),
+            patch("custom_components.malarenergi_powerhub.notifications_coordinator.async_get_clientsession"),
             patch(
                 "custom_components.malarenergi_powerhub.notifications_coordinator.PowerHubApiClient",
                 return_value=client,
@@ -163,9 +158,7 @@ class TestNotificationsCoordinatorReauthGuard:
         client.get_notifications = AsyncMock(return_value=[])
 
         with (
-            patch(
-                "custom_components.malarenergi_powerhub.notifications_coordinator.async_get_clientsession"
-            ),
+            patch("custom_components.malarenergi_powerhub.notifications_coordinator.async_get_clientsession"),
             patch(
                 "custom_components.malarenergi_powerhub.notifications_coordinator.PowerHubApiClient",
                 return_value=client,

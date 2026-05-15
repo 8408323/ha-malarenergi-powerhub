@@ -8,23 +8,23 @@ from __future__ import annotations
 
 import zoneinfo
 from datetime import datetime, timezone
+from unittest.mock import MagicMock, patch
+
 import pytest
 from aiohttp import ClientResponseError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-from unittest.mock import MagicMock, patch
 
 from custom_components.malarenergi_powerhub.api import PowerApiClient, PowerHubApiClient
 from custom_components.malarenergi_powerhub.const import CONF_FACILITY_ID, CONF_TOKEN
 from custom_components.malarenergi_powerhub.coordinator import (
+    PowerHubCoordinator,
     _day_start_ms,
     _now_ms,
     _optional,
-    PowerHubCoordinator,
 )
 from custom_components.malarenergi_powerhub.notifications_coordinator import (
     NotificationsCoordinator,
 )
-
 
 _STHLM = zoneinfo.ZoneInfo("Europe/Stockholm")
 
@@ -33,9 +33,7 @@ def test_day_start_ms_returns_midnight_stockholm_in_summer() -> None:
     """In summer, Stockholm is CEST (UTC+2). Midnight local is 22:00 UTC prior day."""
     # 2026-07-15 14:30 Stockholm (CEST, UTC+2)
     fake_now = datetime(2026, 7, 15, 14, 30, 0, tzinfo=_STHLM)
-    with patch(
-        "custom_components.malarenergi_powerhub.coordinator.datetime"
-    ) as mock_dt:
+    with patch("custom_components.malarenergi_powerhub.coordinator.datetime") as mock_dt:
         mock_dt.now.return_value = fake_now
         mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
         result_ms = _day_start_ms()
@@ -51,9 +49,7 @@ def test_day_start_ms_returns_midnight_stockholm_in_summer() -> None:
 def test_day_start_ms_returns_midnight_stockholm_in_winter() -> None:
     """In winter, Stockholm is CET (UTC+1). Midnight local is 23:00 UTC prior day."""
     fake_now = datetime(2026, 1, 15, 14, 30, 0, tzinfo=_STHLM)
-    with patch(
-        "custom_components.malarenergi_powerhub.coordinator.datetime"
-    ) as mock_dt:
+    with patch("custom_components.malarenergi_powerhub.coordinator.datetime") as mock_dt:
         mock_dt.now.return_value = fake_now
         mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
         result_ms = _day_start_ms()

@@ -3,12 +3,11 @@
 import re
 import struct
 from datetime import datetime, timezone
+from unittest.mock import patch
 
 import aiohttp
 import pytest
 from aioresponses import aioresponses
-
-from unittest.mock import patch
 
 from custom_components.malarenergi_powerhub.api import (
     BASE_URL,
@@ -32,8 +31,8 @@ from custom_components.malarenergi_powerhub.api import (
     _decode_telemetry_proto,
     _iter_delimited,
     _parse_submessage,
-    bankid_start,
     bankid_poll,
+    bankid_start,
 )
 
 FAKE_TOKEN = "eyJhbGciOiJIUzI1NiJ9.fake.token"
@@ -130,10 +129,7 @@ TS = 1776204000000  # a fixed timestamp for tests
 
 class TestGetTodayConsumption:
     async def test_returns_meter_data_points(self):
-        url = (
-            f"{BASE_URL}/facility/{FACILITY_ID}/facility_consumption_meter"
-            f"?interval=DAY&type=START&timestamp={TS}"
-        )
+        url = f"{BASE_URL}/facility/{FACILITY_ID}/facility_consumption_meter?interval=DAY&type=START&timestamp={TS}"
         async with aiohttp.ClientSession() as session:
             client = PowerHubApiClient(session, FAKE_TOKEN)
             with aioresponses() as m:
@@ -158,10 +154,7 @@ class TestGetTodayConsumption:
         assert points[1].timestamp_ms == TS + 900000
 
     async def test_returns_empty_list_when_no_data(self):
-        url = (
-            f"{BASE_URL}/facility/{FACILITY_ID}/facility_consumption_meter"
-            f"?interval=DAY&type=START&timestamp=0"
-        )
+        url = f"{BASE_URL}/facility/{FACILITY_ID}/facility_consumption_meter?interval=DAY&type=START&timestamp=0"
         async with aiohttp.ClientSession() as session:
             client = PowerHubApiClient(session, FAKE_TOKEN)
             with aioresponses() as m:
@@ -181,10 +174,7 @@ class TestGetTodayConsumption:
 
 class TestGetSpotPrice:
     async def test_returns_price_points(self):
-        url = (
-            f"{BASE_URL}/facility/{FACILITY_ID}/nordpool_spot_price"
-            f"?interval=DAY&type=START&timestamp={TS}"
-        )
+        url = f"{BASE_URL}/facility/{FACILITY_ID}/nordpool_spot_price?interval=DAY&type=START&timestamp={TS}"
         async with aiohttp.ClientSession() as session:
             client = PowerHubApiClient(session, FAKE_TOKEN)
             with aioresponses() as m:
@@ -283,10 +273,7 @@ class TestBankIdPoll:
 
 class TestGetMonthConsumption:
     async def test_returns_meter_response_with_correct_fields(self):
-        url = (
-            f"{BASE_URL}/facility/{FACILITY_ID}/facility_consumption_meter"
-            f"?interval=MONTH&type=START&timestamp={TS}"
-        )
+        url = f"{BASE_URL}/facility/{FACILITY_ID}/facility_consumption_meter?interval=MONTH&type=START&timestamp={TS}"
         async with aiohttp.ClientSession() as session:
             client = PowerHubApiClient(session, FAKE_TOKEN)
             with aioresponses() as m:
@@ -417,10 +404,7 @@ class TestDeleteInvitation:
 
 class TestGetMonthProduction:
     async def test_returns_meter_response_for_production(self):
-        url = (
-            f"{BASE_URL}/facility/{FACILITY_ID}/facility_production_meter"
-            f"?interval=MONTH&type=START&timestamp={TS}"
-        )
+        url = f"{BASE_URL}/facility/{FACILITY_ID}/facility_production_meter?interval=MONTH&type=START&timestamp={TS}"
         async with aiohttp.ClientSession() as session:
             client = PowerHubApiClient(session, FAKE_TOKEN)
             with aioresponses() as m:
@@ -452,8 +436,7 @@ class TestGetYearConsumption:
     async def test_returns_meter_response_for_year(self):
         year_ts = 1735686000000  # 2025-01-01T00:00:00+01:00
         url = (
-            f"{BASE_URL}/facility/{FACILITY_ID}/facility_consumption_meter"
-            f"?interval=YEAR&type=START&timestamp={year_ts}"
+            f"{BASE_URL}/facility/{FACILITY_ID}/facility_consumption_meter?interval=YEAR&type=START&timestamp={year_ts}"
         )
         async with aiohttp.ClientSession() as session:
             client = PowerHubApiClient(session, FAKE_TOKEN)
@@ -521,10 +504,7 @@ class TestGetMonthlyInsights:
         }
 
     async def test_returns_full_insights(self):
-        url = (
-            f"{BASE_URL}/facility/{FACILITY_ID}/insights/monthly/{TS}"
-            f"?meterType=consumption&region=SE3"
-        )
+        url = f"{BASE_URL}/facility/{FACILITY_ID}/insights/monthly/{TS}?meterType=consumption&region=SE3"
         async with aiohttp.ClientSession() as session:
             client = PowerHubApiClient(session, FAKE_TOKEN)
             with aioresponses() as m:
@@ -551,10 +531,7 @@ class TestGetMonthlyInsights:
 
     async def test_handles_null_optional_sections(self):
         """priceComparison and offPeakScore can be null (e.g. production meters)."""
-        url = (
-            f"{BASE_URL}/facility/{FACILITY_ID}/insights/monthly/{TS}"
-            f"?meterType=consumption&region=SE3"
-        )
+        url = f"{BASE_URL}/facility/{FACILITY_ID}/insights/monthly/{TS}?meterType=consumption&region=SE3"
         payload = self._full_payload()
         payload["priceComparison"] = None
         payload["offPeakScore"] = None
@@ -678,9 +655,7 @@ class TestDecodeTelemProto:
         assert r.power_export_kw == pytest.approx(0.5, abs=1e-4)
 
     def test_two_records(self):
-        raw = _make_telemetry_bytes(1000, 1.5, 0.5) + _make_telemetry_bytes(
-            1060, 2.0, 0.0
-        )
+        raw = _make_telemetry_bytes(1000, 1.5, 0.5) + _make_telemetry_bytes(1060, 2.0, 0.0)
         results = _decode_telemetry_proto(raw)
         assert len(results) == 2
         assert results[0].power_import_kw == pytest.approx(1.5, abs=1e-4)
@@ -692,9 +667,7 @@ class TestDecodeTelemProto:
     def test_real_capture_two_field(self):
         """Decode three real records captured from the production backend."""
         raw = bytes.fromhex(
-            "100891ee93cf0635000000003df6286c40"
-            "100887ee93cf0635000000003d0f2d6a40"
-            "1008fded93cf0635000000003d46b66b40"
+            "100891ee93cf0635000000003df6286c40100887ee93cf0635000000003d0f2d6a401008fded93cf0635000000003d46b66b40"
         )
         results = _decode_telemetry_proto(raw)
         assert len(results) == 3
@@ -718,9 +691,7 @@ class TestDecodePhaseTelemetryProto:
         assert r.current_l3_a == pytest.approx(9.5, abs=1e-3)
 
     def test_two_records(self):
-        raw = _make_phase_telemetry_bytes(
-            1000, 5.0, 5.0, 5.0
-        ) + _make_phase_telemetry_bytes(1060, 10.5, 11.0, 9.5)
+        raw = _make_phase_telemetry_bytes(1000, 5.0, 5.0, 5.0) + _make_phase_telemetry_bytes(1060, 10.5, 11.0, 9.5)
         results = _decode_phase_telemetry_proto(raw)
         assert len(results) == 2
         assert results[1].current_l1_a == pytest.approx(10.5, abs=1e-3)
@@ -775,9 +746,9 @@ class TestDecodeHourlyEnergyProto:
         assert r.energy_export_wh == pytest.approx(100.0, abs=0.1)
 
     def test_two_buckets(self):
-        raw = _make_hourly_energy_bytes(
-            1000, 1000, 3600, 4, 500.0, 0.0
-        ) + _make_hourly_energy_bytes(3600, 3600, 7200, 4, 480.0, 20.0)
+        raw = _make_hourly_energy_bytes(1000, 1000, 3600, 4, 500.0, 0.0) + _make_hourly_energy_bytes(
+            3600, 3600, 7200, 4, 480.0, 20.0
+        )
         results = _decode_hourly_energy_proto(raw)
         assert len(results) == 2
         assert results[0].energy_import_wh == pytest.approx(500.0, abs=0.1)
@@ -842,9 +813,7 @@ class TestGetDevice:
 
 
 # Matches /telemetry/<uuid>?... (no trailing /aggregated/)
-_TELEMETRY_URL_RE = re.compile(
-    rf"{re.escape(POWER_BASE_URL)}/data-extraction/powerhub/telemetry/[^/?]+\?"
-)
+_TELEMETRY_URL_RE = re.compile(rf"{re.escape(POWER_BASE_URL)}/data-extraction/powerhub/telemetry/[^/?]+\?")
 _AGGREGATED_ENERGY_URL_RE = re.compile(
     rf"{re.escape(POWER_BASE_URL)}/data-extraction/powerhub/telemetry/[^/]+/aggregated/energy\?"
 )
@@ -860,9 +829,7 @@ class TestGetCurrentPower:
         async with aiohttp.ClientSession() as session:
             client = PowerApiClient(session, FAKE_TOKEN)
             with aioresponses() as m:
-                m.get(
-                    _TELEMETRY_URL_RE, body=raw, content_type="application/octet-stream"
-                )
+                m.get(_TELEMETRY_URL_RE, body=raw, content_type="application/octet-stream")
                 sample = await client.get_current_power(FACILITY_ID)
         assert sample is not None
         assert isinstance(sample, PowerTelemetry)
@@ -873,9 +840,7 @@ class TestGetCurrentPower:
         async with aiohttp.ClientSession() as session:
             client = PowerApiClient(session, FAKE_TOKEN)
             with aioresponses() as m:
-                m.get(
-                    _TELEMETRY_URL_RE, body=b"", content_type="application/octet-stream"
-                )
+                m.get(_TELEMETRY_URL_RE, body=b"", content_type="application/octet-stream")
                 sample = await client.get_current_power(FACILITY_ID)
         assert sample is None
 
@@ -890,15 +855,11 @@ class TestGetCurrentPower:
 
 class TestGetCurrentPowerPhases:
     async def test_returns_latest_phase_sample(self):
-        raw = _make_phase_telemetry_bytes(
-            1000, 5.0, 5.0, 5.0
-        ) + _make_phase_telemetry_bytes(2000, 10.5, 11.0, 9.5)
+        raw = _make_phase_telemetry_bytes(1000, 5.0, 5.0, 5.0) + _make_phase_telemetry_bytes(2000, 10.5, 11.0, 9.5)
         async with aiohttp.ClientSession() as session:
             client = PowerApiClient(session, FAKE_TOKEN)
             with aioresponses() as m:
-                m.get(
-                    _TELEMETRY_URL_RE, body=raw, content_type="application/octet-stream"
-                )
+                m.get(_TELEMETRY_URL_RE, body=raw, content_type="application/octet-stream")
                 sample = await client.get_current_power_phases(FACILITY_ID)
         assert sample is not None
         assert isinstance(sample, PhaseTelemetry)
@@ -911,18 +872,16 @@ class TestGetCurrentPowerPhases:
         async with aiohttp.ClientSession() as session:
             client = PowerApiClient(session, FAKE_TOKEN)
             with aioresponses() as m:
-                m.get(
-                    _TELEMETRY_URL_RE, body=b"", content_type="application/octet-stream"
-                )
+                m.get(_TELEMETRY_URL_RE, body=b"", content_type="application/octet-stream")
                 sample = await client.get_current_power_phases(FACILITY_ID)
         assert sample is None
 
 
 class TestGetHourlyEnergy:
     async def test_parses_aggregated_response(self):
-        raw = _make_hourly_energy_bytes(
-            1000, 1000, 3600, 4, 500.0, 0.0
-        ) + _make_hourly_energy_bytes(3600, 3600, 7200, 4, 480.0, 20.0)
+        raw = _make_hourly_energy_bytes(1000, 1000, 3600, 4, 500.0, 0.0) + _make_hourly_energy_bytes(
+            3600, 3600, 7200, 4, 480.0, 20.0
+        )
         start = datetime(2026, 4, 18, 0, 0, tzinfo=timezone.utc)
         end = datetime(2026, 4, 18, 2, 0, tzinfo=timezone.utc)
         async with aiohttp.ClientSession() as session:
@@ -1160,9 +1119,7 @@ class TestUpdateFacilityAttributes:
                     status=200,
                     payload=_DEFAULT_ATTRS_BODY,
                 )
-                result = await client.update_facility_attributes(
-                    FACILITY_ID, _make_attrs()
-                )
+                result = await client.update_facility_attributes(FACILITY_ID, _make_attrs())
         assert result.fuse_size == 25
         assert result.occupants == 2
         assert result.facility_type == "APARTMENT"
@@ -1178,9 +1135,7 @@ class TestUpdateFacilityAttributes:
                     status=200,
                     payload={**_DEFAULT_ATTRS_BODY, "fuseSize": "GARBAGE"},
                 )
-                result = await client.update_facility_attributes(
-                    FACILITY_ID, _make_attrs()
-                )
+                result = await client.update_facility_attributes(FACILITY_ID, _make_attrs())
         assert result.fuse_size == 25
 
     async def test_put_raises_auth_error_on_401(self):
@@ -1383,9 +1338,7 @@ class TestGetNotifications:
                     "?firebase_token=ha-integration"
                     "&topics=operatingStatus%2CtodaySpotPrice%2Cgeneric"
                     "&page=1&page_size=25",
-                    payload=[
-                        {"title": "Test", "body": "Body", "type": "PRICE", "created": 1}
-                    ],
+                    payload=[{"title": "Test", "body": "Body", "type": "PRICE", "created": 1}],
                 )
                 result = await client.get_notifications()
         assert len(result) == 1

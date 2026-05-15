@@ -21,9 +21,9 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .api import FacilityAttributes, FacilityControl
 from .const import DOMAIN
 from .coordinator import PowerHubCoordinator
-from .api import FacilityAttributes, FacilityControl
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -99,9 +99,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator: PowerHubCoordinator = hass.data[DOMAIN][entry.entry_id]
-    entities: list[NumberEntity] = [
-        PowerHubNumber(coordinator, desc) for desc in ATTRIBUTE_NUMBERS
-    ]
+    entities: list[NumberEntity] = [PowerHubNumber(coordinator, desc) for desc in ATTRIBUTE_NUMBERS]
     entities += [PowerControlNumber(coordinator, desc) for desc in CONTROL_NUMBERS]
     async_add_entities(entities)
 
@@ -134,9 +132,7 @@ class PowerHubNumber(CoordinatorEntity[PowerHubCoordinator], NumberEntity):
         return self.entity_description.value_fn(attrs)
 
     async def async_set_native_value(self, value: float) -> None:
-        await self.coordinator.async_update_attributes(
-            **{self.entity_description.attr_field: int(value)}
-        )
+        await self.coordinator.async_update_attributes(**{self.entity_description.attr_field: int(value)})
 
 
 class PowerControlNumber(CoordinatorEntity[PowerHubCoordinator], NumberEntity):
@@ -167,6 +163,4 @@ class PowerControlNumber(CoordinatorEntity[PowerHubCoordinator], NumberEntity):
         return self.entity_description.value_fn(ctrl)
 
     async def async_set_native_value(self, value: float) -> None:
-        await self.coordinator.async_update_facility_control(
-            **{self.entity_description.control_field: value}
-        )
+        await self.coordinator.async_update_facility_control(**{self.entity_description.control_field: value})

@@ -10,16 +10,14 @@ from custom_components.malarenergi_powerhub.api import (
     FacilityAttributes,
     NotificationSettings,
 )
+from custom_components.malarenergi_powerhub.const import DOMAIN
 from custom_components.malarenergi_powerhub.switch import (
     ATTRIBUTE_SWITCHES,
     NOTIFICATION_SWITCHES,
     NotificationSwitch,
     PowerHubSwitch,
+    async_setup_entry,
 )
-
-
-from custom_components.malarenergi_powerhub.const import DOMAIN
-from custom_components.malarenergi_powerhub.switch import async_setup_entry
 
 
 def _make_attrs(**overrides) -> FacilityAttributes:
@@ -92,9 +90,7 @@ def test_every_notification_switch_reads_its_named_field() -> None:
         notif = _make_notif(**{target.notif_field: True})
         for desc in NOTIFICATION_SWITCHES:
             expected = desc.notif_field == target.notif_field
-            assert desc.value_fn(notif) is expected, (
-                f"{desc.key} read wrong field when {target.notif_field} was set"
-            )
+            assert desc.value_fn(notif) is expected, f"{desc.key} read wrong field when {target.notif_field} was set"
 
 
 # ── PowerHubSwitch entity ─────────────────────────────────────────────────────
@@ -193,9 +189,7 @@ async def test_notification_switch_turn_on_calls_coordinator() -> None:
     coord = _make_coord_with_attrs()
     switch = NotificationSwitch(coord, desc)
     await switch.async_turn_on()
-    coord.async_update_notification_settings.assert_awaited_once_with(
-        notify_total_power=True
-    )
+    coord.async_update_notification_settings.assert_awaited_once_with(notify_total_power=True)
 
 
 @pytest.mark.asyncio
@@ -204,9 +198,7 @@ async def test_notification_switch_turn_off_calls_coordinator() -> None:
     coord = _make_coord_with_attrs()
     switch = NotificationSwitch(coord, desc)
     await switch.async_turn_off()
-    coord.async_update_notification_settings.assert_awaited_once_with(
-        notify_total_power=False
-    )
+    coord.async_update_notification_settings.assert_awaited_once_with(notify_total_power=False)
 
 
 def test_notification_switch_unique_id() -> None:
@@ -219,9 +211,7 @@ def test_notification_switch_unique_id() -> None:
 # ── async_setup_entry ─────────────────────────────────────────────────────────────────────────────────────────────────
 
 
-async def test_async_setup_entry_creates_powerhubswitch_and_notificationswitch_entities() -> (
-    None
-):
+async def test_async_setup_entry_creates_powerhubswitch_and_notificationswitch_entities() -> None:
     coord = _make_coord_with_attrs()
     hass = MagicMock()
     entry = MagicMock()

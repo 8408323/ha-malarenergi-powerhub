@@ -156,9 +156,7 @@ class MonthlyInsights:
     facility_id: str
     month_timestamp_ms: int
     your_average_price: float | None  # öre/kWh or kr/kWh; None for production meter
-    monthly_average_price: (
-        float | None
-    )  # öre/kWh or kr/kWh - market average; None for production
+    monthly_average_price: float | None  # öre/kWh or kr/kWh - market average; None for production
     price_trend: str | None  # "ABOVE" / "BELOW"; None for production
     current_year_value: float  # kWh year-to-date
     previous_year_value: float | None  # kWh same period last year
@@ -311,11 +309,7 @@ class PowerHubApiClient:
         Returns the new invitation including a short alphanumeric code
         that the recipient can use for manual entry.
         """
-        body = {
-            "accessedFacilities": [
-                {"facilityId": facility_id, "shareAllDevices": share_all_devices}
-            ]
-        }
+        body = {"accessedFacilities": [{"facilityId": facility_id, "shareAllDevices": share_all_devices}]}
         resp = await self._post("/account/invitation", body)
         data = resp.get("data", {})
         return InvitationCreated(
@@ -367,9 +361,7 @@ class PowerHubApiClient:
             for inv in (data if isinstance(data, list) else [])
         ]
 
-    async def update_facility_attributes(
-        self, facility_id: str, attrs: FacilityAttributes
-    ) -> FacilityAttributes:
+    async def update_facility_attributes(self, facility_id: str, attrs: FacilityAttributes) -> FacilityAttributes:
         """Update physical attributes of a facility (PUT — full object required).
 
         The API requires all fields to be sent; partial updates are not supported.
@@ -406,9 +398,7 @@ class PowerHubApiClient:
     # Energy data
     # ------------------------------------------------------------------
 
-    async def get_today_consumption(
-        self, facility_id: str, timestamp_ms: int
-    ) -> list[MeterData]:
+    async def get_today_consumption(self, facility_id: str, timestamp_ms: int) -> list[MeterData]:
         """Get consumption for a single day (15-min buckets)."""
         data = await self._get(
             f"/facility/{facility_id}/facility_consumption_meter",
@@ -418,9 +408,7 @@ class PowerHubApiClient:
         )
         return [MeterData(d["timestamp"], d["value"]) for d in data.get("data", [])]
 
-    async def get_today_production(
-        self, facility_id: str, timestamp_ms: int
-    ) -> list[MeterData]:
+    async def get_today_production(self, facility_id: str, timestamp_ms: int) -> list[MeterData]:
         """Get production (solar) for a single day (15-min buckets)."""
         data = await self._get(
             f"/facility/{facility_id}/facility_production_meter",
@@ -430,9 +418,7 @@ class PowerHubApiClient:
         )
         return [MeterData(d["timestamp"], d["value"]) for d in data.get("data", [])]
 
-    async def get_spot_price_today(
-        self, facility_id: str, timestamp_ms: int
-    ) -> list[dict]:
+    async def get_spot_price_today(self, facility_id: str, timestamp_ms: int) -> list[dict]:
         """Get Nordpool spot price for a day (15-min buckets, öre/kWh or kr/kWh)."""
         data = await self._get(
             f"/facility/{facility_id}/nordpool_spot_price",
@@ -442,9 +428,7 @@ class PowerHubApiClient:
         )
         return data.get("data", [])
 
-    async def get_month_consumption(
-        self, facility_id: str, month_start_ms: int
-    ) -> MeterResponse:
+    async def get_month_consumption(self, facility_id: str, month_start_ms: int) -> MeterResponse:
         """Get consumption for a full month (daily buckets)."""
         return await self._get_meter(
             f"/facility/{facility_id}/facility_consumption_meter",
@@ -452,9 +436,7 @@ class PowerHubApiClient:
             month_start_ms,
         )
 
-    async def get_month_production(
-        self, facility_id: str, month_start_ms: int
-    ) -> MeterResponse:
+    async def get_month_production(self, facility_id: str, month_start_ms: int) -> MeterResponse:
         """Get production for a full month (daily buckets)."""
         return await self._get_meter(
             f"/facility/{facility_id}/facility_production_meter",
@@ -462,9 +444,7 @@ class PowerHubApiClient:
             month_start_ms,
         )
 
-    async def get_year_consumption(
-        self, facility_id: str, year_start_ms: int
-    ) -> MeterResponse:
+    async def get_year_consumption(self, facility_id: str, year_start_ms: int) -> MeterResponse:
         """Get consumption for a full year (monthly buckets)."""
         return await self._get_meter(
             f"/facility/{facility_id}/facility_consumption_meter",
@@ -472,9 +452,7 @@ class PowerHubApiClient:
             year_start_ms,
         )
 
-    async def get_year_production(
-        self, facility_id: str, year_start_ms: int
-    ) -> MeterResponse:
+    async def get_year_production(self, facility_id: str, year_start_ms: int) -> MeterResponse:
         """Get production (solar export) for a full year (monthly buckets)."""
         return await self._get_meter(
             f"/facility/{facility_id}/facility_production_meter",
@@ -543,12 +521,8 @@ class PowerHubApiClient:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    async def _get_meter(
-        self, path: str, interval: str, timestamp_ms: int
-    ) -> MeterResponse:
-        data = await self._get(
-            path, interval=interval, type="START", timestamp=timestamp_ms
-        )
+    async def _get_meter(self, path: str, interval: str, timestamp_ms: int) -> MeterResponse:
+        data = await self._get(path, interval=interval, type="START", timestamp=timestamp_ms)
         return MeterResponse(
             facility_id=data.get("facilityid", ""),
             start_ms=data.get("start", 0),
@@ -657,18 +631,10 @@ class NotificationSettings:
         return cls(
             notify_total_power=bool(data.get("notifyTotalPower", False)),
             notify_phase_load=bool(data.get("notifyPhaseLoad", False)),
-            notify_control_disabled_exceeded_phase=bool(
-                data.get("notifyControlDisabledExceededPhase", False)
-            ),
-            notify_control_disabled_exceeded_power=bool(
-                data.get("notifyControlDisabledExceededPower", False)
-            ),
-            notify_control_enabled_exceeded_phase=bool(
-                data.get("notifyControlEnabledExceededPhase", False)
-            ),
-            notify_control_enabled_exceeded_power=bool(
-                data.get("notifyControlEnabledExceededPower", False)
-            ),
+            notify_control_disabled_exceeded_phase=bool(data.get("notifyControlDisabledExceededPhase", False)),
+            notify_control_disabled_exceeded_power=bool(data.get("notifyControlDisabledExceededPower", False)),
+            notify_control_enabled_exceeded_phase=bool(data.get("notifyControlEnabledExceededPhase", False)),
+            notify_control_enabled_exceeded_power=bool(data.get("notifyControlEnabledExceededPower", False)),
         )
 
 
@@ -808,11 +774,7 @@ def _decode_hourly_energy_proto(raw: bytes) -> list[HourlyEnergy]:
         bucket_raw = f.get(1)
         win_start_raw = f.get(3)
         win_end_raw = f.get(4)
-        if not (
-            isinstance(bucket_raw, bytes)
-            and isinstance(win_start_raw, bytes)
-            and isinstance(win_end_raw, bytes)
-        ):
+        if not (isinstance(bucket_raw, bytes) and isinstance(win_start_raw, bytes) and isinstance(win_end_raw, bytes)):
             continue
         bucket_ts = _ts_from_submsg(bucket_raw)
         win_start_ts = _ts_from_submsg(win_start_raw)
@@ -942,9 +904,7 @@ class PowerApiClient:
             return None
         return max(samples, key=lambda s: s.timestamp)
 
-    async def get_hourly_energy(
-        self, facility_id: str, start: datetime, end: datetime
-    ) -> list[HourlyEnergy]:
+    async def get_hourly_energy(self, facility_id: str, start: datetime, end: datetime) -> list[HourlyEnergy]:
         """Fetch hourly energy aggregates (max 745 hours window)."""
         raw = await self._get_bytes(
             f"/data-extraction/powerhub/telemetry/{facility_id}/aggregated/energy",
@@ -1023,9 +983,7 @@ class PowerApiClient:
                 raise AuthError("Token expired or invalid")
             resp.raise_for_status()
             result = await resp.json(content_type=None)
-            return NotificationSettings.from_dict(
-                result if isinstance(result, dict) else {}
-            )
+            return NotificationSettings.from_dict(result if isinstance(result, dict) else {})
 
 
 # ------------------------------------------------------------------
