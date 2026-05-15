@@ -27,18 +27,17 @@ from custom_components.malarenergi_powerhub.api import (
     PowerDiagnostics,
     PowerTelemetry,
 )
+from custom_components.malarenergi_powerhub.const import DOMAIN
 from custom_components.malarenergi_powerhub.coordinator import PowerHubData
 from custom_components.malarenergi_powerhub.notifications_coordinator import (
     NotificationData,
 )
-from custom_components.malarenergi_powerhub.const import DOMAIN
 from custom_components.malarenergi_powerhub.sensor import (
     SENSORS,
     NotificationSensor,
     PowerHubSensor,
     async_setup_entry,
 )
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -590,9 +589,7 @@ def test_notification_sensor_unique_id() -> None:
 # ── async_setup_entry ─────────────────────────────────────────────────────────────────────────────────────────────────
 
 
-async def test_async_setup_entry_creates_sensor_and_notification_sensor_entities() -> (
-    None
-):
+async def test_async_setup_entry_creates_sensor_and_notification_sensor_entities() -> None:
     coord = _make_coord()
     notif_coord = _make_notif_coord()
     hass = MagicMock()

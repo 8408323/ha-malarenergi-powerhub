@@ -6,12 +6,11 @@ import logging
 from dataclasses import dataclass
 from datetime import timedelta
 
+from aiohttp import ClientResponseError
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-
-from aiohttp import ClientResponseError
 
 from .api import AuthError, PowerHubApiClient
 from .const import CONF_TOKEN, DOMAIN
@@ -54,9 +53,7 @@ class NotificationsCoordinator(DataUpdateCoordinator[NotificationData]):
             notifications = await client.get_notifications()
         except AuthError:
             if not self._reauth_pending:
-                _LOGGER.warning(
-                    "Token expired fetching notifications — triggering re-auth"
-                )
+                _LOGGER.warning("Token expired fetching notifications — triggering re-auth")
                 self._entry.async_start_reauth(self.hass)
                 self._reauth_pending = True
             raise UpdateFailed("Token expired, re-authentication required")

@@ -12,9 +12,9 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .api import FacilityAttributes
 from .const import DOMAIN
 from .coordinator import PowerHubCoordinator
-from .api import FacilityAttributes
 
 # Known fuse sizes (Ampere)
 FUSE_OPTIONS = ["A10", "A16", "A20", "A25", "A32", "A35", "A50", "A63"]
@@ -143,6 +143,4 @@ class PowerHubSelect(CoordinatorEntity[PowerHubCoordinator], SelectEntity):
 
     async def async_select_option(self, option: str) -> None:
         attr_value = self.entity_description.to_attr_value(option)
-        await self.coordinator.async_update_attributes(
-            **{self.entity_description.attr_field: attr_value}
-        )
+        await self.coordinator.async_update_attributes(**{self.entity_description.attr_field: attr_value})

@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, replace as dataclass_replace
+from dataclasses import dataclass
+from dataclasses import replace as dataclass_replace
 from datetime import datetime, timedelta, timezone
 from typing import Awaitable, TypeVar, overload
 
@@ -44,9 +45,7 @@ class PowerHubData:
     consumption_today_kwh: float | None  # kWh imported from grid today so far
     production_today_kwh: float | None  # kWh exported to grid today so far
     spot_price_now: float | None  # Current Nordpool spot price (öre/kWh)
-    attributes: (
-        FacilityAttributes | None
-    )  # Static facility attributes (solar, battery, etc.)
+    attributes: FacilityAttributes | None  # Static facility attributes (solar, battery, etc.)
     invitations: list[Invitation]  # Active sharing invitations
     invitees: list[Invitee]  # People with access to the facility
     # Account / facility metadata
@@ -86,9 +85,7 @@ _T = TypeVar("_T")
 async def _optional(coro: Awaitable[_T], name: str) -> _T | None: ...
 @overload
 async def _optional(coro: Awaitable[_T], name: str, *, default: _T) -> _T: ...
-async def _optional(
-    coro: Awaitable[_T], name: str, *, default: _T | None = None
-) -> _T | None:
+async def _optional(coro: Awaitable[_T], name: str, *, default: _T | None = None) -> _T | None:
     """Await an optional endpoint; map 404 to `default`, re-raise everything else.
 
     404 is the expected response for accounts whose PowerHub device isn't
@@ -148,9 +145,7 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
         try:
             # Static data — cache after first successful fetch
             if self._cached_attributes is None:
-                self._cached_attributes = await client.get_facility_attributes(
-                    self._facility_id
-                )
+                self._cached_attributes = await client.get_facility_attributes(self._facility_id)
             if self._cached_profile is None:
                 self._cached_profile = await client.get_profile()
             if self._cached_agreements is None:
@@ -171,50 +166,30 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
                     )
 
             # Notification settings (fetched each poll — user may change in app)
-            notification_settings = await power_client.get_notification_settings(
-                self._facility_id
-            )
+            notification_settings = await power_client.get_notification_settings(self._facility_id)
 
             # Monthly insights for the current month
             import zoneinfo as _zi
 
             _tz = _zi.ZoneInfo("Europe/Stockholm")
             _now_local = datetime.now(_tz)
-            _month_start = _now_local.replace(
-                day=1, hour=0, minute=0, second=0, microsecond=0
-            )
+            _month_start = _now_local.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             _month_start_ms = int(_month_start.timestamp() * 1000)
-            monthly_insights = await client.get_monthly_insights(
-                self._facility_id, _month_start_ms
-            )
+            monthly_insights = await client.get_monthly_insights(self._facility_id, _month_start_ms)
             production_insights = await client.get_monthly_insights(
                 self._facility_id, _month_start_ms, meter_type="production"
             )
             production_ytd_kwh = production_insights.current_year_value
 
             # Consumption today — API returns Wh per bucket; convert to kWh
-            consumption_points = await client.get_today_consumption(
-                self._facility_id, day_ms
-            )
-            past_consumption = [
-                p for p in consumption_points if p.timestamp_ms <= now_ms
-            ]
-            consumption_kwh = (
-                round(sum(p.value_wh for p in past_consumption) / 1000, 3)
-                if past_consumption
-                else None
-            )
+            consumption_points = await client.get_today_consumption(self._facility_id, day_ms)
+            past_consumption = [p for p in consumption_points if p.timestamp_ms <= now_ms]
+            consumption_kwh = round(sum(p.value_wh for p in past_consumption) / 1000, 3) if past_consumption else None
 
             # Production (export) today — API returns Wh per bucket; convert to kWh
-            production_points = await client.get_today_production(
-                self._facility_id, day_ms
-            )
+            production_points = await client.get_today_production(self._facility_id, day_ms)
             past_production = [p for p in production_points if p.timestamp_ms <= now_ms]
-            production_kwh = (
-                round(sum(p.value_wh for p in past_production) / 1000, 3)
-                if past_production
-                else None
-            )
+            production_kwh = round(sum(p.value_wh for p in past_production) / 1000, 3) if past_production else None
 
             # Current spot price — find the 15-min bucket containing now
             spot_points = await client.get_spot_price_today(self._facility_id, day_ms)
@@ -232,22 +207,14 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
             # Power backend: real-time power, diagnostics, facility control.
             # These endpoints can 404 for accounts whose PowerHub device isn't
             # fully provisioned — treat as "no data" instead of failing the tick.
-            current_power = await _optional(
-                power_client.get_current_power(self._facility_id), "current_power"
-            )
+            current_power = await _optional(power_client.get_current_power(self._facility_id), "current_power")
             current_power_phases = await _optional(
                 power_client.get_current_power_phases(self._facility_id),
                 "current_power_phases",
             )
-            diagnostics = await _optional(
-                power_client.get_diagnostics(self._facility_id), "diagnostics"
-            )
-            facility_control = await _optional(
-                power_client.get_facility_control(self._facility_id), "facility_control"
-            )
-            fcr_status = await _optional(
-                power_client.get_fcr_status(self._facility_id), "fcr_status"
-            )
+            diagnostics = await _optional(power_client.get_diagnostics(self._facility_id), "diagnostics")
+            facility_control = await _optional(power_client.get_facility_control(self._facility_id), "facility_control")
+            fcr_status = await _optional(power_client.get_fcr_status(self._facility_id), "fcr_status")
 
             # Hourly energy for today (from midnight Stockholm time until now)
             import zoneinfo
@@ -256,9 +223,7 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
             from datetime import datetime as _dt
 
             now_local = _dt.now(tz)
-            day_start_utc = now_local.replace(
-                hour=0, minute=0, second=0, microsecond=0
-            ).astimezone(timezone.utc)
+            day_start_utc = now_local.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
             hourly_energy_today = await _optional(
                 power_client.get_hourly_energy(
                     self._facility_id,
@@ -331,7 +296,5 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
             raise RuntimeError("Facility attributes not yet loaded")
         updated = dataclass_replace(self._cached_attributes, **kwargs)
         client = self._make_client()
-        self._cached_attributes = await client.update_facility_attributes(
-            self._facility_id, updated
-        )
+        self._cached_attributes = await client.update_facility_attributes(self._facility_id, updated)
         await self.async_request_refresh()

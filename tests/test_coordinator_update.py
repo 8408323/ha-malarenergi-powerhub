@@ -10,7 +10,6 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from custom_components.malarenergi_powerhub.api import (
@@ -32,7 +31,6 @@ from custom_components.malarenergi_powerhub.coordinator import (
     PowerHubCoordinator,
     PowerHubData,
 )
-
 
 # ── Fixtures / builders ───────────────────────────────────────────────────────
 
@@ -161,18 +159,12 @@ def _make_power_client_mock(**overrides) -> MagicMock:
     """A mock PowerApiClient with all methods returning sensible defaults."""
     client = MagicMock()
     now_ts = datetime.now(timezone.utc)
-    client.get_notification_settings = AsyncMock(
-        return_value=_make_notification_settings()
-    )
+    client.get_notification_settings = AsyncMock(return_value=_make_notification_settings())
     client.get_current_power = AsyncMock(
-        return_value=PowerTelemetry(
-            timestamp=now_ts, power_import_kw=2.5, power_export_kw=0.0
-        )
+        return_value=PowerTelemetry(timestamp=now_ts, power_import_kw=2.5, power_export_kw=0.0)
     )
     client.get_current_power_phases = AsyncMock(
-        return_value=PhaseTelemetry(
-            timestamp=now_ts, current_l1_a=5.0, current_l2_a=3.0, current_l3_a=4.0
-        )
+        return_value=PhaseTelemetry(timestamp=now_ts, current_l1_a=5.0, current_l2_a=3.0, current_l3_a=4.0)
     )
     client.get_diagnostics = AsyncMock(
         return_value=PowerDiagnostics(
@@ -410,9 +402,7 @@ async def test_generic_error_wrapped_in_update_failed() -> None:
         side_effect=RuntimeError("network timeout")
     )
     power = _make_power_client_mock()
-    power.get_notification_settings = AsyncMock(
-        side_effect=RuntimeError("network timeout")
-    )
+    power.get_notification_settings = AsyncMock(side_effect=RuntimeError("network timeout"))
     coord._make_client = MagicMock(return_value=api)
     coord._make_power_client = MagicMock(return_value=power)
 

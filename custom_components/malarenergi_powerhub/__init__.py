@@ -44,9 +44,7 @@ _DELETE_SCHEMA = vol.Schema(
 )
 
 
-def _get_client(
-    hass: HomeAssistant, facility_id: str | None
-) -> tuple[PowerHubApiClient, str]:
+def _get_client(hass: HomeAssistant, facility_id: str | None) -> tuple[PowerHubApiClient, str]:
     """Return (client, facility_id) for the first matching config entry."""
     for entry in hass.config_entries.async_entries(DOMAIN):
         fid = entry.data[CONF_FACILITY_ID]
@@ -79,9 +77,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             _LOGGER.error("create_invitation service failed: %s", err)
             return
         try:
-            result = await client.create_invitation(
-                fid, share_all_devices=share_all_devices
-            )
+            result = await client.create_invitation(fid, share_all_devices=share_all_devices)
         except Exception as err:
             _LOGGER.error("create_invitation API call failed: %s", err)
             raise HomeAssistantError(f"Failed to create invitation: {err}") from err
