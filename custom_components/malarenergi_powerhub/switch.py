@@ -12,9 +12,9 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .api import FacilityAttributes, NotificationSettings
 from .const import DOMAIN
 from .coordinator import PowerHubCoordinator
-from .api import FacilityAttributes, NotificationSettings
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -98,12 +98,8 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator: PowerHubCoordinator = hass.data[DOMAIN][entry.entry_id]
-    entities: list[SwitchEntity] = [
-        PowerHubSwitch(coordinator, desc) for desc in ATTRIBUTE_SWITCHES
-    ]
-    entities += [
-        NotificationSwitch(coordinator, desc) for desc in NOTIFICATION_SWITCHES
-    ]
+    entities: list[SwitchEntity] = [PowerHubSwitch(coordinator, desc) for desc in ATTRIBUTE_SWITCHES]
+    entities += [NotificationSwitch(coordinator, desc) for desc in NOTIFICATION_SWITCHES]
     async_add_entities(entities)
 
 
@@ -135,14 +131,10 @@ class PowerHubSwitch(CoordinatorEntity[PowerHubCoordinator], SwitchEntity):
         return self.entity_description.value_fn(attrs)
 
     async def async_turn_on(self, **kwargs) -> None:
-        await self.coordinator.async_update_attributes(
-            **{self.entity_description.attr_field: True}
-        )
+        await self.coordinator.async_update_attributes(**{self.entity_description.attr_field: True})
 
     async def async_turn_off(self, **kwargs) -> None:
-        await self.coordinator.async_update_attributes(
-            **{self.entity_description.attr_field: False}
-        )
+        await self.coordinator.async_update_attributes(**{self.entity_description.attr_field: False})
 
 
 class NotificationSwitch(CoordinatorEntity[PowerHubCoordinator], SwitchEntity):
@@ -173,11 +165,7 @@ class NotificationSwitch(CoordinatorEntity[PowerHubCoordinator], SwitchEntity):
         return self.entity_description.value_fn(notif)
 
     async def async_turn_on(self, **kwargs) -> None:
-        await self.coordinator.async_update_notification_settings(
-            **{self.entity_description.notif_field: True}
-        )
+        await self.coordinator.async_update_notification_settings(**{self.entity_description.notif_field: True})
 
     async def async_turn_off(self, **kwargs) -> None:
-        await self.coordinator.async_update_notification_settings(
-            **{self.entity_description.notif_field: False}
-        )
+        await self.coordinator.async_update_notification_settings(**{self.entity_description.notif_field: False})

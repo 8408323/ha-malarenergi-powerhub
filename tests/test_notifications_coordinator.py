@@ -10,7 +10,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from aiohttp import ClientResponseError
-
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from custom_components.malarenergi_powerhub.notifications_coordinator import (
@@ -71,9 +70,7 @@ class TestNotificationsCoordinatorDataPaths:
         client.get_notifications = AsyncMock(return_value=notifications)
 
         with (
-            patch(
-                "custom_components.malarenergi_powerhub.notifications_coordinator.async_get_clientsession"
-            ),
+            patch("custom_components.malarenergi_powerhub.notifications_coordinator.async_get_clientsession"),
             patch(
                 "custom_components.malarenergi_powerhub.notifications_coordinator.PowerHubApiClient",
                 return_value=client,
@@ -95,9 +92,7 @@ class TestNotificationsCoordinatorDataPaths:
         client.get_notifications = AsyncMock(return_value=[])
 
         with (
-            patch(
-                "custom_components.malarenergi_powerhub.notifications_coordinator.async_get_clientsession"
-            ),
+            patch("custom_components.malarenergi_powerhub.notifications_coordinator.async_get_clientsession"),
             patch(
                 "custom_components.malarenergi_powerhub.notifications_coordinator.PowerHubApiClient",
                 return_value=client,
@@ -116,14 +111,10 @@ class TestNotificationsCoordinatorDataPaths:
         registered yet — return empty data instead of raising UpdateFailed."""
         coord = _make_coord()
         client = MagicMock()
-        client.get_notifications = AsyncMock(
-            side_effect=_make_client_response_error(400)
-        )
+        client.get_notifications = AsyncMock(side_effect=_make_client_response_error(400))
 
         with (
-            patch(
-                "custom_components.malarenergi_powerhub.notifications_coordinator.async_get_clientsession"
-            ),
+            patch("custom_components.malarenergi_powerhub.notifications_coordinator.async_get_clientsession"),
             patch(
                 "custom_components.malarenergi_powerhub.notifications_coordinator.PowerHubApiClient",
                 return_value=client,
@@ -139,14 +130,10 @@ class TestNotificationsCoordinatorDataPaths:
         """A non-400 ClientResponseError (e.g. 503) is wrapped in UpdateFailed."""
         coord = _make_coord()
         client = MagicMock()
-        client.get_notifications = AsyncMock(
-            side_effect=_make_client_response_error(503)
-        )
+        client.get_notifications = AsyncMock(side_effect=_make_client_response_error(503))
 
         with (
-            patch(
-                "custom_components.malarenergi_powerhub.notifications_coordinator.async_get_clientsession"
-            ),
+            patch("custom_components.malarenergi_powerhub.notifications_coordinator.async_get_clientsession"),
             patch(
                 "custom_components.malarenergi_powerhub.notifications_coordinator.PowerHubApiClient",
                 return_value=client,
@@ -159,14 +146,10 @@ class TestNotificationsCoordinatorDataPaths:
         """Any unexpected exception is wrapped in UpdateFailed."""
         coord = _make_coord()
         client = MagicMock()
-        client.get_notifications = AsyncMock(
-            side_effect=RuntimeError("network timeout")
-        )
+        client.get_notifications = AsyncMock(side_effect=RuntimeError("network timeout"))
 
         with (
-            patch(
-                "custom_components.malarenergi_powerhub.notifications_coordinator.async_get_clientsession"
-            ),
+            patch("custom_components.malarenergi_powerhub.notifications_coordinator.async_get_clientsession"),
             patch(
                 "custom_components.malarenergi_powerhub.notifications_coordinator.PowerHubApiClient",
                 return_value=client,
@@ -184,9 +167,7 @@ class TestNotificationsCoordinatorDataPaths:
         client.get_notifications = AsyncMock(return_value=[])
 
         with (
-            patch(
-                "custom_components.malarenergi_powerhub.notifications_coordinator.async_get_clientsession"
-            ),
+            patch("custom_components.malarenergi_powerhub.notifications_coordinator.async_get_clientsession"),
             patch(
                 "custom_components.malarenergi_powerhub.notifications_coordinator.PowerHubApiClient",
                 return_value=client,

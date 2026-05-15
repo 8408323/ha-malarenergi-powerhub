@@ -25,13 +25,10 @@ from custom_components.malarenergi_powerhub.const import (
     DOMAIN,
 )
 
-
 # ── helpers ────────────────────────────────────────────────────────────────────
 
 
-def _make_entry(
-    facility_id: str, token: str = "tok", entry_id: str = "eid-1"
-) -> MagicMock:
+def _make_entry(facility_id: str, token: str = "tok", entry_id: str = "eid-1") -> MagicMock:
     entry = MagicMock()
     entry.entry_id = entry_id
     entry.data = {CONF_FACILITY_ID: facility_id, CONF_TOKEN: token}
@@ -235,9 +232,7 @@ async def test_async_setup_entry_skips_register_when_services_exist() -> None:
 
 async def test_async_unload_entry_pops_coordinators_on_success() -> None:
     hass = _make_setup_hass()
-    hass.data = {
-        DOMAIN: {"eid-1": "coord", "eid-1_notifications": "notif", "eid-2": "other"}
-    }
+    hass.data = {DOMAIN: {"eid-1": "coord", "eid-1_notifications": "notif", "eid-2": "other"}}
     entry = _make_entry("fac-1", entry_id="eid-1")
 
     result = await async_unload_entry(hass, entry)
@@ -313,9 +308,7 @@ async def test_handle_create_invitation_creates_persistent_notification() -> Non
 
     mock_pn.assert_called_once()
     # The notification message should contain the invitation code
-    notification_msg = (
-        mock_pn.call_args.kwargs.get("message") or mock_pn.call_args.args[1]
-    )
+    notification_msg = mock_pn.call_args.kwargs.get("message") or mock_pn.call_args.args[1]
     assert "CODE123" in notification_msg
 
 

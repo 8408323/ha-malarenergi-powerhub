@@ -45,9 +45,7 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Cancel background polling when the flow is discarded."""
         self._cancel_task()
 
-    async def async_step_user(
-        self, user_input: dict[str, Any] | None = None
-    ) -> config_entries.ConfigFlowResult:
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> config_entries.ConfigFlowResult:
         """Start BankID session, fetch first QR synchronously, then poll in bg."""
         self._cancel_task()
         self._token = None
@@ -114,16 +112,12 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="bankid_qr",
             data_schema=vol.Schema(
                 {
-                    vol.Optional("qr"): QrCodeSelector(
-                        QrCodeSelectorConfig(data=self._qr_code or "")
-                    ),
+                    vol.Optional("qr"): QrCodeSelector(QrCodeSelectorConfig(data=self._qr_code or "")),
                 }
             ),
         )
 
-    async def async_step_bankid_qr(
-        self, user_input: dict[str, Any] | None = None
-    ) -> config_entries.ConfigFlowResult:
+    async def async_step_bankid_qr(self, user_input: dict[str, Any] | None = None) -> config_entries.ConfigFlowResult:
         """Called when user clicks Submit — wait briefly for the background
         poller to see `complete`, then either finish the flow or show a
         refreshed QR for another scan."""
@@ -195,9 +189,7 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # (which would mutate unrelated configuration).
         if self.source == config_entries.SOURCE_REAUTH:
             entry_id = self.context.get("entry_id")
-            existing = (
-                self.hass.config_entries.async_get_entry(entry_id) if entry_id else None
-            )
+            existing = self.hass.config_entries.async_get_entry(entry_id) if entry_id else None
             # Fallback: locate the entry by unique_id against the returned
             # facilities. Require exactly one match — more than one means we
             # cannot safely choose which entry to update.
@@ -205,8 +197,7 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 candidates = [
                     e
                     for e in self.hass.config_entries.async_entries(DOMAIN)
-                    if e.unique_id
-                    and any(f.facility_id == e.unique_id for f in facilities)
+                    if e.unique_id and any(f.facility_id == e.unique_id for f in facilities)
                 ]
                 if len(candidates) == 1:
                     existing = candidates[0]
@@ -253,10 +244,7 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             # has already been persisted, so we surface reload errors in
             # logs but still report reauth_successful.
             results = await asyncio.gather(
-                *(
-                    self.hass.config_entries.async_reload(eid)
-                    for eid in entry_ids_to_reload
-                ),
+                *(self.hass.config_entries.async_reload(eid) for eid in entry_ids_to_reload),
                 return_exceptions=True,
             )
             for eid, result in zip(entry_ids_to_reload, results):
@@ -269,11 +257,7 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason="reauth_successful")
 
         # Fresh install path — create one entry per unconfigured facility.
-        configured = {
-            e.unique_id
-            for e in self.hass.config_entries.async_entries(DOMAIN)
-            if e.unique_id
-        }
+        configured = {e.unique_id for e in self.hass.config_entries.async_entries(DOMAIN) if e.unique_id}
         new_facilities = [f for f in facilities if f.facility_id not in configured]
 
         if not new_facilities:
@@ -307,9 +291,7 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             },
         )
 
-    async def async_step_import(
-        self, import_data: dict[str, Any]
-    ) -> config_entries.ConfigFlowResult:
+    async def async_step_import(self, import_data: dict[str, Any]) -> config_entries.ConfigFlowResult:
         """Create a config entry for an additional facility from a token
         that was already obtained in a sibling config flow. Skipped if the
         facility is already configured (race-safe)."""
@@ -338,8 +320,6 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             },
         )
 
-    async def async_step_reauth(
-        self, user_input: dict[str, Any] | None = None
-    ) -> config_entries.ConfigFlowResult:
+    async def async_step_reauth(self, user_input: dict[str, Any] | None = None) -> config_entries.ConfigFlowResult:
         """Re-authenticate when token expires."""
         return await self.async_step_user()

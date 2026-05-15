@@ -72,9 +72,7 @@ class TestAsyncFinishReauth:
         fake_client.get_facilities = AsyncMock(return_value=[other_facility, FACILITY])
 
         with (
-            patch(
-                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
-            ),
+            patch("custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"),
             patch(
                 "custom_components.malarenergi_powerhub.api.PowerHubApiClient",
                 return_value=fake_client,
@@ -106,17 +104,13 @@ class TestAsyncFinishReauth:
             CONF_FACILITY_ID: FACILITY.facility_id,
         }
         flow.hass.config_entries.async_get_entry.return_value = None
-        flow.hass.config_entries.async_entries = MagicMock(
-            return_value=[existing_entry]
-        )
+        flow.hass.config_entries.async_entries = MagicMock(return_value=[existing_entry])
 
         fake_client = MagicMock()
         fake_client.get_facilities = AsyncMock(return_value=[FACILITY])
 
         with (
-            patch(
-                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
-            ),
+            patch("custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"),
             patch(
                 "custom_components.malarenergi_powerhub.api.PowerHubApiClient",
                 return_value=fake_client,
@@ -142,9 +136,7 @@ class TestAsyncFinishReauth:
         fake_client.get_facilities = AsyncMock(return_value=[FACILITY])
 
         with (
-            patch(
-                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
-            ),
+            patch("custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"),
             patch(
                 "custom_components.malarenergi_powerhub.api.PowerHubApiClient",
                 return_value=fake_client,
@@ -172,9 +164,7 @@ class TestAsyncFinishReauth:
         entry_b.entry_id = "entry-b"
         entry_b.unique_id = "other-uuid-999"
         entry_b.data = {CONF_FACILITY_ID: "other-uuid-999"}
-        flow.hass.config_entries.async_entries = MagicMock(
-            return_value=[entry_a, entry_b]
-        )
+        flow.hass.config_entries.async_entries = MagicMock(return_value=[entry_a, entry_b])
 
         other_facility = FacilityInfo(
             facility_id="other-uuid-999",
@@ -189,9 +179,7 @@ class TestAsyncFinishReauth:
         fake_client.get_facilities = AsyncMock(return_value=[FACILITY, other_facility])
 
         with (
-            patch(
-                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
-            ),
+            patch("custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"),
             patch(
                 "custom_components.malarenergi_powerhub.api.PowerHubApiClient",
                 return_value=fake_client,
@@ -234,9 +222,7 @@ class TestAsyncFinishReauth:
         fake_client.get_facilities = AsyncMock(return_value=[stranger_facility])
 
         with (
-            patch(
-                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
-            ),
+            patch("custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"),
             patch(
                 "custom_components.malarenergi_powerhub.api.PowerHubApiClient",
                 return_value=fake_client,
@@ -262,9 +248,7 @@ class TestAsyncFinishUserFlow:
         fake_client.get_facilities = AsyncMock(return_value=[FACILITY])
 
         with (
-            patch(
-                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
-            ),
+            patch("custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"),
             patch(
                 "custom_components.malarenergi_powerhub.api.PowerHubApiClient",
                 return_value=fake_client,
@@ -273,9 +257,7 @@ class TestAsyncFinishUserFlow:
             result = await flow._async_finish(NEW_TOKEN)
 
         flow.async_set_unique_id.assert_awaited_once_with(FACILITY.facility_id)
-        flow._abort_if_unique_id_configured.assert_called_once_with(
-            updates={CONF_TOKEN: NEW_TOKEN}
-        )
+        flow._abort_if_unique_id_configured.assert_called_once_with(updates={CONF_TOKEN: NEW_TOKEN})
         # Only one facility → no import flows scheduled
         flow.hass.async_create_task.assert_not_called()
         assert result["type"] == "create_entry"
@@ -306,9 +288,7 @@ class TestAsyncFinishUserFlow:
         fake_client.get_facilities = AsyncMock(return_value=[FACILITY, other])
 
         with (
-            patch(
-                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
-            ),
+            patch("custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"),
             patch(
                 "custom_components.malarenergi_powerhub.api.PowerHubApiClient",
                 return_value=fake_client,
@@ -340,9 +320,7 @@ class TestAsyncFinishUserFlow:
         # FACILITY is already configured; `other` is new
         configured_entry = MagicMock()
         configured_entry.unique_id = FACILITY.facility_id
-        flow.hass.config_entries.async_entries = MagicMock(
-            return_value=[configured_entry]
-        )
+        flow.hass.config_entries.async_entries = MagicMock(return_value=[configured_entry])
 
         other = FacilityInfo(
             facility_id="other-uuid-999",
@@ -357,9 +335,7 @@ class TestAsyncFinishUserFlow:
         fake_client.get_facilities = AsyncMock(return_value=[FACILITY, other])
 
         with (
-            patch(
-                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
-            ),
+            patch("custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"),
             patch(
                 "custom_components.malarenergi_powerhub.api.PowerHubApiClient",
                 return_value=fake_client,
@@ -383,17 +359,13 @@ class TestAsyncFinishUserFlow:
 
         configured_entry = MagicMock()
         configured_entry.unique_id = FACILITY.facility_id
-        flow.hass.config_entries.async_entries = MagicMock(
-            return_value=[configured_entry]
-        )
+        flow.hass.config_entries.async_entries = MagicMock(return_value=[configured_entry])
 
         fake_client = MagicMock()
         fake_client.get_facilities = AsyncMock(return_value=[FACILITY])
 
         with (
-            patch(
-                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
-            ),
+            patch("custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"),
             patch(
                 "custom_components.malarenergi_powerhub.api.PowerHubApiClient",
                 return_value=fake_client,
@@ -423,9 +395,7 @@ class TestAsyncStepImport:
         )
 
         flow.async_set_unique_id.assert_awaited_once_with("other-uuid-999")
-        flow._abort_if_unique_id_configured.assert_called_once_with(
-            updates={CONF_TOKEN: NEW_TOKEN}
-        )
+        flow._abort_if_unique_id_configured.assert_called_once_with(updates={CONF_TOKEN: NEW_TOKEN})
         assert result["type"] == "create_entry"
         assert result["title"] == "Lillgatan 5"
         assert result["data"][CONF_TOKEN] == NEW_TOKEN
@@ -474,9 +444,7 @@ class TestReauthSiblingTokenPropagation:
             CONF_FACILITY_ID: "other-uuid-999",
         }
         flow.hass.config_entries.async_get_entry.return_value = existing_entry
-        flow.hass.config_entries.async_entries = MagicMock(
-            return_value=[existing_entry, sibling_entry]
-        )
+        flow.hass.config_entries.async_entries = MagicMock(return_value=[existing_entry, sibling_entry])
 
         other = FacilityInfo(
             facility_id="other-uuid-999",
@@ -491,9 +459,7 @@ class TestReauthSiblingTokenPropagation:
         fake_client.get_facilities = AsyncMock(return_value=[FACILITY, other])
 
         with (
-            patch(
-                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
-            ),
+            patch("custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"),
             patch(
                 "custom_components.malarenergi_powerhub.api.PowerHubApiClient",
                 return_value=fake_client,
@@ -524,9 +490,7 @@ class TestAsyncFinishErrors:
         fake_client.get_facilities = AsyncMock(side_effect=AuthError("bad token"))
 
         with (
-            patch(
-                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
-            ),
+            patch("custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"),
             patch(
                 "custom_components.malarenergi_powerhub.api.PowerHubApiClient",
                 return_value=fake_client,
@@ -540,14 +504,10 @@ class TestAsyncFinishErrors:
     async def test_generic_error_on_get_facilities_shows_cannot_connect(self) -> None:
         flow = _make_flow(config_entries.SOURCE_USER)
         fake_client = MagicMock()
-        fake_client.get_facilities = AsyncMock(
-            side_effect=RuntimeError("connection refused")
-        )
+        fake_client.get_facilities = AsyncMock(side_effect=RuntimeError("connection refused"))
 
         with (
-            patch(
-                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
-            ),
+            patch("custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"),
             patch(
                 "custom_components.malarenergi_powerhub.api.PowerHubApiClient",
                 return_value=fake_client,
@@ -565,9 +525,7 @@ class TestAsyncFinishErrors:
         fake_client.get_facilities = AsyncMock(return_value=[])
 
         with (
-            patch(
-                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
-            ),
+            patch("custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"),
             patch(
                 "custom_components.malarenergi_powerhub.api.PowerHubApiClient",
                 return_value=fake_client,
@@ -647,9 +605,7 @@ class TestAsyncStepUser:
         flow = _make_user_flow()
 
         with (
-            patch(
-                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
-            ),
+            patch("custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"),
             patch(
                 "custom_components.malarenergi_powerhub.config_flow.bankid_start",
                 AsyncMock(side_effect=RuntimeError("network error")),
@@ -664,9 +620,7 @@ class TestAsyncStepUser:
         flow = _make_user_flow()
 
         with (
-            patch(
-                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
-            ),
+            patch("custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"),
             patch(
                 "custom_components.malarenergi_powerhub.config_flow.bankid_start",
                 AsyncMock(return_value=("txn-123", "auto")),
@@ -688,9 +642,7 @@ class TestAsyncStepUser:
         flow = _make_user_flow()
 
         with (
-            patch(
-                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
-            ),
+            patch("custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"),
             patch(
                 "custom_components.malarenergi_powerhub.config_flow.bankid_start",
                 AsyncMock(return_value=("txn-123", "auto")),
@@ -713,9 +665,7 @@ class TestAsyncStepUser:
             yield  # makes it an async generator
 
         with (
-            patch(
-                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
-            ),
+            patch("custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"),
             patch(
                 "custom_components.malarenergi_powerhub.config_flow.bankid_start",
                 AsyncMock(return_value=("txn-123", "auto")),
@@ -741,9 +691,7 @@ class TestRunPoller:
         flow._qr_code = None
 
         with (
-            patch(
-                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
-            ),
+            patch("custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"),
             patch(
                 "custom_components.malarenergi_powerhub.config_flow.bankid_poll",
                 _make_async_gen(
@@ -763,9 +711,7 @@ class TestRunPoller:
         flow._transaction_id = "txn-123"
 
         with (
-            patch(
-                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
-            ),
+            patch("custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"),
             patch(
                 "custom_components.malarenergi_powerhub.config_flow.bankid_poll",
                 _make_async_gen(("complete", None, "jwt-token-value")),
@@ -781,9 +727,7 @@ class TestRunPoller:
         flow._transaction_id = "txn-123"
 
         with (
-            patch(
-                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
-            ),
+            patch("custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"),
             patch(
                 "custom_components.malarenergi_powerhub.config_flow.bankid_poll",
                 _make_async_gen(("failed", None, None)),
@@ -803,9 +747,7 @@ class TestRunPoller:
             yield  # makes it an async generator
 
         with (
-            patch(
-                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
-            ),
+            patch("custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"),
             patch(
                 "custom_components.malarenergi_powerhub.config_flow.bankid_poll",
                 _exploding_poll,
@@ -826,9 +768,7 @@ class TestAsyncStepBankidQr:
         flow._poll_task = None
         # async_step_user will try bankid_start — mock it to return a form
         with (
-            patch(
-                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
-            ),
+            patch("custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"),
             patch(
                 "custom_components.malarenergi_powerhub.config_flow.bankid_start",
                 AsyncMock(side_effect=RuntimeError("no session")),
@@ -955,9 +895,7 @@ class TestAsyncStepUserFirstPollComplete:
         flow._async_finish = AsyncMock(return_value=finish_result)
 
         with (
-            patch(
-                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
-            ),
+            patch("custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"),
             patch(
                 "custom_components.malarenergi_powerhub.config_flow.bankid_start",
                 AsyncMock(return_value=("txn-123", "auto")),
@@ -987,9 +925,7 @@ class TestRunPollerCancelledError:
             yield  # pragma: no cover — unreachable; marks function as async generator
 
         with (
-            patch(
-                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
-            ),
+            patch("custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"),
             patch(
                 "custom_components.malarenergi_powerhub.config_flow.bankid_poll",
                 _cancelling_poll,
@@ -1022,17 +958,13 @@ class TestAsyncFinishReauthReloadFailure:
         flow.hass.config_entries.async_get_entry.return_value = existing_entry
         flow.hass.config_entries.async_entries = MagicMock(return_value=[])
         # Simulate reload failure
-        flow.hass.config_entries.async_reload = AsyncMock(
-            side_effect=RuntimeError("reload failed")
-        )
+        flow.hass.config_entries.async_reload = AsyncMock(side_effect=RuntimeError("reload failed"))
 
         fake_client = MagicMock()
         fake_client.get_facilities = AsyncMock(return_value=[FACILITY])
 
         with (
-            patch(
-                "custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"
-            ),
+            patch("custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"),
             patch(
                 "custom_components.malarenergi_powerhub.api.PowerHubApiClient",
                 return_value=fake_client,
