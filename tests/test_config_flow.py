@@ -619,7 +619,16 @@ def _make_user_flow() -> PowerHubConfigFlow:
     flow = PowerHubConfigFlow()
     flow.context = {"source": config_entries.SOURCE_USER}
     flow.hass = MagicMock()
-    flow.hass.async_create_task = MagicMock()
+
+    def _create_task(coro):
+        # Close the coroutine immediately so it is not left unawaited (which
+        # would generate a RuntimeWarning). The task is never actually run in
+        # unit tests — callers only assert that async_create_task was called.
+        if hasattr(coro, "close"):
+            coro.close()
+        return MagicMock()
+
+    flow.hass.async_create_task = MagicMock(side_effect=_create_task)
     return flow
 
 
