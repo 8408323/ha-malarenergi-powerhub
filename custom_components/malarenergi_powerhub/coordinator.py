@@ -8,7 +8,7 @@ from dataclasses import replace as dataclass_replace
 from datetime import datetime, timedelta, timezone
 from typing import Awaitable, TypeVar, overload
 
-from aiohttp import ClientResponseError
+from aiohttp import ClientError, ClientResponseError
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -103,6 +103,38 @@ async def _optional(coro: Awaitable[_T], name: str, *, default: _T | None = None
         raise
 
 
+async def _optional_static(coro: Awaitable[_T], name: str) -> _T | None:
+    """Await a non-critical, cached account-metadata fetch; tolerate failures.
+
+    These endpoints (facility attributes, profile, supply agreements, facility
+    list) feed only informational/diagnostic entities and are cached after the
+    first success. The Bitvis Flow backend intermittently returns 5xx for some
+    of them; when that happens we must NOT fail the whole coordinator tick —
+    doing so takes *every* sensor, including live energy data, unavailable.
+    Log a warning, return None, and let the caller retry on the next update.
+    AuthError still propagates so the reauth guard runs.
+    """
+    try:
+        return await coro
+    except AuthError:
+        raise
+    except ClientResponseError as err:
+        _LOGGER.warning(
+            "Non-critical endpoint %s returned HTTP %s (%s); continuing without it and retrying on the next update.",
+            name,
+            err.status,
+            err.message,
+        )
+        return None
+    except (ClientError, TimeoutError) as err:
+        _LOGGER.warning(
+            "Non-critical endpoint %s failed (%s); continuing without it and retrying on the next update.",
+            name,
+            err,
+        )
+        return None
+
+
 class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
     """Coordinator that polls the Bitvis Flow API."""
 
@@ -143,27 +175,34 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
         now_ms = _now_ms()
 
         try:
-            # Static data — cache after first successful fetch
+            # Static data — cache after first successful fetch. These endpoints
+            # are non-critical (they feed informational/diagnostic entities), so
+            # a backend failure on any of them must not fail the whole tick and
+            # take live energy data offline. On failure the cache stays unset and
+            # the fetch is retried on the next update.
             if self._cached_attributes is None:
-                self._cached_attributes = await client.get_facility_attributes(self._facility_id)
-            if self._cached_profile is None:
-                self._cached_profile = await client.get_profile()
-            if self._cached_agreements is None:
-                self._cached_agreements = await client.get_agreements()
-            if not self._facility_info_resolved:
-                facilities = await client.get_facilities()
-                self._cached_facility_info = next(
-                    (f for f in facilities if f.facility_id == self._facility_id),
-                    None,
+                self._cached_attributes = await _optional_static(
+                    client.get_facility_attributes(self._facility_id), "facility_attributes"
                 )
-                self._facility_info_resolved = True
-                if self._cached_facility_info is None and facilities:
-                    _LOGGER.warning(
-                        "Configured facility_id %s was not found in the returned facilities. "
-                        "Facility metadata (address, meter ID) will be unavailable. "
-                        "Please verify the facility_id in your configuration or reconfigure the integration.",
-                        self._facility_id,
+            if self._cached_profile is None:
+                self._cached_profile = await _optional_static(client.get_profile(), "profile")
+            if self._cached_agreements is None:
+                self._cached_agreements = await _optional_static(client.get_agreements(), "agreements")
+            if not self._facility_info_resolved:
+                facilities = await _optional_static(client.get_facilities(), "facilities")
+                if facilities is not None:
+                    self._cached_facility_info = next(
+                        (f for f in facilities if f.facility_id == self._facility_id),
+                        None,
                     )
+                    self._facility_info_resolved = True
+                    if self._cached_facility_info is None and facilities:
+                        _LOGGER.warning(
+                            "Configured facility_id %s was not found in the returned facilities. "
+                            "Facility metadata (address, meter ID) will be unavailable. "
+                            "Please verify the facility_id in your configuration or reconfigure the integration.",
+                            self._facility_id,
+                        )
 
             # Notification settings (fetched each poll — user may change in app)
             notification_settings = await power_client.get_notification_settings(self._facility_id)
