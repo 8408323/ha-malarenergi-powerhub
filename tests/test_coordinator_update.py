@@ -516,7 +516,7 @@ async def test_repeated_failure_logs_warning_once_then_recovers(caplog) -> None:
 
 
 @pytest.mark.asyncio
-async def test_optional_static_auth_error_propagates_to_reauth() -> None:
+async def test_static_fetch_auth_error_propagates_to_reauth() -> None:
     """AuthError from a static fetch still triggers the reauth guard."""
     coord = _make_coordinator()
     api = _make_api_client_mock()
