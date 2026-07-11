@@ -10,11 +10,13 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from aiohttp import ClientError, ClientResponseError
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from custom_components.malarenergi_powerhub.api import (
     AccountProfile,
     Agreement,
+    AuthError,
     FacilityAttributes,
     FacilityControl,
     FacilityInfo,
@@ -408,6 +410,139 @@ async def test_generic_error_wrapped_in_update_failed() -> None:
 
     with pytest.raises(UpdateFailed, match="API error"):
         await coord._async_update_data()
+
+
+# ── Resilient account-metadata fetches (issue #52) ────────────────────────────
+
+
+def _response_error(status: int) -> ClientResponseError:
+    """Build an aiohttp ClientResponseError with the given HTTP status."""
+    return ClientResponseError(MagicMock(), (), status=status, message="Request failed.")
+
+
+@pytest.mark.asyncio
+async def test_agreements_500_does_not_fail_tick() -> None:
+    """A 500 on the non-critical agreements endpoint must not fail the tick.
+
+    Regression test for issue #52: a server-side 500 on /account/agreement was
+    taking every sensor — including live energy data — offline.
+    """
+    coord = _make_coordinator()
+    api = _make_api_client_mock()
+    api.get_agreements = AsyncMock(side_effect=_response_error(500))
+    power = _make_power_client_mock()
+    coord._make_client = MagicMock(return_value=api)
+    coord._make_power_client = MagicMock(return_value=power)
+
+    result = await coord._async_update_data()
+
+    # Tick succeeds; agreements come through empty, energy data is intact.
+    assert result.agreements == []
+    assert result.consumption_today_kwh is not None
+    assert result.spot_price_now == 95.5
+
+
+@pytest.mark.asyncio
+async def test_agreements_failure_retried_next_tick() -> None:
+    """After a failed agreements fetch, it is retried (not cached) next update."""
+    coord = _make_coordinator()
+    api = _make_api_client_mock()
+    good = [
+        Agreement(
+            agreement_number="AGR-1",
+            supply_service_name="Electricity",
+            supply_start_date_ms=0,
+            price_model="SPOT",
+            utility="ELECTRICITY",
+            facility_id="fac-1",
+        )
+    ]
+    api.get_agreements = AsyncMock(side_effect=[_response_error(500), good])
+    power = _make_power_client_mock()
+    coord._make_client = MagicMock(return_value=api)
+    coord._make_power_client = MagicMock(return_value=power)
+
+    first = await coord._async_update_data()
+    second = await coord._async_update_data()
+
+    assert first.agreements == []
+    assert second.agreements[0].agreement_number == "AGR-1"
+    assert api.get_agreements.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_optional_static_auth_error_propagates_to_reauth() -> None:
+    """AuthError from a static fetch still triggers the reauth guard."""
+    coord = _make_coordinator()
+    api = _make_api_client_mock()
+    api.get_agreements = AsyncMock(side_effect=AuthError("token expired"))
+    power = _make_power_client_mock()
+    coord._make_client = MagicMock(return_value=api)
+    coord._make_power_client = MagicMock(return_value=power)
+
+    with pytest.raises(UpdateFailed):
+        await coord._async_update_data()
+    coord._entry.async_start_reauth.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_profile_client_error_tolerated() -> None:
+    """A connection-level ClientError on profile is tolerated (profile None)."""
+    coord = _make_coordinator()
+    api = _make_api_client_mock()
+    api.get_profile = AsyncMock(side_effect=ClientError("connection reset"))
+    power = _make_power_client_mock()
+    coord._make_client = MagicMock(return_value=api)
+    coord._make_power_client = MagicMock(return_value=power)
+
+    result = await coord._async_update_data()
+
+    assert result.profile is None
+
+
+@pytest.mark.asyncio
+async def test_attributes_timeout_tolerated() -> None:
+    """A TimeoutError on attributes is tolerated (attributes None)."""
+    coord = _make_coordinator()
+    api = _make_api_client_mock()
+    api.get_facility_attributes = AsyncMock(side_effect=TimeoutError())
+    power = _make_power_client_mock()
+    coord._make_client = MagicMock(return_value=api)
+    coord._make_power_client = MagicMock(return_value=power)
+
+    result = await coord._async_update_data()
+
+    assert result.attributes is None
+
+
+@pytest.mark.asyncio
+async def test_facilities_failure_tolerated_and_retried() -> None:
+    """A 500 on the facilities list leaves facility_info None and retries next tick."""
+    coord = _make_coordinator()
+    api = _make_api_client_mock()
+    good = [
+        FacilityInfo(
+            facility_id="fac-1",
+            street="Test Street",
+            house_number=1,
+            city="Stockholm",
+            meter_id="M001",
+            region="SE3",
+            customer_id="C123",
+        )
+    ]
+    api.get_facilities = AsyncMock(side_effect=[_response_error(500), good])
+    power = _make_power_client_mock()
+    coord._make_client = MagicMock(return_value=api)
+    coord._make_power_client = MagicMock(return_value=power)
+
+    first = await coord._async_update_data()
+    second = await coord._async_update_data()
+
+    assert first.facility_info is None
+    assert second.facility_info is not None
+    assert second.facility_info.region == "SE3"
+    assert api.get_facilities.await_count == 2
 
 
 # ── async_update_attributes ───────────────────────────────────────────────────
