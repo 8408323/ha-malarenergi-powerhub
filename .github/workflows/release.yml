@@ -1,0 +1,54 @@
+name: Release
+
+# Cuts a GitHub release (and tag) automatically whenever the integration's
+# manifest.json version changes on main. HACS keys updates off the tag, so the
+# tag name is v<version> to match manifest.json exactly.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "custom_components/malarenergi_powerhub/manifest.json"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read version from manifest
+        id: manifest
+        run: |
+          version=$(jq -r '.version' custom_components/malarenergi_powerhub/manifest.json)
+          if [ -z "$version" ] || [ "$version" = "null" ]; then
+            echo "::error::No version found in manifest.json"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+
+      - name: Check whether tag already exists
+        id: check
+        run: |
+          if git rev-parse "refs/tags/${{ steps.manifest.outputs.tag }}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Tag ${{ steps.manifest.outputs.tag }} already exists — nothing to release."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create release
+        if: steps.check.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.manifest.outputs.tag }}" \
+            --target "${{ github.sha }}" \
+            --title "${{ steps.manifest.outputs.tag }}" \
+            --generate-notes
