@@ -43,12 +43,92 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Collect changes since last release
+        id: changes
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          # Nearest existing tag reachable from this commit = the previous release.
+          # Empty on the very first release, so we log the full history instead.
+          prev=$(git describe --tags --abbrev=0 "${{ github.sha }}" 2>/dev/null || echo "")
+          if [ -n "$prev" ]; then
+            range="$prev..${{ github.sha }}"
+          else
+            range="${{ github.sha }}"
+          fi
+          {
+            echo "log<<COMMITS_EOF"
+            git log --no-merges --pretty=format:'- %s' "$range"
+            echo ""
+            echo "COMMITS_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Generate release notes with Claude
+        id: notes
+        if: steps.check.outputs.exists == 'false'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          VERSION: ${{ steps.manifest.outputs.version }}
+          CHANGES: ${{ steps.changes.outputs.log }}
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "No ANTHROPIC_API_KEY secret set — falling back to GitHub auto-generated notes."
+            echo "generated=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Build the request body with jq so commit text is JSON-escaped
+          # (no shell-injection risk from commit subjects).
+          body=$(jq -n --arg v "$VERSION" --arg c "$CHANGES" '{
+            model: "claude-opus-4-8",
+            max_tokens: 2000,
+            messages: [{
+              role: "user",
+              content: (
+                "You are writing GitHub release notes for the Home Assistant custom integration \"Mälarenergi PowerHub\" (a HACS integration), version " + $v + ".\n\n" +
+                "Below are the commit subjects since the previous release. Write concise, user-facing release notes in Markdown.\n" +
+                "- Group changes under short headings such as Features, Fixes, Docs, Internal — omit any group with no entries.\n" +
+                "- Rewrite terse commit subjects into clear, user-facing bullet points; drop pure noise like version bumps or CI plumbing.\n" +
+                "- Do not invent changes that are not in the list.\n" +
+                "- Start directly with the notes: no preamble, no top-level title, no surrounding code fences.\n\n" +
+                "Commits:\n" + $c
+              )
+            }]
+          }')
+
+          resp=$(curl -sS https://api.anthropic.com/v1/messages \
+            -H "x-api-key: ${ANTHROPIC_API_KEY}" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "content-type: application/json" \
+            -d "$body")
+
+          if [ "$(printf '%s' "$resp" | jq -r '.type // empty')" = "error" ]; then
+            echo "::warning::Claude API returned an error — falling back to auto-notes:"
+            printf '%s' "$resp" | jq -r '.error.message // "unknown error"'
+            echo "generated=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          printf '%s' "$resp" | jq -r '[.content[] | select(.type == "text") | .text] | join("")' > release-notes.md
+          if [ -s release-notes.md ]; then
+            echo "generated=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Claude returned empty notes — falling back to auto-notes."
+            echo "generated=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Create release
         if: steps.check.outputs.exists == 'false'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "${{ steps.manifest.outputs.tag }}" \
-            --target "${{ github.sha }}" \
-            --title "${{ steps.manifest.outputs.tag }}" \
-            --generate-notes
+          if [ "${{ steps.notes.outputs.generated }}" = "true" ]; then
+            gh release create "${{ steps.manifest.outputs.tag }}" \
+              --target "${{ github.sha }}" \
+              --title "${{ steps.manifest.outputs.tag }}" \
+              --notes-file release-notes.md
+          else
+            gh release create "${{ steps.manifest.outputs.tag }}" \
+              --target "${{ github.sha }}" \
+              --title "${{ steps.manifest.outputs.tag }}" \
+              --generate-notes
+          fi
