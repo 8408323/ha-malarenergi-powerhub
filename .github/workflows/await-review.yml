@@ -1,0 +1,54 @@
+name: Await review
+
+# Holds as a (required) status check until GitHub Copilot has submitted a code
+# review for the PR's current head commit. This closes the race where a fast
+# required check (e.g. `test`) lets branch-protection auto-merge fire before the
+# asynchronous Copilot review has landed. Blocks (fails) if no review appears
+# within the timeout — merge is intentionally held until the review is in.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  pull-requests: read
+
+# A new push supersedes an in-flight wait for the old commit.
+concurrency:
+  group: await-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  await-copilot-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for Copilot review of this commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+          DRAFT: ${{ github.event.pull_request.draft }}
+        run: |
+          if [ "$DRAFT" = "true" ]; then
+            echo "Draft PR — Copilot does not review drafts; nothing to wait for."
+            exit 0
+          fi
+          echo "Waiting for a Copilot review of $SHA on PR #$PR…"
+          # ~20 min ceiling (60 × 20s). Copilot normally reviews within minutes;
+          # if it never does, we block rather than merge unreviewed.
+          # Match the Copilot bot exactly (login + Bot type) so a human account
+          # whose username merely contains "copilot" can't satisfy the gate.
+          # --slurp collapses all pages into one array so jq emits a single count
+          # (a plain --paginate --jq would emit one length per page).
+          for _ in $(seq 1 60); do
+            count=$(gh api --paginate --slurp "repos/$REPO/pulls/$PR/reviews" 2>/dev/null \
+              | jq "[.[][] | select(.user.type == \"Bot\" and .user.login == \"copilot-pull-request-reviewer[bot]\") | select(.commit_id == \"$SHA\")] | length" 2>/dev/null)
+            if [ "${count:-0}" -gt 0 ]; then
+              echo "Copilot has reviewed $SHA. ✅"
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "::error::No Copilot review for $SHA within the timeout — holding the merge until the review lands."
+          exit 1

@@ -57,7 +57,9 @@ jobs:
           # already green and proceeds; a still-running or failed sibling skips.
           proceed=true
           for wf in "CI" "Validate"; do
-            concl=$(gh run list --workflow "$wf" --branch main \
+            # --limit is generous so the SHA lookup stays reliable on busy repos
+            # (the default page is small and could miss the matching run).
+            concl=$(gh run list --workflow "$wf" --branch main --limit 100 \
               --json headSha,conclusion,status \
               --jq "[.[] | select(.headSha == \"$SHA\")][0] | (.conclusion // .status // \"missing\")")
             echo "$wf for $SHA: ${concl:-missing}"
