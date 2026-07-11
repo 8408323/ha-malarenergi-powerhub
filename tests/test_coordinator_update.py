@@ -222,6 +222,7 @@ def _make_coordinator(facility_id="fac-1") -> PowerHubCoordinator:
     coord._cached_agreements = None
     coord._cached_facility_info = None
     coord._facility_info_resolved = False
+    coord._degraded_endpoints = set()
     coord.data = None
     coord.async_request_refresh = AsyncMock()
     return coord
@@ -468,6 +469,50 @@ async def test_agreements_failure_retried_next_tick() -> None:
     assert first.agreements == []
     assert second.agreements[0].agreement_number == "AGR-1"
     assert api.get_agreements.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_repeated_failure_logs_warning_once_then_recovers(caplog) -> None:
+    """A persistently-failing endpoint warns once, repeats at debug, then logs recovery.
+
+    Guards against flooding the HA log every 60s while a backend endpoint is down.
+    """
+    import logging
+
+    coord = _make_coordinator()
+    api = _make_api_client_mock()
+    good = [
+        Agreement(
+            agreement_number="AGR-1",
+            supply_service_name="Electricity",
+            supply_start_date_ms=0,
+            price_model="SPOT",
+            utility="ELECTRICITY",
+            facility_id="fac-1",
+        )
+    ]
+    # fail, fail, then succeed across three ticks
+    api.get_agreements = AsyncMock(side_effect=[_response_error(500), _response_error(500), good])
+    power = _make_power_client_mock()
+    coord._make_client = MagicMock(return_value=api)
+    coord._make_power_client = MagicMock(return_value=power)
+
+    caplog.set_level(logging.DEBUG, logger="custom_components.malarenergi_powerhub.coordinator")
+
+    await coord._async_update_data()  # tick 1: WARNING
+    await coord._async_update_data()  # tick 2: DEBUG (still failing)
+    await coord._async_update_data()  # tick 3: success → INFO recovered
+
+    agreement_warnings = [r for r in caplog.records if r.levelno == logging.WARNING and "agreements" in r.getMessage()]
+    agreement_debugs = [
+        r for r in caplog.records if r.levelno == logging.DEBUG and "agreements still failing" in r.getMessage()
+    ]
+    recovery = [r for r in caplog.records if r.levelno == logging.INFO and "agreements recovered" in r.getMessage()]
+
+    assert len(agreement_warnings) == 1  # warned exactly once, not per tick
+    assert len(agreement_debugs) == 1  # second failure downgraded to debug
+    assert len(recovery) == 1  # recovery logged once
+    assert coord._degraded_endpoints == set()  # cleared after recovery
 
 
 @pytest.mark.asyncio

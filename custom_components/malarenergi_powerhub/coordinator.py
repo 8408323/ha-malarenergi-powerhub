@@ -103,36 +103,12 @@ async def _optional(coro: Awaitable[_T], name: str, *, default: _T | None = None
         raise
 
 
-async def _optional_static(coro: Awaitable[_T], name: str) -> _T | None:
-    """Await a non-critical, cached account-metadata fetch; tolerate failures.
-
-    These endpoints (facility attributes, profile, supply agreements, facility
-    list) feed only informational/diagnostic entities and are cached after the
-    first success. The Bitvis Flow backend intermittently returns 5xx for some
-    of them; when that happens we must NOT fail the whole coordinator tick —
-    doing so takes *every* sensor, including live energy data, unavailable.
-    Log a warning, return None, and let the caller retry on the next update.
-    AuthError still propagates so the reauth guard runs.
-    """
-    try:
-        return await coro
-    except AuthError:
-        raise
-    except ClientResponseError as err:
-        _LOGGER.warning(
-            "Non-critical endpoint %s returned HTTP %s (%s); continuing without it and retrying on the next update.",
-            name,
-            err.status,
-            err.message,
-        )
-        return None
-    except (ClientError, TimeoutError) as err:
-        _LOGGER.warning(
-            "Non-critical endpoint %s failed (%s); continuing without it and retrying on the next update.",
-            name,
-            err,
-        )
-        return None
+def _describe_error(err: Exception) -> str:
+    """Human-readable one-liner describing an endpoint failure."""
+    if isinstance(err, ClientResponseError):
+        return f"HTTP {err.status} ({err.message})"
+    detail = str(err)
+    return f"{type(err).__name__}: {detail}" if detail else type(err).__name__
 
 
 class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
@@ -147,6 +123,11 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
         self._cached_agreements: list[Agreement] | None = None
         self._cached_facility_info: FacilityInfo | None = None
         self._facility_info_resolved = False
+        # Names of non-critical endpoints currently failing. Used to log the
+        # first failure at WARNING and subsequent repeats at DEBUG (avoids
+        # flooding the HA log every 60s while a backend endpoint stays down),
+        # then log recovery once it succeeds again.
+        self._degraded_endpoints: set[str] = set()
         # True once we've asked HA to start a reauth flow; reset after a
         # successful poll. Prevents spamming async_start_reauth (and its
         # log line) on every 60-second tick while the user is scanning the
@@ -168,6 +149,42 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
         session = async_get_clientsession(self.hass)
         return PowerApiClient(session, self._token)
 
+    async def _fetch_static(self, coro: Awaitable[_T], name: str) -> _T | None:
+        """Await a non-critical, cached account-metadata fetch; tolerate failures.
+
+        These endpoints (facility attributes, profile, supply agreements,
+        facility list) feed only informational/diagnostic entities and are
+        cached after the first success. The Bitvis Flow backend intermittently
+        returns 5xx for some of them; when that happens we must NOT fail the
+        whole coordinator tick — doing so takes *every* sensor, including live
+        energy data, unavailable. Return None instead and let the caller retry
+        on the next update. AuthError still propagates so the reauth guard runs.
+
+        To avoid flooding the log while an endpoint stays down (updates run every
+        60s), the first failure of an endpoint is logged at WARNING and repeats
+        at DEBUG until it recovers, at which point recovery is logged once.
+        """
+        try:
+            result = await coro
+        except AuthError:
+            raise
+        except (ClientResponseError, ClientError, TimeoutError) as err:
+            if name in self._degraded_endpoints:
+                _LOGGER.debug("Non-critical endpoint %s still failing (%s).", name, _describe_error(err))
+            else:
+                self._degraded_endpoints.add(name)
+                _LOGGER.warning(
+                    "Non-critical endpoint %s failed (%s); continuing without it and retrying on the next "
+                    "update. Repeat failures are logged at debug until it recovers.",
+                    name,
+                    _describe_error(err),
+                )
+            return None
+        if name in self._degraded_endpoints:
+            self._degraded_endpoints.discard(name)
+            _LOGGER.info("Non-critical endpoint %s recovered.", name)
+        return result
+
     async def _async_update_data(self) -> PowerHubData:
         client = self._make_client()
         power_client = self._make_power_client()
@@ -181,15 +198,15 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
             # take live energy data offline. On failure the cache stays unset and
             # the fetch is retried on the next update.
             if self._cached_attributes is None:
-                self._cached_attributes = await _optional_static(
+                self._cached_attributes = await self._fetch_static(
                     client.get_facility_attributes(self._facility_id), "facility_attributes"
                 )
             if self._cached_profile is None:
-                self._cached_profile = await _optional_static(client.get_profile(), "profile")
+                self._cached_profile = await self._fetch_static(client.get_profile(), "profile")
             if self._cached_agreements is None:
-                self._cached_agreements = await _optional_static(client.get_agreements(), "agreements")
+                self._cached_agreements = await self._fetch_static(client.get_agreements(), "agreements")
             if not self._facility_info_resolved:
-                facilities = await _optional_static(client.get_facilities(), "facilities")
+                facilities = await self._fetch_static(client.get_facilities(), "facilities")
                 if facilities is not None:
                     self._cached_facility_info = next(
                         (f for f in facilities if f.facility_id == self._facility_id),
