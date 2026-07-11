@@ -37,9 +37,11 @@ jobs:
           echo "Waiting for a Copilot review of $SHA on PR #$PR…"
           # ~20 min ceiling (60 × 20s). Copilot normally reviews within minutes;
           # if it never does, we block rather than merge unreviewed.
+          # Match the Copilot bot exactly (login + Bot type) so a human account
+          # whose username merely contains "copilot" can't satisfy the gate.
           for _ in $(seq 1 60); do
             count=$(gh api "repos/$REPO/pulls/$PR/reviews" --paginate \
-              --jq "[.[] | select(.user.login | ascii_downcase | contains(\"copilot\")) | select(.commit_id == \"$SHA\")] | length" 2>/dev/null || echo 0)
+              --jq "[.[] | select(.user.type == \"Bot\" and .user.login == \"copilot-pull-request-reviewer[bot]\") | select(.commit_id == \"$SHA\")] | length" 2>/dev/null || echo 0)
             if [ "${count:-0}" -gt 0 ]; then
               echo "Copilot has reviewed $SHA. ✅"
               exit 0
