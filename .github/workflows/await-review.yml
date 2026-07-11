@@ -39,9 +39,11 @@ jobs:
           # if it never does, we block rather than merge unreviewed.
           # Match the Copilot bot exactly (login + Bot type) so a human account
           # whose username merely contains "copilot" can't satisfy the gate.
+          # --slurp collapses all pages into one array so jq emits a single count
+          # (a plain --paginate --jq would emit one length per page).
           for _ in $(seq 1 60); do
-            count=$(gh api "repos/$REPO/pulls/$PR/reviews" --paginate \
-              --jq "[.[] | select(.user.type == \"Bot\" and .user.login == \"copilot-pull-request-reviewer[bot]\") | select(.commit_id == \"$SHA\")] | length" 2>/dev/null || echo 0)
+            count=$(gh api --paginate --slurp "repos/$REPO/pulls/$PR/reviews" 2>/dev/null \
+              | jq "[.[][] | select(.user.type == \"Bot\" and .user.login == \"copilot-pull-request-reviewer[bot]\") | select(.commit_id == \"$SHA\")] | length" 2>/dev/null)
             if [ "${count:-0}" -gt 0 ]; then
               echo "Copilot has reviewed $SHA. ✅"
               exit 0
