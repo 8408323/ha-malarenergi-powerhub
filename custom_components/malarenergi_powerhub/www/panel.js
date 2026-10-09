@@ -10221,181 +10221,514 @@ function oe({ v: e }) {
 //#endregion
 //#region src/i18n.ts
 var se = {
-	title: "PowerHub",
-	tab_overview: "Overview",
-	tab_settings: "Settings",
-	loading: "Loading…",
-	no_hub: "No PowerHub found. Set up the PowerHub integration first.",
-	live_local: "Live (local)",
-	live_cloud: "Cloud, 1 min",
-	live_local_info: "Grid power comes from Home Assistant's local Bitvis integration (the hub's own UDP broadcast, about every second).",
-	live_cloud_info: "Grid power comes from the PowerHub cloud, updated once a minute. Add Home Assistant's Bitvis integration for live local values.",
-	grid: "Grid",
-	house: "House",
-	inverter: "Inverter",
-	production: "Local production",
-	ev: "EV",
-	powerhub: "PowerHub",
-	importing: "Buying",
-	exporting: "Selling",
-	idle: "Idle",
-	unexplained: "Unexplained export",
-	export_from: "Export can come from",
-	not_measured: "not measured",
-	ev_discharging: "Feeding the house",
-	src_solar: "solar",
-	src_battery: "battery",
-	src_wind: "wind",
-	src_generator: "generator",
-	src_v2g: "EV (V2G)",
-	src_other: "other",
-	flow_info: "The PowerHub measures only the grid connection: power bought flows grid → house, power sold flows house → grid. Local sources are shown from your settings as one node, since the meter can't tell them apart; pick sensors in Settings to see their own values.",
-	solar: "Solar",
-	battery: "Battery",
-	phases: "Phase load",
-	phases_info: "Current per phase against the main fuse.",
-	fuse: "Fuse",
-	today: "Today",
-	bought: "Bought",
-	sold: "Sold",
-	prices: "Prices",
-	spot_now: "Spot price now",
-	avg_month: "Your average this month",
-	market_month: "Market average this month",
-	baseload: "Base load",
-	power_limit: "Power limit",
-	device: "Device",
-	han: "HAN port",
-	wifi: "Wi-Fi",
-	uptime: "Uptime",
-	firmware: "Firmware",
-	latest: "Latest alert",
-	han_OPEN: "open",
-	han_CLOSED: "closed",
-	s_sources: "Local sources",
-	s_sources_info: "Everything behind the meter that can push power out to the grid. Until you choose, the answers you gave your energy company are used.",
-	opt_solar: "Solar panels",
-	opt_battery: "Home battery",
-	opt_wind: "Wind turbine",
-	opt_generator: "Generator / CHP (diesel, gas, micro-CHP)",
-	opt_v2g: "EV with V2H/V2G (bidirectional charging)",
-	opt_other: "Other",
-	has_ev: "EV charger (charging only)",
-	from_hub: "from PowerHub",
-	s_sensors: "Extra sensors (optional)",
-	s_sensors_info: "The PowerHub can't measure these. Pick existing Home Assistant sensors to show their values in the picture. Leave empty to skip.",
-	production_power: "Production power (combined)",
-	battery_power: "Battery power (+ discharging)",
-	battery_soc: "Battery charge (%)",
-	battery_invert: "Battery sensor is + when charging",
-	ev_power: "EV power (− = feeding the house)",
-	s_panel: "Panel",
-	show_panel: "Show PowerHub in the sidebar",
-	show_panel_info: "When hidden, the panel is still reachable at /powerhub.",
-	saved: "Saved",
-	admin_only: "Only administrators can change settings."
+	en: {
+		title: "PowerHub",
+		tab_overview: "Overview",
+		tab_settings: "Settings",
+		loading: "Loading…",
+		no_hub: "No PowerHub found. Set up the PowerHub integration first.",
+		live_local: "Live (local)",
+		live_cloud: "Cloud, 1 min",
+		live_local_info: "Grid power comes from Home Assistant's local Bitvis integration (the hub's own UDP broadcast, about every second).",
+		live_cloud_info: "Grid power comes from the PowerHub cloud, updated once a minute. Add Home Assistant's Bitvis integration for live local values.",
+		grid: "Grid",
+		house: "House",
+		inverter: "Inverter",
+		production: "Local production",
+		ev: "EV",
+		powerhub: "PowerHub",
+		importing: "Buying",
+		exporting: "Selling",
+		idle: "Idle",
+		unexplained: "Unexplained export",
+		export_from: "Export can come from",
+		not_measured: "not measured",
+		ev_discharging: "Feeding the house",
+		src_solar: "solar",
+		src_battery: "battery",
+		src_wind: "wind",
+		src_generator: "generator",
+		src_v2g: "EV (V2G)",
+		src_other: "other",
+		flow_info: "The PowerHub measures only the grid connection: power bought flows grid → house, power sold flows house → grid. Local sources are shown from your settings as one node, since the meter can't tell them apart; pick sensors in Settings to see their own values.",
+		solar: "Solar",
+		battery: "Battery",
+		phases: "Phase load",
+		phases_info: "Current per phase against the main fuse.",
+		fuse: "Fuse",
+		today: "Today",
+		bought: "Bought",
+		sold: "Sold",
+		prices: "Prices",
+		spot_now: "Spot price now",
+		avg_month: "Your average this month",
+		market_month: "Market average this month",
+		baseload: "Base load",
+		power_limit: "Power limit",
+		device: "Device",
+		han: "HAN port",
+		wifi: "Wi-Fi",
+		uptime: "Uptime",
+		firmware: "Firmware",
+		latest: "Latest alert",
+		han_OPEN: "open",
+		han_CLOSED: "closed",
+		s_sources: "Local sources",
+		s_sources_info: "Everything behind the meter that can push power out to the grid. Until you choose, the answers you gave your energy company are used.",
+		opt_solar: "Solar panels",
+		opt_battery: "Home battery",
+		opt_wind: "Wind turbine",
+		opt_generator: "Generator / CHP (diesel, gas, micro-CHP)",
+		opt_v2g: "EV with V2H/V2G (bidirectional charging)",
+		opt_other: "Other",
+		has_ev: "EV charger (charging only)",
+		from_hub: "from PowerHub",
+		s_sensors: "Extra sensors (optional)",
+		s_sensors_info: "The PowerHub can't measure these. Pick existing Home Assistant sensors to show their values in the picture. Leave empty to skip.",
+		production_power: "Production power (combined)",
+		battery_power: "Battery power (+ discharging)",
+		battery_soc: "Battery charge (%)",
+		battery_invert: "Battery sensor is + when charging",
+		ev_power: "EV power (− = feeding the house)",
+		s_panel: "Panel",
+		show_panel: "Show PowerHub in the sidebar",
+		show_panel_info: "When hidden, the panel is still reachable at /powerhub.",
+		saved: "Saved",
+		admin_only: "Only administrators can change settings.",
+		s_lang: "Language",
+		lang_auto: "Same as Home Assistant"
+	},
+	sv: {
+		title: "PowerHub",
+		tab_overview: "Översikt",
+		tab_settings: "Inställningar",
+		loading: "Laddar…",
+		no_hub: "Ingen PowerHub hittades. Lägg till PowerHub-integrationen först.",
+		live_local: "Live (lokalt)",
+		live_cloud: "Moln, 1 min",
+		live_local_info: "Näteffekten kommer från Home Assistants lokala Bitvis-integration (hubbens egen UDP-sändning, ungefär varje sekund).",
+		live_cloud_info: "Näteffekten kommer från PowerHub-molnet och uppdateras en gång i minuten. Lägg till Home Assistants Bitvis-integration för lokala livevärden.",
+		grid: "Elnät",
+		house: "Hus",
+		inverter: "Växelriktare",
+		production: "Lokal produktion",
+		ev: "Elbil",
+		powerhub: "PowerHub",
+		importing: "Köper",
+		exporting: "Säljer",
+		idle: "Vilar",
+		unexplained: "Oförklarad export",
+		export_from: "Exporten kan komma från",
+		not_measured: "mäts inte",
+		ev_discharging: "Matar huset",
+		src_solar: "sol",
+		src_battery: "batteri",
+		src_wind: "vind",
+		src_generator: "generator",
+		src_v2g: "elbil (V2G)",
+		src_other: "annat",
+		flow_info: "PowerHub mäter bara anslutningen mot elnätet: köpt el flödar nät → hus, såld el flödar hus → nät. Lokala källor visas utifrån dina inställningar som en nod, eftersom mätaren inte kan skilja dem åt; välj sensorer under Inställningar för att se deras egna värden.",
+		solar: "Sol",
+		battery: "Batteri",
+		phases: "Fasbelastning",
+		phases_info: "Ström per fas mot huvudsäkringen.",
+		fuse: "Säkring",
+		today: "Idag",
+		bought: "Köpt",
+		sold: "Sålt",
+		prices: "Priser",
+		spot_now: "Spotpris nu",
+		avg_month: "Ditt snitt denna månad",
+		market_month: "Marknadssnitt denna månad",
+		baseload: "Baslast",
+		power_limit: "Effektgräns",
+		device: "Enhet",
+		han: "HAN-port",
+		wifi: "Wi-Fi",
+		uptime: "Drifttid",
+		firmware: "Firmware",
+		latest: "Senaste larm",
+		han_OPEN: "öppen",
+		han_CLOSED: "stängd",
+		s_sources: "Lokala källor",
+		s_sources_info: "Allt bakom mätaren som kan mata ut el på nätet. Tills du väljer används det du har angett till ditt elbolag.",
+		opt_solar: "Solpaneler",
+		opt_battery: "Hembatteri",
+		opt_wind: "Vindkraftverk",
+		opt_generator: "Generator / kraftvärme (diesel, gas, mikro-CHP)",
+		opt_v2g: "Elbil med V2H/V2G (dubbelriktad laddning)",
+		opt_other: "Annat",
+		has_ev: "Laddbox för elbil (bara laddning)",
+		from_hub: "från PowerHub",
+		s_sensors: "Extra sensorer (valfritt)",
+		s_sensors_info: "PowerHub kan inte mäta dessa. Välj befintliga sensorer i Home Assistant för att visa deras värden i bilden. Lämna tomt för att hoppa över.",
+		production_power: "Produktionseffekt (sammanlagd)",
+		battery_power: "Batterieffekt (+ urladdning)",
+		battery_soc: "Batteriladdning (%)",
+		battery_invert: "Batterisensorn är + vid laddning",
+		ev_power: "Elbilens effekt (− = matar huset)",
+		s_panel: "Panel",
+		show_panel: "Visa PowerHub i sidomenyn",
+		show_panel_info: "Dold panel nås fortfarande på /powerhub.",
+		saved: "Sparat",
+		admin_only: "Bara administratörer kan ändra inställningar.",
+		s_lang: "Språk",
+		lang_auto: "Samma som Home Assistant"
+	},
+	nb: {
+		title: "PowerHub",
+		tab_overview: "Oversikt",
+		tab_settings: "Innstillinger",
+		loading: "Laster …",
+		no_hub: "Fant ingen PowerHub. Legg til PowerHub-integrasjonen først.",
+		live_local: "Sanntid (lokalt)",
+		live_cloud: "Sky, 1 min",
+		live_local_info: "Nettforbruket hentes fra Home Assistants lokale Bitvis-integrasjon (hubens egen UDP-sending, omtrent hvert sekund).",
+		live_cloud_info: "Nettforbruket hentes fra PowerHub-skyen og oppdateres én gang i minuttet. Legg til Home Assistants Bitvis-integrasjon for lokale sanntidsverdier.",
+		grid: "Strømnett",
+		house: "Hus",
+		inverter: "Inverter",
+		production: "Lokal produksjon",
+		ev: "Elbil",
+		powerhub: "PowerHub",
+		importing: "Kjøper",
+		exporting: "Selger",
+		idle: "I ro",
+		unexplained: "Uforklart eksport",
+		export_from: "Eksporten kan komme fra",
+		not_measured: "måles ikke",
+		ev_discharging: "Forsyner huset",
+		src_solar: "sol",
+		src_battery: "batteri",
+		src_wind: "vind",
+		src_generator: "aggregat",
+		src_v2g: "elbil (V2G)",
+		src_other: "annet",
+		flow_info: "PowerHub måler bare tilkoblingen mot strømnettet: kjøpt strøm går nett → hus, solgt strøm går hus → nett. Lokale kilder vises ut fra innstillingene dine som én node, siden måleren ikke kan skille dem fra hverandre. Velg sensorer under Innstillinger for å se deres egne verdier.",
+		solar: "Sol",
+		battery: "Batteri",
+		phases: "Fasebelastning",
+		phases_info: "Strøm per fase sammenlignet med hovedsikringen.",
+		fuse: "Sikring",
+		today: "I dag",
+		bought: "Kjøpt",
+		sold: "Solgt",
+		prices: "Priser",
+		spot_now: "Spotpris nå",
+		avg_month: "Ditt snitt denne måneden",
+		market_month: "Markedssnitt denne måneden",
+		baseload: "Grunnlast",
+		power_limit: "Effektgrense",
+		device: "Enhet",
+		han: "HAN-port",
+		wifi: "Wi-Fi",
+		uptime: "Oppetid",
+		firmware: "Fastvare",
+		latest: "Siste varsel",
+		han_OPEN: "åpen",
+		han_CLOSED: "stengt",
+		s_sources: "Lokale kilder",
+		s_sources_info: "Alt bak måleren som kan levere strøm ut på nettet. Inntil du velger, brukes det du har oppgitt til strømselskapet ditt.",
+		opt_solar: "Solcellepaneler",
+		opt_battery: "Hjemmebatteri",
+		opt_wind: "Vindturbin",
+		opt_generator: "Aggregat / kraftvarme (diesel, gass, mikro-CHP)",
+		opt_v2g: "Elbil med V2H/V2G (toveis lading)",
+		opt_other: "Annet",
+		has_ev: "Elbillader (bare lading)",
+		from_hub: "fra PowerHub",
+		s_sensors: "Ekstra sensorer (valgfritt)",
+		s_sensors_info: "PowerHub kan ikke måle disse. Velg eksisterende sensorer i Home Assistant for å vise verdiene deres i bildet. La feltet stå tomt for å hoppe over.",
+		production_power: "Produksjonseffekt (samlet)",
+		battery_power: "Batterieffekt (+ utlading)",
+		battery_soc: "Batterinivå (%)",
+		battery_invert: "Batterisensoren er + ved lading",
+		ev_power: "Elbilens effekt (− = forsyner huset)",
+		s_panel: "Panel",
+		show_panel: "Vis PowerHub i sidemenyen",
+		show_panel_info: "Et skjult panel kan fortsatt åpnes på /powerhub.",
+		saved: "Lagret",
+		admin_only: "Bare administratorer kan endre innstillinger.",
+		s_lang: "Språk",
+		lang_auto: "Samme som Home Assistant"
+	},
+	da: {
+		title: "PowerHub",
+		tab_overview: "Oversigt",
+		tab_settings: "Indstillinger",
+		loading: "Indlæser …",
+		no_hub: "Ingen PowerHub fundet. Tilføj PowerHub-integrationen først.",
+		live_local: "Live (lokalt)",
+		live_cloud: "Sky, 1 min",
+		live_local_info: "Neteffekten kommer fra Home Assistants lokale Bitvis-integration (hubbens egen UDP-udsendelse, cirka hvert sekund).",
+		live_cloud_info: "Neteffekten kommer fra PowerHub-skyen og opdateres én gang i minuttet. Tilføj Home Assistants Bitvis-integration for lokale liveværdier.",
+		grid: "Elnet",
+		house: "Hus",
+		inverter: "Inverter",
+		production: "Lokal produktion",
+		ev: "Elbil",
+		powerhub: "PowerHub",
+		importing: "Køber",
+		exporting: "Sælger",
+		idle: "Inaktiv",
+		unexplained: "Uforklaret eksport",
+		export_from: "Eksporten kan komme fra",
+		not_measured: "måles ikke",
+		ev_discharging: "Forsyner huset",
+		src_solar: "sol",
+		src_battery: "batteri",
+		src_wind: "vind",
+		src_generator: "generator",
+		src_v2g: "elbil (V2G)",
+		src_other: "andet",
+		flow_info: "PowerHub måler kun tilslutningen til elnettet: købt strøm løber net → hus, solgt strøm løber hus → net. Lokale kilder vises ud fra dine indstillinger som én node, da måleren ikke kan skelne mellem dem. Vælg sensorer under Indstillinger for at se deres egne værdier.",
+		solar: "Sol",
+		battery: "Batteri",
+		phases: "Fasebelastning",
+		phases_info: "Strøm pr. fase i forhold til hovedsikringen.",
+		fuse: "Sikring",
+		today: "I dag",
+		bought: "Købt",
+		sold: "Solgt",
+		prices: "Priser",
+		spot_now: "Spotpris nu",
+		avg_month: "Dit gennemsnit denne måned",
+		market_month: "Markedsgennemsnit denne måned",
+		baseload: "Grundlast",
+		power_limit: "Effektgrænse",
+		device: "Enhed",
+		han: "HAN-port",
+		wifi: "Wi-Fi",
+		uptime: "Oppetid",
+		firmware: "Firmware",
+		latest: "Seneste advarsel",
+		han_OPEN: "åben",
+		han_CLOSED: "lukket",
+		s_sources: "Lokale kilder",
+		s_sources_info: "Alt bag måleren, der kan sende strøm ud på nettet. Indtil du vælger, bruges det, du har oplyst til dit elselskab.",
+		opt_solar: "Solceller",
+		opt_battery: "Hjemmebatteri",
+		opt_wind: "Vindmølle",
+		opt_generator: "Generator / kraftvarme (diesel, gas, mikro-kraftvarme)",
+		opt_v2g: "Elbil med V2H/V2G (tovejsopladning)",
+		opt_other: "Andet",
+		has_ev: "Elbillader (kun opladning)",
+		from_hub: "fra PowerHub",
+		s_sensors: "Ekstra sensorer (valgfrit)",
+		s_sensors_info: "PowerHub kan ikke måle disse. Vælg eksisterende sensorer i Home Assistant for at vise deres værdier i billedet. Lad feltet stå tomt for at springe over.",
+		production_power: "Produktionseffekt (samlet)",
+		battery_power: "Batterieffekt (+ afladning)",
+		battery_soc: "Batteriniveau (%)",
+		battery_invert: "Batterisensoren er + ved opladning",
+		ev_power: "Elbilens effekt (− = forsyner huset)",
+		s_panel: "Panel",
+		show_panel: "Vis PowerHub i sidepanelet",
+		show_panel_info: "Et skjult panel kan stadig åbnes på /powerhub.",
+		saved: "Gemt",
+		admin_only: "Kun administratorer kan ændre indstillinger.",
+		s_lang: "Sprog",
+		lang_auto: "Samme som Home Assistant"
+	},
+	fi: {
+		title: "PowerHub",
+		tab_overview: "Yleiskatsaus",
+		tab_settings: "Asetukset",
+		loading: "Ladataan…",
+		no_hub: "PowerHubia ei löytynyt. Lisää ensin PowerHub-integraatio.",
+		live_local: "Reaaliaikainen (paikallinen)",
+		live_cloud: "Pilvi, 1 min",
+		live_local_info: "Verkkoteho tulee Home Assistantin paikallisesta Bitvis-integraatiosta (keskittimen oma UDP-lähetys, noin kerran sekunnissa).",
+		live_cloud_info: "Verkkoteho tulee PowerHub-pilvestä ja päivittyy kerran minuutissa. Lisää Home Assistantin Bitvis-integraatio saadaksesi paikalliset reaaliaikaiset arvot.",
+		grid: "Sähköverkko",
+		house: "Talo",
+		inverter: "Invertteri",
+		production: "Paikallinen tuotanto",
+		ev: "Sähköauto",
+		powerhub: "PowerHub",
+		importing: "Ostetaan",
+		exporting: "Myydään",
+		idle: "Lepotilassa",
+		unexplained: "Selittämätön syöttö verkkoon",
+		export_from: "Verkkoon syötetty sähkö voi tulla lähteistä",
+		not_measured: "ei mitattu",
+		ev_discharging: "Syöttää taloon",
+		src_solar: "aurinko",
+		src_battery: "akku",
+		src_wind: "tuuli",
+		src_generator: "generaattori",
+		src_v2g: "sähköauto (V2G)",
+		src_other: "muu",
+		flow_info: "PowerHub mittaa vain liittymää sähköverkkoon: ostettu sähkö kulkee verkko → talo, myyty sähkö talo → verkko. Paikalliset lähteet näytetään asetustesi mukaan yhtenä solmuna, koska mittari ei erota niitä toisistaan. Valitse anturit Asetuksista nähdäksesi niiden omat arvot.",
+		solar: "Aurinko",
+		battery: "Akku",
+		phases: "Vaihekuormitus",
+		phases_info: "Virta vaiheittain suhteessa pääsulakkeeseen.",
+		fuse: "Sulake",
+		today: "Tänään",
+		bought: "Ostettu",
+		sold: "Myyty",
+		prices: "Hinnat",
+		spot_now: "Pörssihinta nyt",
+		avg_month: "Oma keskihintasi tässä kuussa",
+		market_month: "Markkinoiden keskihinta tässä kuussa",
+		baseload: "Peruskuorma",
+		power_limit: "Tehoraja",
+		device: "Laite",
+		han: "HAN-portti",
+		wifi: "Wi-Fi",
+		uptime: "Käyntiaika",
+		firmware: "Laiteohjelmisto",
+		latest: "Viimeisin hälytys",
+		han_OPEN: "auki",
+		han_CLOSED: "kiinni",
+		s_sources: "Paikalliset lähteet",
+		s_sources_info: "Kaikki mittarin takana, mikä voi syöttää sähköä verkkoon. Kunnes valitset, käytetään sähköyhtiöllesi antamiasi tietoja.",
+		opt_solar: "Aurinkopaneelit",
+		opt_battery: "Kotiakku",
+		opt_wind: "Tuulivoimala",
+		opt_generator: "Generaattori / CHP (diesel, kaasu, mikro-CHP)",
+		opt_v2g: "Sähköauto, jossa V2H/V2G (kaksisuuntainen lataus)",
+		opt_other: "Muu",
+		has_ev: "Sähköauton laturi (vain lataus)",
+		from_hub: "PowerHubista",
+		s_sensors: "Lisäanturit (valinnainen)",
+		s_sensors_info: "PowerHub ei pysty mittaamaan näitä. Valitse olemassa olevia Home Assistantin antureita, niin niiden arvot näkyvät kuvassa. Jätä tyhjäksi, jos et tarvitse.",
+		production_power: "Tuotantoteho (yhteensä)",
+		battery_power: "Akun teho (+ purku)",
+		battery_soc: "Akun varaustaso (%)",
+		battery_invert: "Akkuanturi on + latauksessa",
+		ev_power: "Sähköauton teho (− = syöttää taloon)",
+		s_panel: "Paneeli",
+		show_panel: "Näytä PowerHub sivupalkissa",
+		show_panel_info: "Piilotettu paneeli on edelleen käytettävissä osoitteessa /powerhub.",
+		saved: "Tallennettu",
+		admin_only: "Vain järjestelmänvalvojat voivat muuttaa asetuksia.",
+		s_lang: "Kieli",
+		lang_auto: "Sama kuin Home Assistantissa"
+	},
+	is: {
+		title: "PowerHub",
+		tab_overview: "Yfirlit",
+		tab_settings: "Stillingar",
+		loading: "Hleð …",
+		no_hub: "Enginn PowerHub fannst. Settu fyrst upp PowerHub-samþættinguna.",
+		live_local: "Í rauntíma (staðbundið)",
+		live_cloud: "Ský, 1 mín",
+		live_local_info: "Afl frá dreifikerfinu kemur úr staðbundinni Bitvis-samþættingu Home Assistant (UDP-sending tækisins sjálfs, um það bil á sekúndu fresti).",
+		live_cloud_info: "Afl frá dreifikerfinu kemur úr PowerHub-skýinu og uppfærist einu sinni á mínútu. Bættu við Bitvis-samþættingu Home Assistant til að fá staðbundin rauntímagildi.",
+		grid: "Dreifikerfi",
+		house: "Hús",
+		inverter: "Áriðill",
+		production: "Staðbundin framleiðsla",
+		ev: "Rafbíll",
+		powerhub: "PowerHub",
+		importing: "Kaupir",
+		exporting: "Selur",
+		idle: "Í hvíld",
+		unexplained: "Óútskýrður útflutningur",
+		export_from: "Útflutningur getur komið frá",
+		not_measured: "ekki mælt",
+		ev_discharging: "Knýr húsið",
+		src_solar: "sól",
+		src_battery: "rafhlaða",
+		src_wind: "vindur",
+		src_generator: "rafstöð",
+		src_v2g: "rafbíll (V2G)",
+		src_other: "annað",
+		flow_info: "PowerHub mælir aðeins tenginguna við dreifikerfið: keypt rafmagn fer dreifikerfi → hús, selt rafmagn fer hús → dreifikerfi. Staðbundnir orkugjafar eru sýndir sem einn hnútur samkvæmt stillingunum þínum, þar sem mælirinn getur ekki greint þá í sundur. Veldu skynjara í Stillingum til að sjá þeirra eigin gildi.",
+		solar: "Sól",
+		battery: "Rafhlaða",
+		phases: "Fasaálag",
+		phases_info: "Straumur á hverjum fasa miðað við aðalvarið.",
+		fuse: "Öryggi",
+		today: "Í dag",
+		bought: "Keypt",
+		sold: "Selt",
+		prices: "Verð",
+		spot_now: "Skyndiverð núna",
+		avg_month: "Þitt meðalverð í þessum mánuði",
+		market_month: "Meðalverð markaðar í þessum mánuði",
+		baseload: "Grunnálag",
+		power_limit: "Aflmörk",
+		device: "Tæki",
+		han: "HAN-tengi",
+		wifi: "Wi-Fi",
+		uptime: "Uppitími",
+		firmware: "Fastbúnaður",
+		latest: "Nýjasta viðvörun",
+		han_OPEN: "opið",
+		han_CLOSED: "lokað",
+		s_sources: "Staðbundnir orkugjafar",
+		s_sources_info: "Allt fyrir aftan mælinn sem getur skilað rafmagni út á dreifikerfið. Þar til þú velur er stuðst við það sem þú gafst orkufyrirtækinu þínu upp.",
+		opt_solar: "Sólarsellur",
+		opt_battery: "Heimilisrafhlaða",
+		opt_wind: "Vindmylla",
+		opt_generator: "Rafstöð / samvinnsla (dísil, gas, ör-samvinnsla)",
+		opt_v2g: "Rafbíll með V2H/V2G (tvíátta hleðsla)",
+		opt_other: "Annað",
+		has_ev: "Hleðslustöð fyrir rafbíl (aðeins hleðsla)",
+		from_hub: "frá PowerHub",
+		s_sensors: "Viðbótarskynjarar (valfrjálst)",
+		s_sensors_info: "PowerHub getur ekki mælt þetta. Veldu skynjara sem þegar eru til í Home Assistant til að sýna gildi þeirra á myndinni. Skildu eftir autt til að sleppa.",
+		production_power: "Framleiðsluafl (samanlagt)",
+		battery_power: "Afl rafhlöðu (+ afhleðsla)",
+		battery_soc: "Hleðslustaða rafhlöðu (%)",
+		battery_invert: "Rafhlöðuskynjarinn er + við hleðslu",
+		ev_power: "Afl rafbíls (− = knýr húsið)",
+		s_panel: "Spjald",
+		show_panel: "Sýna PowerHub í hliðarstikunni",
+		show_panel_info: "Falið spjald er áfram aðgengilegt á /powerhub.",
+		saved: "Vistað",
+		admin_only: "Aðeins stjórnendur geta breytt stillingum.",
+		s_lang: "Tungumál",
+		lang_auto: "Sama og í Home Assistant"
+	}
 }, ce = {
-	title: "PowerHub",
-	tab_overview: "Översikt",
-	tab_settings: "Inställningar",
-	loading: "Laddar…",
-	no_hub: "Ingen PowerHub hittades. Lägg till PowerHub-integrationen först.",
-	live_local: "Live (lokalt)",
-	live_cloud: "Moln, 1 min",
-	live_local_info: "Näteffekten kommer från Home Assistants lokala Bitvis-integration (hubbens egen UDP-sändning, ungefär varje sekund).",
-	live_cloud_info: "Näteffekten kommer från PowerHub-molnet och uppdateras en gång i minuten. Lägg till Home Assistants Bitvis-integration för lokala livevärden.",
-	grid: "Elnät",
-	house: "Hus",
-	inverter: "Växelriktare",
-	production: "Lokal produktion",
-	ev: "Elbil",
-	powerhub: "PowerHub",
-	importing: "Köper",
-	exporting: "Säljer",
-	idle: "Vilar",
-	unexplained: "Oförklarad export",
-	export_from: "Exporten kan komma från",
-	not_measured: "mäts inte",
-	ev_discharging: "Matar huset",
-	src_solar: "sol",
-	src_battery: "batteri",
-	src_wind: "vind",
-	src_generator: "generator",
-	src_v2g: "elbil (V2G)",
-	src_other: "annat",
-	flow_info: "PowerHub mäter bara anslutningen mot elnätet: köpt el flödar nät → hus, såld el flödar hus → nät. Lokala källor visas utifrån dina inställningar som en nod, eftersom mätaren inte kan skilja dem åt; välj sensorer under Inställningar för att se deras egna värden.",
-	solar: "Sol",
-	battery: "Batteri",
-	phases: "Fasbelastning",
-	phases_info: "Ström per fas mot huvudsäkringen.",
-	fuse: "Säkring",
-	today: "Idag",
-	bought: "Köpt",
-	sold: "Sålt",
-	prices: "Priser",
-	spot_now: "Spotpris nu",
-	avg_month: "Ditt snitt denna månad",
-	market_month: "Marknadssnitt denna månad",
-	baseload: "Baslast",
-	power_limit: "Effektgräns",
-	device: "Enhet",
-	han: "HAN-port",
-	wifi: "Wi-Fi",
-	uptime: "Drifttid",
-	firmware: "Firmware",
-	latest: "Senaste larm",
-	han_OPEN: "öppen",
-	han_CLOSED: "stängd",
-	s_sources: "Lokala källor",
-	s_sources_info: "Allt bakom mätaren som kan mata ut el på nätet. Tills du väljer används det du har angett till ditt elbolag.",
-	opt_solar: "Solpaneler",
-	opt_battery: "Hembatteri",
-	opt_wind: "Vindkraftverk",
-	opt_generator: "Generator / kraftvärme (diesel, gas, mikro-CHP)",
-	opt_v2g: "Elbil med V2H/V2G (dubbelriktad laddning)",
-	opt_other: "Annat",
-	has_ev: "Laddbox för elbil (bara laddning)",
-	from_hub: "från PowerHub",
-	s_sensors: "Extra sensorer (valfritt)",
-	s_sensors_info: "PowerHub kan inte mäta dessa. Välj befintliga sensorer i Home Assistant för att visa deras värden i bilden. Lämna tomt för att hoppa över.",
-	production_power: "Produktionseffekt (sammanlagd)",
-	battery_power: "Batterieffekt (+ urladdning)",
-	battery_soc: "Batteriladdning (%)",
-	battery_invert: "Batterisensorn är + vid laddning",
-	ev_power: "Elbilens effekt (− = matar huset)",
-	s_panel: "Panel",
-	show_panel: "Visa PowerHub i sidomenyn",
-	show_panel_info: "Dold panel nås fortfarande på /powerhub.",
-	saved: "Sparat",
-	admin_only: "Bara administratörer kan ändra inställningar."
-}, le = (e) => String(e ?? "en").startsWith("sv") ? {
-	t: ce,
-	locale: "sv-SE"
-} : {
-	t: se,
-	locale: "en-GB"
-}, ue = [
+	en: "en-GB",
+	sv: "sv-SE",
+	nb: "nb-NO",
+	da: "da-DK",
+	fi: "fi-FI",
+	is: "is-IS"
+}, le = {
+	en: "English",
+	sv: "Svenska",
+	nb: "Norsk (bokmål)",
+	da: "Dansk",
+	fi: "Suomi",
+	is: "Íslenska"
+};
+function ue(e, t) {
+	let n = t && t !== "auto" ? t : String(e ?? "en").toLowerCase().split(/[-_]/)[0];
+	return (n === "no" || n === "nn") && (n = "nb"), se[n] || (n = "en"), {
+		t: se[n],
+		locale: ce[n]
+	};
+}
+//#endregion
+//#region src/App.tsx
+var de = [
 	"solar",
 	"battery",
 	"wind",
 	"generator",
 	"v2g",
 	"other"
-], de = ["overview", "settings"], fe = {
+], fe = ["overview", "settings"], pe = {
 	mW: 1e-6,
 	W: .001,
 	kW: 1,
 	MW: 1e3
-}, pe = {
+}, me = {
 	μA: 1e-6,
 	µA: 1e-6,
 	mA: .001,
 	A: 1
-}, me = (e, t = 0, n = "") => e == null || Number.isNaN(e) ? "–" : `${e.toLocaleString("sv-SE", {
+}, he = (e, t = 0, n = "") => e == null || Number.isNaN(e) ? "–" : `${e.toLocaleString("sv-SE", {
 	minimumFractionDigits: t,
 	maximumFractionDigits: t
-})}${n ? " " + n : ""}`, he = (e) => me(e == null ? null : Math.abs(e), Math.abs(e ?? 0) < 10 ? 2 : 1, "kW");
-function ge(e) {
+})}${n ? " " + n : ""}`, ge = (e) => he(e == null ? null : Math.abs(e), Math.abs(e ?? 0) < 10 ? 2 : 1, "kW");
+function _e(e) {
 	let t = {};
 	for (let n of Object.values(e.entities ?? {})) n.platform === "malarenergi_powerhub" && n.device_id && n.translation_key && ((t[n.device_id] ??= {})[n.translation_key] = n.entity_id);
 	let n = Object.keys(t)[0];
@@ -10404,7 +10737,7 @@ function ge(e) {
 		ents: n ? t[n] : void 0
 	};
 }
-function _e(e, t) {
+function ve(e, t) {
 	let n = Object.values(e.entities ?? {}).filter((e) => e.platform === "bitvis" && e.device_id), r = new Set(n.map((e) => e.device_id)), i = t && r.has(t) ? t : r.size === 1 ? [...r][0] : void 0;
 	if (!i) return;
 	let a = {};
@@ -10414,7 +10747,7 @@ function _e(e, t) {
 	}
 	return a;
 }
-function ve(e) {
+function ye(e) {
 	let t = e.states, n = (e) => {
 		let n = parseFloat(String(e && t[e]?.state).replace(/^A/, ""));
 		return Number.isFinite(n) ? n : null;
@@ -10426,10 +10759,10 @@ function ve(e) {
 		st: t,
 		num: n,
 		conv: r,
-		kw: (e) => r(e, fe)
+		kw: (e) => r(e, pe)
 	};
 }
-function ye({ text: e }) {
+function be({ text: e }) {
 	let [t, n] = (0, d.useState)(!1), r = (0, d.useRef)(null);
 	return (0, d.useEffect)(() => {
 		if (!t) return;
@@ -10451,7 +10784,7 @@ function ye({ text: e }) {
 		})]
 	});
 }
-function be({ label: e, value: t, sub: n, tone: r }) {
+function xe({ label: e, value: t, sub: n, tone: r }) {
 	return /* @__PURE__ */ (0, p.jsxs)("div", {
 		className: "kpi",
 		children: [
@@ -10470,14 +10803,14 @@ function be({ label: e, value: t, sub: n, tone: r }) {
 		]
 	});
 }
-function xe({ hass: e, narrow: t }) {
+function Se({ hass: e, narrow: t }) {
 	let [n, r] = (0, d.useState)(null), [i, a] = (0, d.useState)(() => {
 		try {
 			return localStorage.getItem("ph_tab") || "overview";
 		} catch {
 			return "overview";
 		}
-	}), { t: o, locale: s } = le(e.locale?.language ?? e.language);
+	}), { t: o, locale: s } = ue(e.locale?.language ?? e.language, n?.language);
 	(0, d.useEffect)(() => {
 		e.connection.sendMessagePromise({ type: "malarenergi_powerhub/settings/get" }).then((e) => r(e.options)).catch(() => r(null));
 	}, []);
@@ -10486,7 +10819,7 @@ function xe({ hass: e, narrow: t }) {
 		try {
 			localStorage.setItem("ph_tab", e);
 		} catch {}
-	}, { dev: l, ents: u } = ge(e), f = _e(e, l), m = {
+	}, { dev: l, ents: u } = _e(e), f = ve(e, l), m = {
 		hass: e,
 		t: o,
 		locale: s,
@@ -10499,17 +10832,17 @@ function xe({ hass: e, narrow: t }) {
 			children: /* @__PURE__ */ (0, p.jsx)("h1", { children: o.title })
 		}), /* @__PURE__ */ (0, p.jsx)("nav", {
 			className: "tabs",
-			children: de.map((e) => /* @__PURE__ */ (0, p.jsx)("button", {
+			children: fe.map((e) => /* @__PURE__ */ (0, p.jsx)("button", {
 				className: i === e ? "on" : "",
 				onClick: () => c(e),
 				children: o[`tab_${e}`]
 			}, e))
-		})] }), u ? n ? /* @__PURE__ */ (0, p.jsxs)(p.Fragment, { children: [i === "overview" && /* @__PURE__ */ (0, p.jsx)(Ce, {
+		})] }), u ? n ? /* @__PURE__ */ (0, p.jsxs)(p.Fragment, { children: [i === "overview" && /* @__PURE__ */ (0, p.jsx)(we, {
 			...m,
 			ents: u,
 			bv: f,
 			opts: n
-		}), i === "settings" && /* @__PURE__ */ (0, p.jsx)(Te, {
+		}), i === "settings" && /* @__PURE__ */ (0, p.jsx)(T, {
 			...m,
 			ents: u,
 			opts: n,
@@ -10523,7 +10856,7 @@ function xe({ hass: e, narrow: t }) {
 		})]
 	});
 }
-function Se(e, t, n) {
+function Ce(e, t, n) {
 	let r = e.states, i = r[t.ev_type]?.state;
 	return {
 		sources: n.sources ?? [...r[t.has_solar]?.state === "on" ? ["solar"] : [], ...r[t.has_battery]?.state === "on" ? ["battery"] : []],
@@ -10534,39 +10867,39 @@ function Se(e, t, n) {
 		].includes(i))
 	};
 }
-function Ce({ hass: e, t, locale: n, narrow: r, ents: i, bv: a, opts: o }) {
-	let { st: s, num: c, conv: l, kw: u } = ve(e), d = a && u(a.power_active_import) != null && u(a.power_active_export) != null, f = u(d ? a.power_active_import : i.power_import), m = u(d ? a.power_active_export : i.power_export), h = f == null || m == null ? null : f - m, g = Se(e, i, o), _ = g.sources.filter((e) => e !== "v2g"), v = (e) => g.sources.includes(e), y = v("v2g"), b = g.ev || y, x = _.some((e) => e !== "battery") && o.production_power ? u(o.production_power) : null, S = x == null ? null : Math.max(0, x), ee = v("battery") && o.battery_power ? u(o.battery_power) : null, te = ee == null ? null : o.battery_invert ? -ee : ee, C = S == null && te == null ? null : (S ?? 0) + (te ?? 0), ne = b && o.ev_power ? u(o.ev_power) : null, w = ne == null ? null : y ? ne : Math.max(0, ne), re = v("battery") && o.battery_soc ? c(o.battery_soc) : null, ie = h != null && (!_.length || C != null) && (!y || w != null), ae = h == null ? null : ie ? h + (C ?? 0) - (w ?? 0) : Math.max(0, h - Math.max(0, w ?? 0)), se = ae != null && ae < 0 ? "–" : ie ? he(ae) : ae ? `≥ ${he(ae)}` : "–", ce = [
-		S != null && he(S),
-		te != null && `${t.battery} ${te < 0 ? "↑" : "↓"} ${he(te)}`,
+function we({ hass: e, t, locale: n, narrow: r, ents: i, bv: a, opts: o }) {
+	let { st: s, num: c, conv: l, kw: u } = ye(e), d = a && u(a.power_active_import) != null && u(a.power_active_export) != null, f = u(d ? a.power_active_import : i.power_import), m = u(d ? a.power_active_export : i.power_export), h = f == null || m == null ? null : f - m, g = Ce(e, i, o), _ = g.sources.filter((e) => e !== "v2g"), v = (e) => g.sources.includes(e), y = v("v2g"), b = g.ev || y, x = _.some((e) => e !== "battery") && o.production_power ? u(o.production_power) : null, S = x == null ? null : Math.max(0, x), ee = v("battery") && o.battery_power ? u(o.battery_power) : null, te = ee == null ? null : o.battery_invert ? -ee : ee, C = S == null && te == null ? null : (S ?? 0) + (te ?? 0), ne = b && o.ev_power ? u(o.ev_power) : null, w = ne == null ? null : y ? ne : Math.max(0, ne), re = v("battery") && o.battery_soc ? c(o.battery_soc) : null, ie = h != null && (!_.length || C != null) && (!y || w != null), ae = h == null ? null : ie ? h + (C ?? 0) - (w ?? 0) : Math.max(0, h - Math.max(0, w ?? 0)), se = ae != null && ae < 0 ? "–" : ie ? ge(ae) : ae ? `≥ ${ge(ae)}` : "–", ce = [
+		S != null && ge(S),
+		te != null && `${t.battery} ${te < 0 ? "↑" : "↓"} ${ge(te)}`,
 		re != null && `${Math.round(re)} %`
 	].filter(Boolean).join(" · "), le = h != null && h < -.03, ue = `${t.export_from}: ${g.sources.map((e) => t[`src_${e}`]).join(", ")}`, de = [
 		1,
 		2,
 		3
-	].map((e) => l(a?.[`phase_current_l${e}`], pe) ?? l(i[`current_l${e}`], pe)), fe = [
+	].map((e) => l(a?.[`phase_current_l${e}`], me) ?? l(i[`current_l${e}`], me)), fe = [
 		1,
 		2,
 		3
-	].map((e) => c(a?.[`phase_voltage_l${e}`])), ge = l(i.fuse_size, pe, "A") ?? l(i.fuse_limit_set, pe), _e = c(i.uptime), xe = s[i.han_port_state]?.state, Ce = (e, t = 0, n) => me(c(e), t, n ?? s[e]?.attributes?.unit_of_measurement ?? "");
+	].map((e) => c(a?.[`phase_voltage_l${e}`])), pe = l(i.fuse_size, me, "A") ?? l(i.fuse_limit_set, me), _e = c(i.uptime), ve = s[i.han_port_state]?.state, Se = (e, t = 0, n) => he(c(e), t, n ?? s[e]?.attributes?.unit_of_measurement ?? "");
 	return /* @__PURE__ */ (0, p.jsxs)(p.Fragment, { children: [/* @__PURE__ */ (0, p.jsxs)("div", {
 		className: "kpis",
 		children: [
-			/* @__PURE__ */ (0, p.jsx)(be, {
+			/* @__PURE__ */ (0, p.jsx)(xe, {
 				label: h == null ? t.grid : h < -.03 ? t.exporting : h > .03 ? t.importing : t.idle,
-				value: he(h),
+				value: ge(h),
 				tone: h != null && h < -.03 ? "pos" : ""
 			}),
-			/* @__PURE__ */ (0, p.jsx)(be, {
+			/* @__PURE__ */ (0, p.jsx)(xe, {
 				label: `${t.bought} · ${t.today}`,
-				value: Ce(i.import_today, 1)
+				value: Se(i.import_today, 1)
 			}),
-			/* @__PURE__ */ (0, p.jsx)(be, {
+			/* @__PURE__ */ (0, p.jsx)(xe, {
 				label: `${t.sold} · ${t.today}`,
-				value: Ce(i.export_today, 1)
+				value: Se(i.export_today, 1)
 			}),
-			/* @__PURE__ */ (0, p.jsx)(be, {
+			/* @__PURE__ */ (0, p.jsx)(xe, {
 				label: t.spot_now,
-				value: Ce(i.spot_price, 1)
+				value: Se(i.spot_price, 1)
 			})
 		]
 	}), /* @__PURE__ */ (0, p.jsxs)("div", {
@@ -10576,9 +10909,9 @@ function Ce({ hass: e, t, locale: n, narrow: r, ents: i, bv: a, opts: o }) {
 			children: [
 				/* @__PURE__ */ (0, p.jsxs)("div", {
 					className: "card-head",
-					children: [/* @__PURE__ */ (0, p.jsxs)("h2", { children: [t.title, /* @__PURE__ */ (0, p.jsx)(ye, { text: t.flow_info })] }), /* @__PURE__ */ (0, p.jsxs)("span", {
+					children: [/* @__PURE__ */ (0, p.jsxs)("h2", { children: [t.title, /* @__PURE__ */ (0, p.jsx)(be, { text: t.flow_info })] }), /* @__PURE__ */ (0, p.jsxs)("span", {
 						className: `chip ${d ? "ok" : ""}`,
-						children: [d ? t.live_local : t.live_cloud, /* @__PURE__ */ (0, p.jsx)(ye, { text: d ? t.live_local_info : t.live_cloud_info })]
+						children: [d ? t.live_local : t.live_cloud, /* @__PURE__ */ (0, p.jsx)(be, { text: d ? t.live_local_info : t.live_cloud_info })]
 					})]
 				}),
 				/* @__PURE__ */ (0, p.jsx)(oe, { v: {
@@ -10591,12 +10924,12 @@ function Ce({ hass: e, t, locale: n, narrow: r, ents: i, bv: a, opts: o }) {
 					hasEv: b,
 					soc: re,
 					text: {
-						grid: he(h),
+						grid: ge(h),
 						gridSub: h == null ? "" : le ? g.sources.length ? t.exporting : t.unexplained : h > .03 ? t.importing : t.idle,
 						house: se,
-						inv: he(C),
+						inv: ge(C),
 						invSub: C == null ? t.not_measured : ce,
-						ev: he(w),
+						ev: ge(w),
 						evSub: w == null ? t.not_measured : w < -.03 ? t.ev_discharging : ""
 					},
 					labels: {
@@ -10617,11 +10950,11 @@ function Ce({ hass: e, t, locale: n, narrow: r, ents: i, bv: a, opts: o }) {
 			children: [
 				/* @__PURE__ */ (0, p.jsxs)("section", {
 					className: "card",
-					children: [/* @__PURE__ */ (0, p.jsxs)("h2", { children: [t.phases, /* @__PURE__ */ (0, p.jsx)(ye, { text: t.phases_info })] }), /* @__PURE__ */ (0, p.jsx)("div", {
+					children: [/* @__PURE__ */ (0, p.jsxs)("h2", { children: [t.phases, /* @__PURE__ */ (0, p.jsx)(be, { text: t.phases_info })] }), /* @__PURE__ */ (0, p.jsx)("div", {
 						className: "phases",
 						style: { marginTop: 12 },
 						children: de.map((e, t) => {
-							let n = e != null && ge ? Math.min(100, e / ge * 100) : 0;
+							let n = e != null && pe ? Math.min(100, e / pe * 100) : 0;
 							return /* @__PURE__ */ (0, p.jsxs)("div", { children: [/* @__PURE__ */ (0, p.jsxs)("div", {
 								className: "row-between",
 								children: [/* @__PURE__ */ (0, p.jsxs)("span", {
@@ -10629,9 +10962,9 @@ function Ce({ hass: e, t, locale: n, narrow: r, ents: i, bv: a, opts: o }) {
 									children: [
 										"L",
 										t + 1,
-										fe[t] == null ? "" : ` · ${me(fe[t], 0, "V")}`
+										fe[t] == null ? "" : ` · ${he(fe[t], 0, "V")}`
 									]
-								}), /* @__PURE__ */ (0, p.jsxs)("span", { children: [me(e, 1, "A"), ge ? ` / ${ge} A` : ""] })]
+								}), /* @__PURE__ */ (0, p.jsxs)("span", { children: [he(e, 1, "A"), pe ? ` / ${pe} A` : ""] })]
 							}), /* @__PURE__ */ (0, p.jsx)("div", {
 								className: "meter",
 								children: /* @__PURE__ */ (0, p.jsx)("div", { style: {
@@ -10652,28 +10985,28 @@ function Ce({ hass: e, t, locale: n, narrow: r, ents: i, bv: a, opts: o }) {
 								children: [/* @__PURE__ */ (0, p.jsx)("span", {
 									className: "muted",
 									children: t.avg_month
-								}), /* @__PURE__ */ (0, p.jsx)("span", { children: Ce(i.avg_price_this_month, 1) })]
+								}), /* @__PURE__ */ (0, p.jsx)("span", { children: Se(i.avg_price_this_month, 1) })]
 							}),
 							/* @__PURE__ */ (0, p.jsxs)("div", {
 								className: "row-between",
 								children: [/* @__PURE__ */ (0, p.jsx)("span", {
 									className: "muted",
 									children: t.market_month
-								}), /* @__PURE__ */ (0, p.jsx)("span", { children: Ce(i.market_avg_price_this_month, 1) })]
+								}), /* @__PURE__ */ (0, p.jsx)("span", { children: Se(i.market_avg_price_this_month, 1) })]
 							}),
 							/* @__PURE__ */ (0, p.jsxs)("div", {
 								className: "row-between",
 								children: [/* @__PURE__ */ (0, p.jsx)("span", {
 									className: "muted",
 									children: t.baseload
-								}), /* @__PURE__ */ (0, p.jsx)("span", { children: Ce(i.baseload_power, 2) })]
+								}), /* @__PURE__ */ (0, p.jsx)("span", { children: Se(i.baseload_power, 2) })]
 							}),
 							/* @__PURE__ */ (0, p.jsxs)("div", {
 								className: "row-between",
 								children: [/* @__PURE__ */ (0, p.jsx)("span", {
 									className: "muted",
 									children: t.power_limit
-								}), /* @__PURE__ */ (0, p.jsx)("span", { children: Ce(i.power_limit, 1) })]
+								}), /* @__PURE__ */ (0, p.jsx)("span", { children: Se(i.power_limit, 1) })]
 							})
 						]
 					})]
@@ -10688,14 +11021,14 @@ function Ce({ hass: e, t, locale: n, narrow: r, ents: i, bv: a, opts: o }) {
 								children: [/* @__PURE__ */ (0, p.jsx)("span", {
 									className: "muted",
 									children: t.han
-								}), /* @__PURE__ */ (0, p.jsx)("span", { children: xe ? t[`han_${xe}`] ?? xe.toLowerCase() : "–" })]
+								}), /* @__PURE__ */ (0, p.jsx)("span", { children: ve ? t[`han_${ve}`] ?? ve.toLowerCase() : "–" })]
 							}),
 							/* @__PURE__ */ (0, p.jsxs)("div", {
 								className: "row-between",
 								children: [/* @__PURE__ */ (0, p.jsx)("span", {
 									className: "muted",
 									children: t.wifi
-								}), /* @__PURE__ */ (0, p.jsx)("span", { children: Ce(i.wifi_rssi) })]
+								}), /* @__PURE__ */ (0, p.jsx)("span", { children: Se(i.wifi_rssi) })]
 							}),
 							/* @__PURE__ */ (0, p.jsxs)("div", {
 								className: "row-between",
@@ -10725,7 +11058,7 @@ function Ce({ hass: e, t, locale: n, narrow: r, ents: i, bv: a, opts: o }) {
 		})]
 	})] });
 }
-function we({ on: e, set: t, disabled: n }) {
+function Te({ on: e, set: t, disabled: n }) {
 	return /* @__PURE__ */ (0, p.jsxs)("label", {
 		className: "switch",
 		children: [/* @__PURE__ */ (0, p.jsx)("input", {
@@ -10736,7 +11069,7 @@ function we({ on: e, set: t, disabled: n }) {
 		}), /* @__PURE__ */ (0, p.jsx)("span", {})]
 	});
 }
-function Te({ hass: e, t, ents: n, opts: r, setOpts: i }) {
+function T({ hass: e, t, ents: n, opts: r, setOpts: i }) {
 	let [a, o] = (0, d.useState)(""), s = !!e.user?.is_admin, c = (n) => {
 		i({
 			...r,
@@ -10747,7 +11080,7 @@ function Te({ hass: e, t, ents: n, opts: r, setOpts: i }) {
 		}).then((e) => {
 			i(e.options), o(t.saved), setTimeout(() => o(""), 1500);
 		}).catch((e) => o(e?.message ?? String(e)));
-	}, l = Se(e, n, r), u = (e) => l.sources.includes(e), f = (t) => Object.values(e.states).filter((e) => e.entity_id.startsWith("sensor.") && t.includes(e.attributes?.unit_of_measurement)).map((e) => e.entity_id).sort(), m = f(Object.keys(fe)), h = f(["%"]), g = (n, i) => /* @__PURE__ */ (0, p.jsxs)("div", {
+	}, l = Ce(e, n, r), u = (e) => l.sources.includes(e), f = (t) => Object.values(e.states).filter((e) => e.entity_id.startsWith("sensor.") && t.includes(e.attributes?.unit_of_measurement)).map((e) => e.entity_id).sort(), m = f(Object.keys(pe)), h = f(["%"]), g = (n, i) => /* @__PURE__ */ (0, p.jsxs)("div", {
 		className: "setting",
 		children: [
 			/* @__PURE__ */ (0, p.jsx)("span", { children: t[n] }),
@@ -10778,16 +11111,16 @@ function Te({ hass: e, t, ents: n, opts: r, setOpts: i }) {
 			/* @__PURE__ */ (0, p.jsxs)("section", {
 				className: "card",
 				children: [
-					/* @__PURE__ */ (0, p.jsxs)("h2", { children: [t.s_sources, /* @__PURE__ */ (0, p.jsx)(ye, { text: t.s_sources_info })] }),
-					ue.map((e) => /* @__PURE__ */ (0, p.jsxs)("div", {
+					/* @__PURE__ */ (0, p.jsxs)("h2", { children: [t.s_sources, /* @__PURE__ */ (0, p.jsx)(be, { text: t.s_sources_info })] }),
+					de.map((e) => /* @__PURE__ */ (0, p.jsxs)("div", {
 						className: "setting",
 						children: [/* @__PURE__ */ (0, p.jsxs)("span", { children: [t[`opt_${e}`], r.sources == null && /* @__PURE__ */ (0, p.jsxs)("em", {
 							className: "muted",
 							children: [" · ", t.from_hub]
-						})] }), /* @__PURE__ */ (0, p.jsx)(we, {
+						})] }), /* @__PURE__ */ (0, p.jsx)(Te, {
 							on: u(e),
 							disabled: !s,
-							set: (t) => c({ sources: t ? ue.filter((t) => t === e || u(t)) : l.sources.filter((t) => t !== e) })
+							set: (t) => c({ sources: t ? de.filter((t) => t === e || u(t)) : l.sources.filter((t) => t !== e) })
 						})]
 					}, e)),
 					/* @__PURE__ */ (0, p.jsxs)("div", {
@@ -10795,7 +11128,7 @@ function Te({ hass: e, t, ents: n, opts: r, setOpts: i }) {
 						children: [/* @__PURE__ */ (0, p.jsxs)("span", { children: [t.has_ev, r.has_ev == null && /* @__PURE__ */ (0, p.jsxs)("em", {
 							className: "muted",
 							children: [" · ", t.from_hub]
-						})] }), /* @__PURE__ */ (0, p.jsx)(we, {
+						})] }), /* @__PURE__ */ (0, p.jsx)(Te, {
 							on: l.ev,
 							disabled: !s,
 							set: (e) => c({ has_ev: e })
@@ -10806,14 +11139,14 @@ function Te({ hass: e, t, ents: n, opts: r, setOpts: i }) {
 			/* @__PURE__ */ (0, p.jsxs)("section", {
 				className: "card",
 				children: [
-					/* @__PURE__ */ (0, p.jsxs)("h2", { children: [t.s_sensors, /* @__PURE__ */ (0, p.jsx)(ye, { text: t.s_sensors_info })] }),
+					/* @__PURE__ */ (0, p.jsxs)("h2", { children: [t.s_sensors, /* @__PURE__ */ (0, p.jsx)(be, { text: t.s_sensors_info })] }),
 					l.sources.some((e) => e !== "battery" && e !== "v2g") && g("production_power", m),
 					u("battery") && /* @__PURE__ */ (0, p.jsxs)(p.Fragment, { children: [
 						g("battery_power", m),
 						g("battery_soc", h),
 						/* @__PURE__ */ (0, p.jsxs)("div", {
 							className: "setting",
-							children: [/* @__PURE__ */ (0, p.jsx)("span", { children: t.battery_invert }), /* @__PURE__ */ (0, p.jsx)(we, {
+							children: [/* @__PURE__ */ (0, p.jsx)("span", { children: t.battery_invert }), /* @__PURE__ */ (0, p.jsx)(Te, {
 								on: r.battery_invert,
 								disabled: !s,
 								set: (e) => c({ battery_invert: e })
@@ -10833,6 +11166,22 @@ function Te({ hass: e, t, ents: n, opts: r, setOpts: i }) {
 					/* @__PURE__ */ (0, p.jsx)("h2", { children: t.s_panel }),
 					/* @__PURE__ */ (0, p.jsxs)("div", {
 						className: "setting",
+						children: [/* @__PURE__ */ (0, p.jsx)("span", { children: t.s_lang }), /* @__PURE__ */ (0, p.jsxs)("select", {
+							className: "pick",
+							value: r.language,
+							disabled: !s,
+							onChange: (e) => c({ language: e.target.value }),
+							children: [/* @__PURE__ */ (0, p.jsx)("option", {
+								value: "auto",
+								children: t.lang_auto
+							}), Object.entries(le).map(([e, t]) => /* @__PURE__ */ (0, p.jsx)("option", {
+								value: e,
+								children: t
+							}, e))]
+						})]
+					}),
+					/* @__PURE__ */ (0, p.jsxs)("div", {
+						className: "setting",
 						children: [/* @__PURE__ */ (0, p.jsxs)("span", { children: [
 							t.show_panel,
 							/* @__PURE__ */ (0, p.jsx)("br", {}),
@@ -10840,7 +11189,7 @@ function Te({ hass: e, t, ents: n, opts: r, setOpts: i }) {
 								className: "muted",
 								children: t.show_panel_info
 							})
-						] }), /* @__PURE__ */ (0, p.jsx)(we, {
+						] }), /* @__PURE__ */ (0, p.jsx)(Te, {
 							on: r.show_panel,
 							disabled: !s,
 							set: (e) => c({ show_panel: e })
@@ -10857,7 +11206,7 @@ function Te({ hass: e, t, ents: n, opts: r, setOpts: i }) {
 }
 //#endregion
 //#region src/styles.css?inline
-var T = ":host{--me-bg:var(--primary-background-color,#f4f6f9);--me-card:var(--card-background-color,#fff);--me-text:var(--primary-text-color,#1d2330);--me-muted:var(--secondary-text-color,#6b7484);--me-line:color-mix(in srgb, var(--me-muted) 18%, transparent);--me-accent:var(--primary-color,#03a9f4);--me-pos:#2ec27e;--me-neg:#e5484d;--me-radius:16px;display:block}*{box-sizing:border-box}.page{max-width:1480px;min-height:100vh;color:var(--me-text);font:14px/1.45 var(--paper-font-body1_-_font-family,Inter, Roboto, system-ui, sans-serif);background:var(--me-bg);margin:0 auto;padding:20px 28px 56px}.page.narrow{padding:10px 10px 40px}header{flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px;display:flex}.brand{align-items:center;gap:8px;display:flex}h1{letter-spacing:-.02em;margin:0;font-size:26px;font-weight:600}h2{align-items:center;gap:6px;margin:0;font-size:15px;font-weight:600;display:flex}.menu{color:inherit;cursor:pointer;background:0 0;border:0;font-size:22px}.tabs,.seg{background:var(--me-card);border:1px solid var(--me-line);border-radius:999px;gap:2px;max-width:100%;padding:4px;display:inline-flex;overflow-x:auto}.tabs button,.seg button{color:var(--me-muted);font:inherit;cursor:pointer;white-space:nowrap;background:0 0;border:0;border-radius:999px;padding:7px 14px;font-weight:500;transition:background .15s,color .15s}.tabs button:hover,.seg button:hover{color:var(--me-text)}.tabs button.on,.seg button.on{background:var(--me-accent);color:var(--text-primary-color,#fff)}.card{background:var(--me-card);border-radius:var(--me-radius);border:1px solid var(--me-line);margin-bottom:16px;padding:18px;box-shadow:0 1px 2px #0000000a,0 8px 24px -12px #0000001f}.card.error{color:var(--me-neg)}.card-head{flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;display:flex}.grid-overview{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);align-items:start;gap:16px;display:grid}.narrow .grid-overview,.narrow .two{grid-template-columns:1fr}@media (width<=1000px){.grid-overview,.two{grid-template-columns:1fr}}.side .card{margin-bottom:16px}.two{grid-template-columns:1fr 1fr;gap:16px;display:grid}.kpis{grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:16px;margin-bottom:16px;display:grid}.kpis>.stat{background:var(--me-card);border:1px solid var(--me-line);border-radius:var(--me-radius);padding:14px 16px}.kpis.compact{margin-bottom:4px}.kpis.compact>.stat{padding:8px 12px}.stats-2{grid-template-columns:1fr 1fr;gap:12px;display:grid}.settings-grid{grid-template-columns:repeat(auto-fit,minmax(340px,1fr));align-items:start;gap:16px;display:grid}.settings-grid .card{margin-bottom:0}.label{color:var(--me-muted);align-items:center;gap:4px;font-size:12px;font-weight:500;display:flex}.value{letter-spacing:-.02em;margin:2px 0;font-size:26px;font-weight:600}.value:first-letter{text-transform:uppercase}.pos{color:var(--me-pos)}.neg{color:var(--me-neg)}.muted{color:var(--me-muted);font-size:12.5px}.big{letter-spacing:-.02em;margin-bottom:10px;font-size:30px;font-weight:600}.big small{color:var(--me-muted);font-size:15px;font-weight:500}.row-between{flex-wrap:wrap;justify-content:space-between;gap:8px;margin-top:8px;display:flex}.badge{background:color-mix(in srgb, var(--me-accent) 15%, transparent);color:var(--me-accent);border-radius:999px;align-items:center;gap:4px;padding:3px 4px 3px 10px;font-size:12px;font-weight:500;display:inline-flex}.plan-chip{background:color-mix(in srgb, var(--me-accent) 8%, transparent);border-radius:12px;align-items:center;gap:8px;margin:14px 0 4px;padding:10px 12px;font-size:13.5px;display:flex}.legend{color:var(--me-muted);flex-wrap:wrap;gap:14px;margin-bottom:8px;font-size:12px;display:flex}.dot{border-radius:50%;flex:none;width:9px;height:9px;margin-right:6px;display:inline-block}table{border-collapse:collapse;font-variant-numeric:tabular-nums;width:100%;font-size:13.5px}th{text-align:left;color:var(--me-muted);font-size:12px;font-weight:500}th,td{border-bottom:1px solid var(--me-line);padding:8px 6px}tr:last-child td{border-bottom:0}.money td:not(:first-child),.money th:not(:first-child){text-align:right}.money.compact{margin-top:12px}.meter{background:var(--me-line);border-radius:999px;height:10px;overflow:hidden}.meter>div{border-radius:999px;height:100%;transition:width .4s}.info{display:inline-flex;position:relative}.info-btn{border:1px solid var(--me-muted);width:17px;height:17px;color:var(--me-muted);cursor:pointer;opacity:.7;background:0 0;border-radius:50%;place-items:center;padding:0;font:italic 600 10px/1 Georgia,serif;display:inline-grid}.info-btn:hover{opacity:1;color:var(--me-accent);border-color:var(--me-accent)}.pop{z-index:20;background:var(--me-card);width:min(300px,80vw);color:var(--me-text);border:1px solid var(--me-line);text-transform:none;letter-spacing:0;border-radius:12px;padding:12px 14px;font-size:12.5px;font-weight:400;line-height:1.5;position:absolute;top:24px;left:50%;transform:translate(-50%);box-shadow:0 12px 32px -8px #00000059}.setting{border-bottom:1px solid var(--me-line);justify-content:space-between;align-items:center;gap:12px;padding:9px 0;display:flex}.setting:last-child{border-bottom:0}.num{align-items:center;gap:6px;display:inline-flex}.num em{color:var(--me-muted);min-width:52px;font-size:12px;font-style:normal}.num input{width:96px;font:inherit;color:inherit;background:var(--me-bg);border:1px solid var(--me-line);text-align:right;border-radius:10px;padding:6px 10px}.num input:focus{outline:2px solid var(--me-accent);outline-offset:-1px}.switch{flex:none;width:40px;height:22px;position:relative}.switch input{opacity:0;width:0;height:0}.switch span{background:var(--me-line);cursor:pointer;border-radius:999px;transition:all .2s;position:absolute;inset:0}.switch span:before{content:\"\";background:#fff;border-radius:50%;width:16px;height:16px;transition:all .2s;position:absolute;top:3px;left:3px;box-shadow:0 1px 3px #0000004d}.switch input:checked+span{background:var(--me-accent)}.switch input:checked+span:before{transform:translate(18px)}.flow{width:100%;height:auto;display:block}.flow-line{fill:none;stroke:var(--me-muted);stroke-width:3px;stroke-linecap:round}.house-shape{fill:color-mix(in srgb, var(--me-accent) 5%, transparent);stroke:var(--me-line);stroke-width:2px;stroke-linejoin:round}.node-bg{fill:var(--me-card);stroke-width:2px;stroke-opacity:.35}.node-val{text-anchor:middle;fill:var(--me-text);font-size:15px;font-weight:600}.node-sub{text-anchor:middle;fill:var(--me-muted);font-size:10.5px}.node-label{text-anchor:middle;fill:var(--me-muted);font-size:12.5px;font-weight:500}.recharts-cartesian-axis-tick-value{fill:var(--me-muted)}.recharts-legend-item-text{color:var(--me-muted)!important}.settings-grid .seg{border-radius:14px;flex-wrap:wrap}.range{width:100%;accent-color:var(--me-accent);margin:10px 0 14px}.be{grid-template-columns:1fr 1fr;gap:16px;display:grid}.phases{gap:10px;display:grid}.phases .row-between{margin:0 0 4px}.stack{border-top:1px solid var(--me-line);gap:6px;margin-top:14px;padding-top:12px;display:grid}.row{align-items:center;gap:8px;display:flex}.btn{border:1px solid var(--me-line);background:var(--me-bg);color:var(--me-text);font:inherit;cursor:pointer;border-radius:10px;padding:6px 12px}.btn.primary{background:var(--me-accent);color:var(--text-primary-color,#fff);border-color:#0000}.btn:disabled{opacity:.45;cursor:default}.btn.ghost{color:var(--me-muted);background:0 0;border:0}table.edit input{width:100%;min-width:80px;font:inherit;color:inherit;background:var(--me-bg);border:1px solid var(--me-line);border-radius:8px;padding:6px 8px}table.edit input:focus{outline:2px solid var(--me-accent);outline-offset:-1px}.tabs,.seg{scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}.seg::-webkit-scrollbar{display:none}.narrow .node-val{font-size:22px}.narrow .node-sub{font-size:15px}.narrow .node-label{font-size:17px}.narrow .flow-card{padding:4px}.narrow .kpis{gap:10px}.narrow .value{font-size:22px}.narrow header{margin-bottom:12px}.narrow .tabs{width:100%}.chips{flex-wrap:wrap;gap:8px;display:flex}.chip{border:1px solid var(--me-line);color:var(--me-muted);border-radius:999px;padding:4px 10px;font-size:12px}.chip.ok{color:var(--me-pos);border-color:color-mix(in srgb, var(--me-pos) 40%, transparent)}.kpi{background:var(--me-card);border:1px solid var(--me-line);border-radius:var(--me-radius);padding:14px 16px}.table-wrap{overflow-x:auto}td.r,th.r{text-align:right}.dot.production{background:#f5b301}.dot.consumption{background:#3daee9}.house-scene{width:100%;height:auto;display:block}.hs-plot{fill:color-mix(in srgb, var(--me-text) 4%, transparent);stroke:var(--me-line)}.hs-roof{fill:#2b2f37;stroke:#1d2027;stroke-linejoin:round}.hs-roof.back{fill:#23262d}.hs-window{fill:#9fd3f2;stroke:#fff;stroke-width:1.5px}.hs-window.side{fill:#86bfe0}.hs-title{fill:var(--me-muted);font-size:12px;font-weight:500}.hs-value{font-variant-numeric:tabular-nums;font-size:18px;font-weight:700}.hs-sub{fill:var(--me-muted);font-size:11px}.narrow .hs-title{font-size:15px}.narrow .hs-value{font-size:22px}.narrow .hs-sub{font-size:14px}.flow-card{padding:12px}.pick{width:min(260px,55vw);font:inherit;color:inherit;background:var(--me-bg);border:1px solid var(--me-line);border-radius:10px;padding:6px 10px}.pick:focus{outline:2px solid var(--me-accent);outline-offset:-1px}.setting em{font-style:normal}.center{text-align:center;padding:0 8px 4px}", E = class extends HTMLElement {
+var E = ":host{--me-bg:var(--primary-background-color,#f4f6f9);--me-card:var(--card-background-color,#fff);--me-text:var(--primary-text-color,#1d2330);--me-muted:var(--secondary-text-color,#6b7484);--me-line:color-mix(in srgb, var(--me-muted) 18%, transparent);--me-accent:var(--primary-color,#03a9f4);--me-pos:#2ec27e;--me-neg:#e5484d;--me-radius:16px;display:block}*{box-sizing:border-box}.page{max-width:1480px;min-height:100vh;color:var(--me-text);font:14px/1.45 var(--paper-font-body1_-_font-family,Inter, Roboto, system-ui, sans-serif);background:var(--me-bg);margin:0 auto;padding:20px 28px 56px}.page.narrow{padding:10px 10px 40px}header{flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px;display:flex}.brand{align-items:center;gap:8px;display:flex}h1{letter-spacing:-.02em;margin:0;font-size:26px;font-weight:600}h2{align-items:center;gap:6px;margin:0;font-size:15px;font-weight:600;display:flex}.menu{color:inherit;cursor:pointer;background:0 0;border:0;font-size:22px}.tabs,.seg{background:var(--me-card);border:1px solid var(--me-line);border-radius:999px;gap:2px;max-width:100%;padding:4px;display:inline-flex;overflow-x:auto}.tabs button,.seg button{color:var(--me-muted);font:inherit;cursor:pointer;white-space:nowrap;background:0 0;border:0;border-radius:999px;padding:7px 14px;font-weight:500;transition:background .15s,color .15s}.tabs button:hover,.seg button:hover{color:var(--me-text)}.tabs button.on,.seg button.on{background:var(--me-accent);color:var(--text-primary-color,#fff)}.card{background:var(--me-card);border-radius:var(--me-radius);border:1px solid var(--me-line);margin-bottom:16px;padding:18px;box-shadow:0 1px 2px #0000000a,0 8px 24px -12px #0000001f}.card.error{color:var(--me-neg)}.card-head{flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;display:flex}.grid-overview{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);align-items:start;gap:16px;display:grid}.narrow .grid-overview,.narrow .two{grid-template-columns:1fr}@media (width<=1000px){.grid-overview,.two{grid-template-columns:1fr}}.side .card{margin-bottom:16px}.two{grid-template-columns:1fr 1fr;gap:16px;display:grid}.kpis{grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:16px;margin-bottom:16px;display:grid}.kpis>.stat{background:var(--me-card);border:1px solid var(--me-line);border-radius:var(--me-radius);padding:14px 16px}.kpis.compact{margin-bottom:4px}.kpis.compact>.stat{padding:8px 12px}.stats-2{grid-template-columns:1fr 1fr;gap:12px;display:grid}.settings-grid{grid-template-columns:repeat(auto-fit,minmax(340px,1fr));align-items:start;gap:16px;display:grid}.settings-grid .card{margin-bottom:0}.label{color:var(--me-muted);align-items:center;gap:4px;font-size:12px;font-weight:500;display:flex}.value{letter-spacing:-.02em;margin:2px 0;font-size:26px;font-weight:600}.value:first-letter{text-transform:uppercase}.pos{color:var(--me-pos)}.neg{color:var(--me-neg)}.muted{color:var(--me-muted);font-size:12.5px}.big{letter-spacing:-.02em;margin-bottom:10px;font-size:30px;font-weight:600}.big small{color:var(--me-muted);font-size:15px;font-weight:500}.row-between{flex-wrap:wrap;justify-content:space-between;gap:8px;margin-top:8px;display:flex}.badge{background:color-mix(in srgb, var(--me-accent) 15%, transparent);color:var(--me-accent);border-radius:999px;align-items:center;gap:4px;padding:3px 4px 3px 10px;font-size:12px;font-weight:500;display:inline-flex}.plan-chip{background:color-mix(in srgb, var(--me-accent) 8%, transparent);border-radius:12px;align-items:center;gap:8px;margin:14px 0 4px;padding:10px 12px;font-size:13.5px;display:flex}.legend{color:var(--me-muted);flex-wrap:wrap;gap:14px;margin-bottom:8px;font-size:12px;display:flex}.dot{border-radius:50%;flex:none;width:9px;height:9px;margin-right:6px;display:inline-block}table{border-collapse:collapse;font-variant-numeric:tabular-nums;width:100%;font-size:13.5px}th{text-align:left;color:var(--me-muted);font-size:12px;font-weight:500}th,td{border-bottom:1px solid var(--me-line);padding:8px 6px}tr:last-child td{border-bottom:0}.money td:not(:first-child),.money th:not(:first-child){text-align:right}.money.compact{margin-top:12px}.meter{background:var(--me-line);border-radius:999px;height:10px;overflow:hidden}.meter>div{border-radius:999px;height:100%;transition:width .4s}.info{display:inline-flex;position:relative}.info-btn{border:1px solid var(--me-muted);width:17px;height:17px;color:var(--me-muted);cursor:pointer;opacity:.7;background:0 0;border-radius:50%;place-items:center;padding:0;font:italic 600 10px/1 Georgia,serif;display:inline-grid}.info-btn:hover{opacity:1;color:var(--me-accent);border-color:var(--me-accent)}.pop{z-index:20;background:var(--me-card);width:min(300px,80vw);color:var(--me-text);border:1px solid var(--me-line);text-transform:none;letter-spacing:0;border-radius:12px;padding:12px 14px;font-size:12.5px;font-weight:400;line-height:1.5;position:absolute;top:24px;left:50%;transform:translate(-50%);box-shadow:0 12px 32px -8px #00000059}.setting{border-bottom:1px solid var(--me-line);justify-content:space-between;align-items:center;gap:12px;padding:9px 0;display:flex}.setting:last-child{border-bottom:0}.num{align-items:center;gap:6px;display:inline-flex}.num em{color:var(--me-muted);min-width:52px;font-size:12px;font-style:normal}.num input{width:96px;font:inherit;color:inherit;background:var(--me-bg);border:1px solid var(--me-line);text-align:right;border-radius:10px;padding:6px 10px}.num input:focus{outline:2px solid var(--me-accent);outline-offset:-1px}.switch{flex:none;width:40px;height:22px;position:relative}.switch input{opacity:0;width:0;height:0}.switch span{background:var(--me-line);cursor:pointer;border-radius:999px;transition:all .2s;position:absolute;inset:0}.switch span:before{content:\"\";background:#fff;border-radius:50%;width:16px;height:16px;transition:all .2s;position:absolute;top:3px;left:3px;box-shadow:0 1px 3px #0000004d}.switch input:checked+span{background:var(--me-accent)}.switch input:checked+span:before{transform:translate(18px)}.flow{width:100%;height:auto;display:block}.flow-line{fill:none;stroke:var(--me-muted);stroke-width:3px;stroke-linecap:round}.house-shape{fill:color-mix(in srgb, var(--me-accent) 5%, transparent);stroke:var(--me-line);stroke-width:2px;stroke-linejoin:round}.node-bg{fill:var(--me-card);stroke-width:2px;stroke-opacity:.35}.node-val{text-anchor:middle;fill:var(--me-text);font-size:15px;font-weight:600}.node-sub{text-anchor:middle;fill:var(--me-muted);font-size:10.5px}.node-label{text-anchor:middle;fill:var(--me-muted);font-size:12.5px;font-weight:500}.recharts-cartesian-axis-tick-value{fill:var(--me-muted)}.recharts-legend-item-text{color:var(--me-muted)!important}.settings-grid .seg{border-radius:14px;flex-wrap:wrap}.range{width:100%;accent-color:var(--me-accent);margin:10px 0 14px}.be{grid-template-columns:1fr 1fr;gap:16px;display:grid}.phases{gap:10px;display:grid}.phases .row-between{margin:0 0 4px}.stack{border-top:1px solid var(--me-line);gap:6px;margin-top:14px;padding-top:12px;display:grid}.row{align-items:center;gap:8px;display:flex}.btn{border:1px solid var(--me-line);background:var(--me-bg);color:var(--me-text);font:inherit;cursor:pointer;border-radius:10px;padding:6px 12px}.btn.primary{background:var(--me-accent);color:var(--text-primary-color,#fff);border-color:#0000}.btn:disabled{opacity:.45;cursor:default}.btn.ghost{color:var(--me-muted);background:0 0;border:0}table.edit input{width:100%;min-width:80px;font:inherit;color:inherit;background:var(--me-bg);border:1px solid var(--me-line);border-radius:8px;padding:6px 8px}table.edit input:focus{outline:2px solid var(--me-accent);outline-offset:-1px}.tabs,.seg{scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}.seg::-webkit-scrollbar{display:none}.narrow .node-val{font-size:22px}.narrow .node-sub{font-size:15px}.narrow .node-label{font-size:17px}.narrow .flow-card{padding:4px}.narrow .kpis{gap:10px}.narrow .value{font-size:22px}.narrow header{margin-bottom:12px}.narrow .tabs{width:100%}.chips{flex-wrap:wrap;gap:8px;display:flex}.chip{border:1px solid var(--me-line);color:var(--me-muted);border-radius:999px;padding:4px 10px;font-size:12px}.chip.ok{color:var(--me-pos);border-color:color-mix(in srgb, var(--me-pos) 40%, transparent)}.kpi{background:var(--me-card);border:1px solid var(--me-line);border-radius:var(--me-radius);padding:14px 16px}.table-wrap{overflow-x:auto}td.r,th.r{text-align:right}.dot.production{background:#f5b301}.dot.consumption{background:#3daee9}.house-scene{width:100%;height:auto;display:block}.hs-plot{fill:color-mix(in srgb, var(--me-text) 4%, transparent);stroke:var(--me-line)}.hs-roof{fill:#2b2f37;stroke:#1d2027;stroke-linejoin:round}.hs-roof.back{fill:#23262d}.hs-window{fill:#9fd3f2;stroke:#fff;stroke-width:1.5px}.hs-window.side{fill:#86bfe0}.hs-title{fill:var(--me-muted);font-size:12px;font-weight:500}.hs-value{font-variant-numeric:tabular-nums;font-size:18px;font-weight:700}.hs-sub{fill:var(--me-muted);font-size:11px}.narrow .hs-title{font-size:15px}.narrow .hs-value{font-size:22px}.narrow .hs-sub{font-size:14px}.flow-card{padding:12px}.pick{width:min(260px,55vw);font:inherit;color:inherit;background:var(--me-bg);border:1px solid var(--me-line);border-radius:10px;padding:6px 10px}.pick:focus{outline:2px solid var(--me-accent);outline-offset:-1px}.setting em{font-style:normal}.center{text-align:center;padding:0 8px 4px}", Ee = class extends HTMLElement {
 	root;
 	_hass;
 	_narrow = !1;
@@ -10872,7 +11221,7 @@ var T = ":host{--me-bg:var(--primary-background-color,#f4f6f9);--me-card:var(--c
 		let e = this.shadowRoot ?? this.attachShadow({ mode: "open" });
 		e.replaceChildren();
 		let t = document.createElement("style");
-		t.textContent = T;
+		t.textContent = E;
 		let n = document.createElement("div");
 		e.append(t, n), this.root = (0, f.createRoot)(n), this.render();
 	}
@@ -10880,11 +11229,11 @@ var T = ":host{--me-bg:var(--primary-background-color,#f4f6f9);--me-card:var(--c
 		this.root?.unmount(), this.root = void 0;
 	}
 	render() {
-		this.root && this._hass && this.root.render(/* @__PURE__ */ (0, p.jsx)(xe, {
+		this.root && this._hass && this.root.render(/* @__PURE__ */ (0, p.jsx)(Se, {
 			hass: this._hass,
 			narrow: this._narrow
 		}));
 	}
 };
-customElements.get("malarenergi-powerhub-panel") || customElements.define("malarenergi-powerhub-panel", E);
+customElements.get("malarenergi-powerhub-panel") || customElements.define("malarenergi-powerhub-panel", Ee);
 //#endregion

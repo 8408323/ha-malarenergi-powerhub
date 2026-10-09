@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import House from "./House";
-import { T, pick } from "./i18n";
+import { LANG_NAMES, T, pick } from "./i18n";
 
 type Options = {
-  show_panel: boolean; sources: Source[] | null; has_ev: boolean | null;
+  show_panel: boolean; language: string; sources: Source[] | null; has_ev: boolean | null;
   production_power: string; battery_power: string; battery_soc: string; battery_invert: boolean; ev_power: string;
 };
 type Ctx = { hass: any; t: T; locale: string; narrow: boolean };
@@ -81,7 +81,7 @@ function Kpi({ label, value, sub, tone }: { label: string; value: string; sub?: 
 export default function App({ hass, narrow }: { hass: any; narrow: boolean }) {
   const [opts, setOpts] = useState<Options | null>(null);
   const [tab, setTab] = useState<Tab>(() => { try { return (localStorage.getItem("ph_tab") as Tab) || "overview"; } catch { return "overview"; } });
-  const { t, locale } = pick(hass.locale?.language ?? hass.language);
+  const { t, locale } = pick(hass.locale?.language ?? hass.language, opts?.language);
   useEffect(() => {
     hass.connection.sendMessagePromise({ type: "malarenergi_powerhub/settings/get" }).then((r: any) => setOpts(r.options)).catch(() => setOpts(null));
   }, []);
@@ -275,6 +275,11 @@ function Settings({ hass, t, ents, opts, setOpts }: Ctx & { ents: Ents; opts: Op
       </section>
       <section className="card">
         <h2>{t.s_panel}</h2>
+        <div className="setting"><span>{t.s_lang}</span>
+          <select className="pick" value={opts.language} disabled={!admin} onChange={(e) => save({ language: e.target.value })}>
+            <option value="auto">{t.lang_auto}</option>
+            {Object.entries(LANG_NAMES).map(([k, n]) => <option key={k} value={k}>{n}</option>)}
+          </select></div>
         <div className="setting"><span>{t.show_panel}<br /><em className="muted">{t.show_panel_info}</em></span>
           <Toggle on={opts.show_panel} disabled={!admin} set={(v) => save({ show_panel: v })} /></div>
         {msg && <div className="muted">{msg}</div>}

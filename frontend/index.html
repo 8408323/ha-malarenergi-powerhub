@@ -13,7 +13,7 @@ if (on("export")) for (const id of ["sensor.powerhub_power_import", "sensor.bitv
 if (on("export")) for (const id of ["sensor.powerhub_power_export", "sensor.bitvis_power_export"]) states[id].state = "1.84";
 const s = on("sensors");
 if ((q.get("sources") ?? "").includes("v2g")) states["sensor.wallbox_power"].state = "-1200";
-let options = { show_panel: true, sources: (q.get("sources") ?? "solar").split(",").filter(Boolean), has_ev: on("ev"),
+let options = { show_panel: true, language: "auto", sources: (q.get("sources") ?? "solar").split(",").filter(Boolean), has_ev: on("ev"),
   production_power: s ? "sensor.inverter_pv_power" : "", battery_power: s ? "sensor.inverter_battery_power" : "",
   battery_soc: s ? "sensor.battery_soc" : "", battery_invert: false, ev_power: s ? "sensor.wallbox_power" : "" };
 const p = document.getElementById("p");

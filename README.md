@@ -94,8 +94,11 @@ The PowerHub only measures the grid connection, so it can't tell where exported 
 **Settings** in the panel you tick your local sources (solar, home battery, wind, generator/CHP, EV with V2H/V2G,
 other) and whether you have a plain EV charger. Production sources are drawn as one node with an icon each; a V2G
 car can feed the house from the garage. Optionally pick a combined production-power sensor, battery sensors and an
-EV power sensor so their values appear in the picture. The panel can be hidden from the sidebar there (it stays
-reachable at `/powerhub`).
+EV power sensor so their values appear in the picture. The panel's language follows Home Assistant by default
+(English, Svenska, Norsk, Dansk, Suomi, Íslenska; others fall back to English) and can be set there too.
+The panel's **Show PowerHub in the sidebar** setting hides it for everyone (it stays reachable at `/powerhub`); to hide
+it just for yourself, use Home Assistant's own sidebar editing (long-press the sidebar title, or Profile → *Change the
+order and hide items from the sidebar*).
 
 ![Panel](docs/images/13_panel_overview.jpg)
 

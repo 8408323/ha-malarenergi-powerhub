@@ -145,3 +145,18 @@ async def test_settings_set_drops_legacy_keys_after_migrating() -> None:
     saved = hass.config_entries.async_update_entry.call_args.kwargs["options"]
     assert saved["sources"] == ["solar", "battery"] and saved["keep"] == 1
     assert "has_solar" not in saved and "has_battery" not in saved
+
+
+def test_language_validation() -> None:
+    assert all(panel._valid("language", c) for c in ("auto", "en", "sv", "nb", "da", "fi", "is"))
+    assert not panel._valid("language", "de")
+    assert not panel._valid("language", None)
+
+
+async def test_settings_set_rejects_unknown_language() -> None:
+    entry = _entry({"language": "fi"})
+    hass = _hass([entry])
+    await _set(hass, MagicMock(), {"id": 1, "options": {"language": "xx"}})
+    assert hass.config_entries.async_update_entry.call_args.kwargs["options"]["language"] == "fi"
+    await _set(hass, MagicMock(), {"id": 2, "options": {"language": "nb"}})
+    assert hass.config_entries.async_update_entry.call_args.kwargs["options"]["language"] == "nb"

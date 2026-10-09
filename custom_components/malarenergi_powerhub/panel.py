@@ -21,8 +21,10 @@ KEY = f"{DOMAIN}_panel"  # static path + websocket commands registered (once per
 # Entity fields are optional extras the PowerHub can't measure itself; "" means not configured.
 SOURCES = ("solar", "battery", "wind", "generator", "v2g", "other")  # local sources export can come from
 LEGACY = ("has_solar", "has_battery")  # pre-"sources" booleans, migrated on read
+LANGS = ("auto", "en", "sv", "nb", "da", "fi", "is")  # auto = follow the Home Assistant user's language
 DEFAULT_OPTIONS: dict = {
     "show_panel": True,
+    "language": "auto",
     "sources": None,
     "has_ev": None,  # plain EV charger (consumption only); bidirectional is the "v2g" source
     "production_power": "",
@@ -48,6 +50,8 @@ def _options(entry) -> dict:
 
 def _valid(key: str, value) -> bool:
     default = DEFAULT_OPTIONS[key]
+    if key == "language":
+        return value in LANGS
     if key == "sources":
         return value is None or (isinstance(value, list) and all(v in SOURCES for v in value))
     if isinstance(default, str):
