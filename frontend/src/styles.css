@@ -155,3 +155,4 @@ td.r, th.r { text-align: right; }
 .pick:focus { outline: 2px solid var(--me-accent); outline-offset: -1px; }
 .setting em { font-style: normal; }
 .center { text-align: center; padding: 0 8px 4px; }
+.switch input:focus-visible + span { outline: 2px solid var(--me-accent); outline-offset: 2px; }

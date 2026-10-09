@@ -12,6 +12,9 @@ const C = { sun: "#f5b301", grid: "#7c8cff", batt: "#2ec27e", house: "#3daee9", 
 
 import type { Source } from "./App";
 
+// SMIL ignores CSS, so honour prefers-reduced-motion here: dashes stay, frozen
+const REDUCED = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+
 // one wire segment: dashes run in the flow direction, faster for bigger flows
 function Wire({ route, w, max, color }: { route: V[]; w: number | null; max: number; color: string }) {
   const kw = Math.abs(w ?? 0), active = kw > 0.03;
@@ -28,7 +31,7 @@ function Wire({ route, w, max, color }: { route: V[]; w: number | null; max: num
       {[a, b].map(([x, y], i) => <circle key={i} cx={x} cy={y} r={3.6} fill="#4a5262" stroke="#e9eef5" strokeWidth={1.5} />)}
       {active && (
         <path d={d} fill="none" stroke={color} strokeWidth={width} strokeLinecap="round" strokeLinejoin="round" strokeDasharray="7 9">
-          <animate attributeName="stroke-dashoffset" from="16" to="0" dur={`${dur}s`} repeatCount="indefinite" />
+          {!REDUCED && <animate attributeName="stroke-dashoffset" from="16" to="0" dur={`${dur}s`} repeatCount="indefinite" />}
         </path>
       )}
     </g>

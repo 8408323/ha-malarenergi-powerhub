@@ -27,7 +27,7 @@ const en = {
   battery_invert: "Battery sensor is + when charging", ev_power: "EV power (− = feeding the house)",
   s_panel: "Panel", show_panel: "Show PowerHub in the sidebar",
   show_panel_info: "When hidden, the panel is still reachable at /powerhub.",
-  saved: "Saved", admin_only: "Only administrators can change settings.",
+  saved: "Saved", admin_only: "Only administrators can change settings.", load_failed: "Could not load settings", retry: "Retry",
   s_lang: "Language", lang_auto: "Same as Home Assistant",
 };
 type Dict = typeof en;
@@ -59,7 +59,7 @@ const sv: Dict = {
   battery_invert: "Batterisensorn är + vid laddning", ev_power: "Elbilens effekt (− = matar huset)",
   s_panel: "Panel", show_panel: "Visa PowerHub i sidomenyn",
   show_panel_info: "Dold panel nås fortfarande på /powerhub.",
-  saved: "Sparat", admin_only: "Bara administratörer kan ändra inställningar.",
+  saved: "Sparat", admin_only: "Bara administratörer kan ändra inställningar.", load_failed: "Kunde inte ladda inställningarna", retry: "Försök igen",
   s_lang: "Språk", lang_auto: "Samma som Home Assistant",
 };
 const nb: Dict = {
@@ -90,7 +90,7 @@ const nb: Dict = {
   battery_invert: "Batterisensoren er + ved lading", ev_power: "Elbilens effekt (− = forsyner huset)",
   s_panel: "Panel", show_panel: "Vis PowerHub i sidemenyen",
   show_panel_info: "Et skjult panel kan fortsatt åpnes på /powerhub.",
-  saved: "Lagret", admin_only: "Bare administratorer kan endre innstillinger.",
+  saved: "Lagret", admin_only: "Bare administratorer kan endre innstillinger.", load_failed: "Kunne ikke laste innstillingene", retry: "Prøv igjen",
   s_lang: "Språk", lang_auto: "Samme som Home Assistant",
 };
 const da: Dict = {
@@ -121,7 +121,7 @@ const da: Dict = {
   battery_invert: "Batterisensoren er + ved opladning", ev_power: "Elbilens effekt (− = forsyner huset)",
   s_panel: "Panel", show_panel: "Vis PowerHub i sidepanelet",
   show_panel_info: "Et skjult panel kan stadig åbnes på /powerhub.",
-  saved: "Gemt", admin_only: "Kun administratorer kan ændre indstillinger.",
+  saved: "Gemt", admin_only: "Kun administratorer kan ændre indstillinger.", load_failed: "Kunne ikke indlæse indstillingerne", retry: "Prøv igen",
   s_lang: "Sprog", lang_auto: "Samme som Home Assistant",
 };
 const fi: Dict = {
@@ -152,7 +152,7 @@ const fi: Dict = {
   battery_invert: "Akkuanturi on + latauksessa", ev_power: "Sähköauton teho (− = syöttää taloon)",
   s_panel: "Paneeli", show_panel: "Näytä PowerHub sivupalkissa",
   show_panel_info: "Piilotettu paneeli on edelleen käytettävissä osoitteessa /powerhub.",
-  saved: "Tallennettu", admin_only: "Vain järjestelmänvalvojat voivat muuttaa asetuksia.",
+  saved: "Tallennettu", admin_only: "Vain järjestelmänvalvojat voivat muuttaa asetuksia.", load_failed: "Asetusten lataaminen epäonnistui", retry: "Yritä uudelleen",
   s_lang: "Kieli", lang_auto: "Sama kuin Home Assistantissa",
 };
 const is_: Dict = {
@@ -183,7 +183,7 @@ const is_: Dict = {
   battery_invert: "Rafhlöðuskynjarinn er + við hleðslu", ev_power: "Afl rafbíls (− = knýr húsið)",
   s_panel: "Spjald", show_panel: "Sýna PowerHub í hliðarstikunni",
   show_panel_info: "Falið spjald er áfram aðgengilegt á /powerhub.",
-  saved: "Vistað", admin_only: "Aðeins stjórnendur geta breytt stillingum.",
+  saved: "Vistað", admin_only: "Aðeins stjórnendur geta breytt stillingum.", load_failed: "Ekki tókst að hlaða stillingum", retry: "Reyna aftur",
   s_lang: "Tungumál", lang_auto: "Sama og í Home Assistant",
 };
 export type T = Dict;

@@ -129,50 +129,56 @@
 "sensor.bitvis_power_import": {
 "entity_id": "sensor.bitvis_power_import",
 "platform": "bitvis",
-"device_id": "dev-hub",
+"device_id": "dev-bitvis",
 "translation_key": "power_active_import"
 },
 "sensor.bitvis_power_export": {
 "entity_id": "sensor.bitvis_power_export",
 "platform": "bitvis",
-"device_id": "dev-hub",
+"device_id": "dev-bitvis",
 "translation_key": "power_active_export"
 },
 "sensor.bitvis_phase_current_l1": {
 "entity_id": "sensor.bitvis_phase_current_l1",
 "platform": "bitvis",
-"device_id": "dev-hub",
+"device_id": "dev-bitvis",
 "translation_key": "phase_current"
 },
 "sensor.bitvis_phase_voltage_l1": {
 "entity_id": "sensor.bitvis_phase_voltage_l1",
 "platform": "bitvis",
-"device_id": "dev-hub",
+"device_id": "dev-bitvis",
 "translation_key": "phase_voltage"
 },
 "sensor.bitvis_phase_current_l2": {
 "entity_id": "sensor.bitvis_phase_current_l2",
 "platform": "bitvis",
-"device_id": "dev-hub",
+"device_id": "dev-bitvis",
 "translation_key": "phase_current"
 },
 "sensor.bitvis_phase_voltage_l2": {
 "entity_id": "sensor.bitvis_phase_voltage_l2",
 "platform": "bitvis",
-"device_id": "dev-hub",
+"device_id": "dev-bitvis",
 "translation_key": "phase_voltage"
 },
 "sensor.bitvis_phase_current_l3": {
 "entity_id": "sensor.bitvis_phase_current_l3",
 "platform": "bitvis",
-"device_id": "dev-hub",
+"device_id": "dev-bitvis",
 "translation_key": "phase_current"
 },
 "sensor.bitvis_phase_voltage_l3": {
 "entity_id": "sensor.bitvis_phase_voltage_l3",
 "platform": "bitvis",
-"device_id": "dev-hub",
+"device_id": "dev-bitvis",
 "translation_key": "phase_voltage"
+},
+"sensor.other_hub_power_import": {
+"entity_id": "sensor.other_hub_power_import",
+"platform": "bitvis",
+"device_id": "dev-other",
+"translation_key": "power_active_import"
 }
 },
 "states": {
@@ -357,7 +363,7 @@
 "entity_id": "sensor.bitvis_phase_current_l1",
 "state": "7.05",
 "attributes": {
-"friendly_name": "Bitvis Phase current L1",
+"friendly_name": "Renamed phase sensor",
 "unit_of_measurement": "A"
 }
 },
@@ -365,7 +371,7 @@
 "entity_id": "sensor.bitvis_phase_voltage_l1",
 "state": "231.2",
 "attributes": {
-"friendly_name": "Bitvis Phase voltage L1",
+"friendly_name": "Renamed phase sensor",
 "unit_of_measurement": "V"
 }
 },
@@ -373,7 +379,7 @@
 "entity_id": "sensor.bitvis_phase_current_l2",
 "state": "3.02",
 "attributes": {
-"friendly_name": "Bitvis Phase current L2",
+"friendly_name": "Renamed phase sensor",
 "unit_of_measurement": "A"
 }
 },
@@ -381,7 +387,7 @@
 "entity_id": "sensor.bitvis_phase_voltage_l2",
 "state": "229.8",
 "attributes": {
-"friendly_name": "Bitvis Phase voltage L2",
+"friendly_name": "Renamed phase sensor",
 "unit_of_measurement": "V"
 }
 },
@@ -389,7 +395,7 @@
 "entity_id": "sensor.bitvis_phase_current_l3",
 "state": "4.37",
 "attributes": {
-"friendly_name": "Bitvis Phase current L3",
+"friendly_name": "Renamed phase sensor",
 "unit_of_measurement": "A"
 }
 },
@@ -397,7 +403,7 @@
 "entity_id": "sensor.bitvis_phase_voltage_l3",
 "state": "232.4",
 "attributes": {
-"friendly_name": "Bitvis Phase voltage L3",
+"friendly_name": "Renamed phase sensor",
 "unit_of_measurement": "V"
 }
 },
@@ -432,6 +438,48 @@
 "friendly_name": "Wallbox power",
 "unit_of_measurement": "W"
 }
+},
+"sensor.other_hub_power_import": {
+"entity_id": "sensor.other_hub_power_import",
+"state": "9.99",
+"attributes": {
+"unit_of_measurement": "kW"
+}
+}
+},
+"devices": {
+"dev-hub": {
+"config_entries": [
+"eid-1"
+],
+"connections": [
+[
+"mac",
+"02:00:00:00:00:01"
+]
+]
+},
+"dev-bitvis": {
+"config_entries": [
+"bitvis-entry"
+],
+"connections": [
+[
+"mac",
+"02:00:00:00:00:01"
+]
+]
+},
+"dev-other": {
+"config_entries": [
+"bitvis-entry-2"
+],
+"connections": [
+[
+"mac",
+"02:00:00:00:00:02"
+]
+]
 }
 }
 }

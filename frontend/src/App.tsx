@@ -16,31 +16,39 @@ const TABS = ["overview", "settings"] as const;
 type Tab = (typeof TABS)[number];
 const KW: Record<string, number> = { mW: 1e-6, W: 1e-3, kW: 1, MW: 1e3 };  // HA power units -> kW
 const AMP: Record<string, number> = { "μA": 1e-6, "µA": 1e-6, mA: 1e-3, A: 1 };
+const VOLT: Record<string, number> = { mV: 1e-3, V: 1, kV: 1e3 };
+// ponytail: module-level locale, set by App before its children render; fine for one panel per page
+let LOCALE = "en-GB";
 const fmt = (v: number | null | undefined, d = 0, u = "") =>
-  v == null || Number.isNaN(v) ? "–" : `${v.toLocaleString("sv-SE", { minimumFractionDigits: d, maximumFractionDigits: d })}${u ? " " + u : ""}`;
+  v == null || Number.isNaN(v) ? "–" : `${v.toLocaleString(LOCALE, { minimumFractionDigits: d, maximumFractionDigits: d })}${u ? " " + u : ""}`;
 const kwTxt = (v: number | null) => fmt(v == null ? null : Math.abs(v), Math.abs(v ?? 0) < 10 ? 2 : 1, "kW");
 
-// Our entities on the (first) PowerHub device, by translation_key: entity ids differ between installs/languages.
-// ponytail: first hub only; add a hub picker if anyone runs several facilities.
-function hubEntities(hass: any): { dev?: string; ents?: Ents } {
+// Our entities, by translation_key (entity ids differ between installs/languages), on the PowerHub device of
+// the config entry whose settings the panel shows (settings/get returns its entry_id).
+// ponytail: one hub (that entry's); add a hub picker if anyone wants to switch between facilities.
+function hubEntities(hass: any, entryId?: string | null): { dev?: string; ents?: Ents } {
   const byDev: Record<string, Ents> = {};
   for (const e of Object.values((hass.entities ?? {}) as Record<string, any>))
     if (e.platform === "malarenergi_powerhub" && e.device_id && e.translation_key) (byDev[e.device_id] ??= {})[e.translation_key] = e.entity_id;
-  const dev = Object.keys(byDev)[0];
+  const devs = Object.keys(byDev);
+  const dev = devs.find((d) => entryId && hass.devices?.[d]?.config_entries?.includes(entryId)) ?? devs[0];
   return { dev, ents: dev ? byDev[dev] : undefined };
 }
 
-// HA core's Bitvis integration reads the same hub locally. Same device as ours once both carry the hub's MAC;
-// otherwise a single Bitvis device is unambiguous. Per-phase sensors share a translation_key, so the phase
-// comes from the "L1/L2/L3" placeholder in the name.
+// HA core's Bitvis integration reads the same hub locally, on its own device. Ours carries the hub's MAC as a
+// connection (since v0.3.0), so the Bitvis device sharing that MAC is the same hub; without a MAC match a
+// single Bitvis device is unambiguous. Per-phase sensors share a translation_key; the phase comes from the
+// entity id (from the "phase_current_l1"-style key), the friendly name only as a fallback.
 function bitvisEntities(hass: any, dev?: string): Ents | undefined {
   const all = Object.values((hass.entities ?? {}) as Record<string, any>).filter((e) => e.platform === "bitvis" && e.device_id);
-  const devs = new Set(all.map((e) => e.device_id));
-  const use = dev && devs.has(dev) ? dev : devs.size === 1 ? [...devs][0] : undefined;
+  const devs = [...new Set(all.map((e) => e.device_id as string))];
+  const macs = (d?: string) => ((d && hass.devices?.[d]?.connections) ?? []).filter((c: string[]) => c[0] === "mac").map((c: string[]) => c[1]);
+  const ours = macs(dev);
+  const use = devs.find((d) => macs(d).some((m: string) => ours.includes(m))) ?? (devs.length === 1 ? devs[0] : undefined);
   if (!use) return undefined;
   const out: Ents = {};
   for (const e of all.filter((e) => e.device_id === use && e.translation_key)) {
-    const ph = /\bL([123])\b/i.exec(hass.states[e.entity_id]?.attributes?.friendly_name ?? e.entity_id.replace(/_/g, " "))?.[1];
+    const ph = (/_l([123])(?:_|$)/i.exec(e.entity_id) ?? /\bL([123])\b/i.exec(hass.states[e.entity_id]?.attributes?.friendly_name ?? ""))?.[1];
     out[ph ? `${e.translation_key}_l${ph}` : e.translation_key] = e.entity_id;
   }
   return out;
@@ -80,13 +88,22 @@ function Kpi({ label, value, sub, tone }: { label: string; value: string; sub?: 
 
 export default function App({ hass, narrow }: { hass: any; narrow: boolean }) {
   const [opts, setOpts] = useState<Options | null>(null);
-  const [tab, setTab] = useState<Tab>(() => { try { return (localStorage.getItem("ph_tab") as Tab) || "overview"; } catch { return "overview"; } });
+  const [entryId, setEntryId] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>(() => {
+    try { const x = localStorage.getItem("ph_tab"); return TABS.includes(x as Tab) ? (x as Tab) : "overview"; } catch { return "overview"; }
+  });
   const { t, locale } = pick(hass.locale?.language ?? hass.language, opts?.language);
-  useEffect(() => {
-    hass.connection.sendMessagePromise({ type: "malarenergi_powerhub/settings/get" }).then((r: any) => setOpts(r.options)).catch(() => setOpts(null));
-  }, []);
+  LOCALE = locale;
+  const load = () => {
+    setErr(null);
+    hass.connection.sendMessagePromise({ type: "malarenergi_powerhub/settings/get" })
+      .then((r: any) => { setOpts(r.options); setEntryId(r.entry_id ?? null); })
+      .catch((e: any) => setErr(e?.message ?? String(e)));
+  };
+  useEffect(load, []);
   const go = (x: Tab) => { setTab(x); try { localStorage.setItem("ph_tab", x); } catch { /* private mode */ } };
-  const { dev, ents } = hubEntities(hass);
+  const { dev, ents } = hubEntities(hass, entryId);
   const bv = bitvisEntities(hass, dev);
   const ctx = { hass, t, locale, narrow };
   return (
@@ -97,7 +114,9 @@ export default function App({ hass, narrow }: { hass: any; narrow: boolean }) {
           {TABS.map((x) => <button key={x} className={tab === x ? "on" : ""} onClick={() => go(x)}>{t[`tab_${x}`]}</button>)}
         </nav>
       </header>
-      {!ents ? <div className="card">{t.no_hub}</div> : !opts ? <div className="card">{t.loading}</div> : <>
+      {!ents ? <div className="card">{t.no_hub}</div>
+        : err ? <div className="card error row-between"><span>{t.load_failed}: {err}</span><button className="btn" onClick={load}>{t.retry}</button></div>
+        : !opts ? <div className="card">{t.loading}</div> : <>
         {tab === "overview" && <Overview {...ctx} ents={ents} bv={bv} opts={opts} />}
         {tab === "settings" && <Settings {...ctx} ents={ents} opts={opts} setOpts={setOpts} />}
       </>}
@@ -131,16 +150,22 @@ function Overview({ hass, t, locale, narrow, ents, bv, opts }: Ctx & { ents: Ent
   const prod = prod0 == null ? null : Math.max(0, prod0);
   const batt0 = has("battery") && opts.battery_power ? kw(opts.battery_power) : null;
   const batt = batt0 == null ? null : opts.battery_invert ? -batt0 : batt0;  // + discharging
-  const inv = prod == null && batt == null ? null : (prod ?? 0) + (batt ?? 0);
+  // each enabled flow needs its reading: production (any non-battery source), battery, EV
+  const prodOk = !node.some((x) => x !== "battery") || prod != null;
+  const battOk = !has("battery") || batt != null;
   const ev0 = hasEv && opts.ev_power ? kw(opts.ev_power) : null;
   const ev = ev0 == null ? null : v2g ? ev0 : Math.max(0, ev0);  // + charging; only V2G may feed back
+  const evOk = !hasEv || ev != null;
+  const inv = node.length && prodOk && battOk ? (prod ?? 0) + (batt ?? 0) : null;
   const soc = has("battery") && opts.battery_soc ? num(opts.battery_soc) : null;
-  // house load is only known when every source behind the meter is; otherwise import still goes into
-  // the house, but export can't be attributed to it
-  const known = grid != null && (!node.length || inv != null) && (!v2g || ev != null);
-  const houseW = grid == null ? null : known ? grid + (inv ?? 0) - (ev ?? 0) : Math.max(0, grid - Math.max(0, ev ?? 0));
+  // house = grid + production + battery − EV. Exact only when every enabled flow has a reading. A missing
+  // production reading can only add, so the sum is then a lower bound; a missing battery or EV reading can
+  // subtract, so nothing can be said about the house.
+  const exact = grid != null && prodOk && battOk && evOk;
+  const bound = grid != null && battOk && evOk;
+  const houseW = bound ? grid! + (prod ?? 0) + (batt ?? 0) - (ev ?? 0) : null;
   // negative = export nothing selected explains: the arrow shows it, a negative house load would be nonsense
-  const house = houseW != null && houseW < 0 ? "–" : known ? kwTxt(houseW) : houseW ? `≥ ${kwTxt(houseW)}` : "–";
+  const house = houseW == null || houseW < 0 ? "–" : exact ? kwTxt(houseW) : `≥ ${kwTxt(houseW)}`;
   const parts = [prod != null && kwTxt(prod), batt != null && `${t.battery} ${batt < 0 ? "↑" : "↓"} ${kwTxt(batt)}`,
     soc != null && `${Math.round(soc)} %`].filter(Boolean).join(" · ");
   const exporting = grid != null && grid < -0.03;
@@ -148,7 +173,7 @@ function Overview({ hass, t, locale, narrow, ents, bv, opts }: Ctx & { ents: Ent
 
   // phases: Bitvis' local currents, else ours
   const amps = [1, 2, 3].map((n) => conv(bv?.[`phase_current_l${n}`], AMP) ?? conv(ents[`current_l${n}`], AMP));
-  const volts = [1, 2, 3].map((n) => num(bv?.[`phase_voltage_l${n}`]));
+  const volts = [1, 2, 3].map((n) => conv(bv?.[`phase_voltage_l${n}`], VOLT));
   const fuse = conv(ents.fuse_size, AMP, "A") ?? conv(ents.fuse_limit_set, AMP);
   const up = num(ents.uptime);
   const han = st[ents.han_port_state]?.state;
@@ -172,7 +197,7 @@ function Overview({ hass, t, locale, narrow, ents, bv, opts }: Ctx & { ents: Ent
             live: !!local, grid, house: houseW, inv, ev, sources: node, hasEv, soc,
             text: {
               grid: kwTxt(grid), gridSub: grid == null ? "" : exporting ? (f.sources.length ? t.exporting : t.unexplained) : grid > 0.03 ? t.importing : t.idle,
-              house, inv: kwTxt(inv), invSub: inv == null ? t.not_measured : parts,
+              house, inv: kwTxt(inv), invSub: parts || t.not_measured,
               ev: kwTxt(ev), evSub: ev == null ? t.not_measured : ev < -0.03 ? t.ev_discharging : "",
             },
             labels: { grid: t.grid, house: t.house, inverter: node.every((x) => x === "solar" || x === "battery") ? t.inverter : t.production,
@@ -223,7 +248,8 @@ function Overview({ hass, t, locale, narrow, ents, bv, opts }: Ctx & { ents: Ent
 }
 
 function Toggle({ on, set, disabled }: { on: boolean; set: (v: boolean) => void; disabled?: boolean }) {
-  return <label className="switch"><input type="checkbox" checked={on} disabled={disabled} onChange={(e) => set(e.target.checked)} /><span /></label>;
+  // used inside a <label className="setting">, which gives the checkbox its accessible name
+  return <span className="switch"><input type="checkbox" checked={on} disabled={disabled} onChange={(e) => set(e.target.checked)} /><span aria-hidden /></span>;
 }
 
 function Settings({ hass, t, ents, opts, setOpts }: Ctx & { ents: Ents; opts: Options; setOpts: (o: Options) => void }) {
@@ -242,11 +268,11 @@ function Settings({ hass, t, ents, opts, setOpts }: Ctx & { ents: Ents; opts: Op
     .filter((s) => s.entity_id.startsWith("sensor.") && units.includes(s.attributes?.unit_of_measurement)).map((s) => s.entity_id).sort();
   const power = sensors(Object.keys(KW)), pct = sensors(["%"]);
   const pickRow = (key: "production_power" | "battery_power" | "battery_soc" | "ev_power", list: string[]) => (
-    <div className="setting" key={key}><span>{t[key]}</span>
+    <label className="setting" key={key}><span>{t[key]}</span>
       <input className="pick" list={`ph-${key}`} defaultValue={opts[key]} disabled={!admin} placeholder="sensor.…"
         onBlur={(e) => e.target.value.trim() !== opts[key] && save({ [key]: e.target.value.trim() })} />
       <datalist id={`ph-${key}`}>{list.map((id) => <option key={id} value={id}>{hass.states[id]?.attributes?.friendly_name}</option>)}</datalist>
-    </div>
+    </label>
   );
   return (
     <div className="settings-grid">
@@ -254,34 +280,34 @@ function Settings({ hass, t, ents, opts, setOpts }: Ctx & { ents: Ents; opts: Op
       <section className="card">
         <h2>{t.s_sources}<Info text={t.s_sources_info} /></h2>
         {SOURCES.map((x) => (
-          <div className="setting" key={x}>
+          <label className="setting" key={x}>
             <span>{t[`opt_${x}`]}{opts.sources == null && <em className="muted"> · {t.from_hub}</em>}</span>
             <Toggle on={has(x)} disabled={!admin}
               set={(v) => save({ sources: v ? SOURCES.filter((y) => y === x || has(y)) : f.sources.filter((y) => y !== x) })} />
-          </div>
+          </label>
         ))}
-        <div className="setting">
+        <label className="setting">
           <span>{t.has_ev}{opts.has_ev == null && <em className="muted"> · {t.from_hub}</em>}</span>
           <Toggle on={f.ev} disabled={!admin} set={(v) => save({ has_ev: v })} />
-        </div>
+        </label>
       </section>
       <section className="card">
         <h2>{t.s_sensors}<Info text={t.s_sensors_info} /></h2>
         {f.sources.some((x) => x !== "battery" && x !== "v2g") && pickRow("production_power", power)}
         {has("battery") && <>{pickRow("battery_power", power)}{pickRow("battery_soc", pct)}
-          <div className="setting"><span>{t.battery_invert}</span><Toggle on={opts.battery_invert} disabled={!admin} set={(v) => save({ battery_invert: v })} /></div></>}
+          <label className="setting"><span>{t.battery_invert}</span><Toggle on={opts.battery_invert} disabled={!admin} set={(v) => save({ battery_invert: v })} /></label></>}
         {(f.ev || has("v2g")) && pickRow("ev_power", power)}
         {!f.sources.length && !f.ev && <div className="muted">{t.s_sources_info}</div>}
       </section>
       <section className="card">
         <h2>{t.s_panel}</h2>
-        <div className="setting"><span>{t.s_lang}</span>
+        <label className="setting"><span>{t.s_lang}</span>
           <select className="pick" value={opts.language} disabled={!admin} onChange={(e) => save({ language: e.target.value })}>
             <option value="auto">{t.lang_auto}</option>
             {Object.entries(LANG_NAMES).map(([k, n]) => <option key={k} value={k}>{n}</option>)}
-          </select></div>
-        <div className="setting"><span>{t.show_panel}<br /><em className="muted">{t.show_panel_info}</em></span>
-          <Toggle on={opts.show_panel} disabled={!admin} set={(v) => save({ show_panel: v })} /></div>
+          </select></label>
+        <label className="setting"><span>{t.show_panel}<br /><em className="muted">{t.show_panel_info}</em></span>
+          <Toggle on={opts.show_panel} disabled={!admin} set={(v) => save({ show_panel: v })} /></label>
         {msg && <div className="muted">{msg}</div>}
       </section>
     </div>

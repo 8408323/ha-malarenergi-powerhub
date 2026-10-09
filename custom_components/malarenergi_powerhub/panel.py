@@ -14,9 +14,10 @@ from .const import DOMAIN
 WWW = Path(__file__).parent / "www"
 URL = f"/{DOMAIN}_static"
 PANEL = "powerhub"
-KEY = f"{DOMAIN}_panel"  # static path + websocket commands registered (once per HA run)
+KEY = f"{DOMAIN}_panel_static"  # static path + websocket commands: registered once per HA run, never removed
+KEY_PANEL = f"{DOMAIN}_panel"  # the sidebar panel itself: removed with the last entry, re-added on the next setup
 
-# Panel settings live in the (first) config entry's options so they follow the user across devices.
+# Panel settings live in the first loaded config entry's options so they follow the user across devices.
 # sources / has_ev: None = not answered yet, the panel then follows the integration's has_solar/has_battery/ev_type.
 # Entity fields are optional extras the PowerHub can't measure itself; "" means not configured.
 SOURCES = ("solar", "battery", "wind", "generator", "v2g", "other")  # local sources export can come from
@@ -36,8 +37,10 @@ DEFAULT_OPTIONS: dict = {
 
 
 def _entry(hass: HomeAssistant):
-    entries = hass.config_entries.async_entries(DOMAIN)
-    return entries[0] if entries else None
+    """First entry with a running coordinator: disabled/failed entries keep no settings (setup stores the
+    coordinator before registering the panel, so this also works while the entry is still setting up)."""
+    running = hass.data.get(DOMAIN, {})
+    return next((e for e in hass.config_entries.async_entries(DOMAIN) if e.entry_id in running), None)
 
 
 def _options(entry) -> dict:
@@ -60,6 +63,7 @@ def _valid(key: str, value) -> bool:
 
 
 async def _register(hass: HomeAssistant, show: bool) -> None:
+    hass.data[KEY_PANEL] = True
     v = int((WWW / "panel.js").stat().st_mtime)
     await panel_custom.async_register_panel(
         hass,
@@ -76,20 +80,23 @@ async def _register(hass: HomeAssistant, show: bool) -> None:
 
 async def async_setup_panel(hass: HomeAssistant) -> None:
     """Register the panel once; later config entries reuse it."""
-    if hass.data.get(KEY) or not (WWW / "panel.js").exists():
+    if not (WWW / "panel.js").exists():
         return
-    hass.data[KEY] = True
-    await hass.http.async_register_static_paths([StaticPathConfig(URL, str(WWW), cache_headers=False)])
-    websocket_api.async_register_command(hass, ws_settings_get)
-    websocket_api.async_register_command(hass, ws_settings_set)
+    if not hass.data.get(KEY):
+        hass.data[KEY] = True
+        await hass.http.async_register_static_paths([StaticPathConfig(URL, str(WWW), cache_headers=False)])
+        websocket_api.async_register_command(hass, ws_settings_get)
+        websocket_api.async_register_command(hass, ws_settings_set)
+    if hass.data.get(KEY_PANEL):
+        return
     entry = _entry(hass)
     await _register(hass, _options(entry)["show_panel"] if entry else True)
 
 
 @callback
 def async_remove_panel(hass: HomeAssistant) -> None:
-    """Drop the sidebar entry once the last config entry is gone (commands stay registered, harmlessly)."""
-    if hass.data.pop(KEY, None):
+    """Drop the sidebar entry once the last config entry is gone (static path and commands stay registered)."""
+    if hass.data.pop(KEY_PANEL, None):
         frontend.async_remove_panel(hass, PANEL, warn_if_unknown=False)
 
 
@@ -97,7 +104,11 @@ def async_remove_panel(hass: HomeAssistant) -> None:
 @callback
 def ws_settings_get(hass, connection, msg):
     entry = _entry(hass)
-    connection.send_result(msg["id"], {"options": _options(entry) if entry else DEFAULT_OPTIONS})
+    # entry_id lets the panel show the hub of the entry whose settings these are
+    connection.send_result(
+        msg["id"],
+        {"options": _options(entry) if entry else DEFAULT_OPTIONS, "entry_id": entry.entry_id if entry else None},
+    )
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/settings/set", vol.Required("options"): dict})
