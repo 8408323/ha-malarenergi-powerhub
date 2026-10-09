@@ -64,6 +64,7 @@
       "consumption_ytd": { "name": "Förbrukning hittills i år" },
       "production_ytd": { "name": "Produktion hittills i år" },
       "baseload_power": { "name": "Baslast" },
+      "ev_devices": { "name": "Elbilsenheter" },
       "active_invitations": { "name": "Aktiva inbjudningar" },
       "invitees": { "name": "Inbjudna" },
       "latest_notification": { "name": "Senaste notis" }

@@ -203,3 +203,35 @@ async def test_link_is_idempotent_on_our_own_device() -> None:
 async def test_link_skipped_without_mac_or_on_error() -> None:
     for kwargs in ({"mac": ""}, {"error": ValueError("down")}):
         (await _link(**kwargs)).async_get_or_create.assert_not_called()
+
+
+# ── EV chargers / vehicles (#22) ──────────────────────────────────────────────
+
+
+async def test_get_ev_devices_filters_facility_and_maps_fields() -> None:
+    chargers = [
+        {"deviceId": "c1", "facilityId": FACILITY, "name": "Garage", "manufacturer": "Easee", "model": "Home",
+         "maxChargeCurrentA": 32, "userDefinedMaxChargeCurrentA": 16},
+        {"deviceId": "c0", "facilityId": FACILITY, "maxChargeCurrentA": 32, "userDefinedMaxChargeCurrentA": 0},
+        {"deviceId": "cx", "facilityId": FACILITY, "maxChargeCurrentA": 32},
+        {"deviceId": "c2", "facilityId": "other", "maxChargeCurrentA": 32},
+    ]  # fmt: skip
+    vehicles = [{"deviceId": "v1", "facilityId": FACILITY, "batterySize": 77, "maxChargePower": 11.0}]
+    async with aiohttp.ClientSession() as session:
+        with aioresponses() as m:
+            m.get(f"{POWER_BASE_URL}/devices/chargers", payload=chargers)
+            m.get(f"{POWER_BASE_URL}/devices/vehicles", payload=vehicles)
+            client = PowerApiClient(session, "tok")
+            ch, ve = await client.get_ev_chargers(FACILITY), await client.get_ev_vehicles(FACILITY)
+    # the user's limit wins over the hardware max, including an explicit 0
+    assert [(d.device_id, d.max_charge_current_a) for d in ch] == [("c1", 16), ("c0", 0), ("cx", 32)]
+    assert (ve[0].kind, ve[0].battery_kwh, ve[0].max_charge_power_kw) == ("vehicle", 77, 11.0)
+
+
+async def test_get_ev_devices_empty() -> None:
+    async with aiohttp.ClientSession() as session:
+        with aioresponses() as m:
+            m.get(f"{POWER_BASE_URL}/devices/chargers", payload=[])
+            m.get(f"{POWER_BASE_URL}/devices/vehicles", payload=None)
+            client = PowerApiClient(session, "tok")
+            assert await client.get_ev_chargers(FACILITY) == await client.get_ev_vehicles(FACILITY) == []

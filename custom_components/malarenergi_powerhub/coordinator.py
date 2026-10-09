@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+import time
+from dataclasses import dataclass, field
 from dataclasses import replace as dataclass_replace
 from datetime import datetime, timedelta, timezone
 from typing import Awaitable, TypeVar, overload
@@ -19,6 +20,7 @@ from .api import (
     AccountProfile,
     Agreement,
     AuthError,
+    EvDevice,
     FacilityAttributes,
     FacilityControl,
     FacilityInfo,
@@ -45,6 +47,8 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+EV_REFRESH_S = 3600  # EV chargers/vehicles change rarely (set up in the energy company's app)
 
 
 def provider_of(entry: ConfigEntry) -> str:
@@ -91,6 +95,7 @@ class PowerHubData:
     facility_control: FacilityControl | None  # Fuse/power limits
     fcr_status: FcrStatus | None  # FCR enablement
     hourly_energy_today: list[HourlyEnergy]  # Hourly energy buckets (today)
+    ev_devices: list[EvDevice] = field(default_factory=list)  # EV chargers/vehicles (static)
 
 
 def _day_start_ms() -> int:
@@ -152,6 +157,8 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
         self._cached_agreements: list[Agreement] | None = None
         self._cached_facility_info: FacilityInfo | None = None
         self._facility_info_resolved = False
+        self._ev: dict[str, list[EvDevice]] = {"chargers": [], "vehicles": []}
+        self._ev_due = {"chargers": float("-inf"), "vehicles": float("-inf")}  # monotonic time of next fetch
         # Names of non-critical endpoints currently failing. Used to log the
         # first failure at WARNING and subsequent repeats at DEBUG (avoids
         # flooding the HA log every 60s while a backend endpoint stays down),
@@ -249,6 +256,16 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
                             "Please verify the facility_id in your configuration or reconfigure the integration.",
                             self._facility_id,
                         )
+
+            # Chargers and vehicles are fetched separately (one failing must not hide
+            # the other) and refreshed hourly; a failed refresh keeps the last good list
+            # and is retried on the next poll.
+            for kind, fetch in (("chargers", power_client.get_ev_chargers), ("vehicles", power_client.get_ev_vehicles)):
+                if time.monotonic() >= self._ev_due[kind]:
+                    found = await self._fetch_static(fetch(self._facility_id), f"ev_{kind}")
+                    if found is not None:
+                        self._ev[kind] = found
+                        self._ev_due[kind] = time.monotonic() + EV_REFRESH_S
 
             # Notification settings (fetched each poll — user may change in app)
             notification_settings = await power_client.get_notification_settings(self._facility_id)
@@ -359,6 +376,7 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
             hourly_energy_today=hourly_energy_today,
             monthly_insights=monthly_insights,
             production_ytd_kwh=production_ytd_kwh,
+            ev_devices=self._ev["chargers"] + self._ev["vehicles"],
         )
 
     async def async_update_facility_control(self, **kwargs) -> None:

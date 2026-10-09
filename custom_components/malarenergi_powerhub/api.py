@@ -602,6 +602,20 @@ class PowerDiagnostics:
 
 
 @dataclass
+class EvDevice:
+    """An EV charger or vehicle registered in the energy company's app (static info only)."""
+
+    kind: str  # "charger" / "vehicle"
+    device_id: str
+    name: str | None
+    manufacturer: str | None
+    model: str | None
+    max_charge_current_a: float | None = None  # chargers: the user's limit, else the hardware max
+    battery_kwh: int | None = None  # vehicles
+    max_charge_power_kw: float | None = None  # vehicles
+
+
+@dataclass
 class FacilityControl:
     fuse_limit_a: float
     power_limit_kw: float
@@ -858,6 +872,44 @@ class PowerApiClient:
             facility_id=d.get("facilityId", ""),
             mac_address=d.get("macAddress", ""),
         )
+
+    async def get_ev_chargers(self, facility_id: str) -> list[EvDevice]:
+        """EV chargers of the facility (Device Service v3 schema)."""
+        chargers = await self._get_json("/devices/chargers") or []
+        return [
+            EvDevice(
+                kind="charger",
+                device_id=c.get("deviceId", ""),
+                name=c.get("name"),
+                manufacturer=c.get("manufacturer"),
+                model=c.get("model"),
+                # the user's limit, which may legitimately be 0; else the hardware max
+                max_charge_current_a=(
+                    c["userDefinedMaxChargeCurrentA"]
+                    if c.get("userDefinedMaxChargeCurrentA") is not None
+                    else c.get("maxChargeCurrentA")
+                ),
+            )
+            for c in chargers
+            if c.get("facilityId") == facility_id
+        ]
+
+    async def get_ev_vehicles(self, facility_id: str) -> list[EvDevice]:
+        """Vehicles of the facility (Device Service v3 schema)."""
+        vehicles = await self._get_json("/devices/vehicles") or []
+        return [
+            EvDevice(
+                kind="vehicle",
+                device_id=v.get("deviceId", ""),
+                name=v.get("name"),
+                manufacturer=v.get("manufacturer"),
+                model=v.get("model"),
+                battery_kwh=v.get("batterySize"),
+                max_charge_power_kw=v.get("maxChargePower"),
+            )
+            for v in vehicles
+            if v.get("facilityId") == facility_id
+        ]
 
     async def get_current_power(self, facility_id: str) -> PowerTelemetry | None:
         """Fetch the most recent 1-minute power sample."""

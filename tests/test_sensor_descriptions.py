@@ -602,3 +602,14 @@ async def test_async_setup_entry_creates_sensor_and_notification_sensor_entities
 
     assert any(isinstance(e, PowerHubSensor) for e in added)
     assert any(isinstance(e, NotificationSensor) for e in added)
+
+
+def test_powerhub_sensor_ev_devices_count_and_attrs() -> None:
+    from custom_components.malarenergi_powerhub.api import EvDevice
+
+    desc = next(s for s in SENSORS if s.key == "ev_devices")
+    coord = _make_coord()
+    coord.data.ev_devices = [EvDevice("charger", "c1", "Garage", "Easee", "Home", max_charge_current_a=16)]
+    sensor = PowerHubSensor(coord, desc)
+    assert desc.value_fn(coord.data) == 1
+    assert sensor.extra_state_attributes["devices"][0]["max_charge_current_a"] == 16

@@ -116,6 +116,7 @@ Read-only, sourced from your Mälarenergi account. Diagnostic.
 | Entity | State | Extra attributes |
 |---|---|---|
 | `sensor.powerhub_active_invitations` | Count of unredeemed invitations | `invitations[].id / code / claimed / expires / created` |
+| `sensor.powerhub_ev_devices` | EV chargers and vehicles registered in your energy company's app (diagnostic) | `devices[].kind / device_id / name / manufacturer / model / max_charge_current_a / battery_kwh / max_charge_power_kw` |
 | `sensor.powerhub_invitees` | Comma-separated names | `count`, `invitees[].id / name / share_all_devices` |
 
 The `code` attribute on `active_invitations` is what the recipient types into the Mälarenergi app.
