@@ -1,6 +1,6 @@
 # Agent Instructions — ha-malarenergi-powerhub
 
-Home Assistant custom integration for the Bitvis PowerHub cloud API (Mälarenergi, Boo Energi, Norrtälje Energi; per-provider Flow backend, see `const.PROVIDERS`).
+Home Assistant custom integration for the Bitvis PowerHub cloud API (Mälarenergi, Kraftringen and ~17 other energy companies; per-provider Flow backend, see `const.PROVIDERS`).
 See [README.md](README.md) for hardware/API context and [CONTRIBUTING.md](CONTRIBUTING.md) for branch/commit conventions.
 
 ## Build & Test

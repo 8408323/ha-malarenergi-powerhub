@@ -1,6 +1,6 @@
 {
   "domain": "malarenergi_powerhub",
-  "name": "PowerHub (Mälarenergi, Boo Energi, Norrtälje Energi)",
+  "name": "PowerHub (Mälarenergi, Kraftringen and other Bitvis energy companies)",
   "codeowners": ["@8408323"],
   "config_flow": true,
   "dependencies": [],

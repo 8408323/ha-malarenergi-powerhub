@@ -1,4 +1,4 @@
-"""PowerHub integration for Home Assistant (Mälarenergi, Boo Energi, Norrtälje Energi)."""
+"""PowerHub integration for Home Assistant (Bitvis Power Flow energy companies)."""
 
 from __future__ import annotations
 
@@ -12,7 +12,6 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import PowerApiClient, PowerHubApiClient
@@ -57,10 +56,12 @@ def _get_client(hass: HomeAssistant, facility_id: str | None) -> tuple[PowerHubA
 
 
 async def _async_link_hub(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Give our device the hub's MAC, so HA shows one device together with the
-    core Bitvis Power Hub integration (local UDP), which identifies the hub by MAC.
+    """Give our device the hub's MAC, which is how the core Bitvis Power Hub
+    integration (local UDP) and router trackers identify the same hub.
 
-    Best-effort: the entities work without it.
+    Runs before the platforms create our device, so on a first setup HA attaches
+    our entities to an existing device with that MAC. Best-effort: the entities
+    work without it.
     """
     client = PowerApiClient(async_get_clientsession(hass), entry.data[CONF_TOKEN])
     try:
@@ -71,18 +72,15 @@ async def _async_link_hub(hass: HomeAssistant, entry: ConfigEntry) -> None:
     if not mac:
         return
     connection = (dr.CONNECTION_NETWORK_MAC, dr.format_mac(mac))
-    dev_reg = dr.async_get(hass)
-    ours = dev_reg.async_get_device(identifiers={(DOMAIN, entry.entry_id)})
-    hub = dev_reg.async_get_device(connections={connection})
-    if ours and hub and ours.id != hub.id:
-        # Core Bitvis was set up before we had the link: both devices exist and a
-        # MAC can't be on two. Move our entities onto its device and drop ours.
-        dev_reg.async_update_device(hub.id, add_config_entry_id=entry.entry_id)
-        ent_reg = er.async_get(hass)
-        for ent in er.async_entries_for_device(ent_reg, ours.id, include_disabled_entities=True):
-            ent_reg.async_update_entity(ent.entity_id, device_id=hub.id)
-        dev_reg.async_remove_device(ours.id)
-    dev_reg.async_get_or_create(config_entry_id=entry.entry_id, connections={connection}, **device_info(entry))
+    try:
+        dr.async_get(hass).async_get_or_create(
+            config_entry_id=entry.entry_id, connections={connection}, **device_info(entry)
+        )
+    except dr.DeviceConnectionCollisionError:
+        # HA < 2026.10 keeps one device per MAC, and another integration (bitvis,
+        # or a router's device tracker) already owns it. Leave both devices alone:
+        # moving entities onto a device we don't own is not ours to decide.
+        _LOGGER.debug("PowerHub MAC %s already belongs to another device, not linking", mac)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

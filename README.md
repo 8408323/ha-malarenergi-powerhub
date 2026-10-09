@@ -6,7 +6,7 @@ Home Assistant custom integration for the **PowerHub** — the HAN-port energy m
 |---|---|
 | [Mälarenergi](https://www.malarenergi.se/el/elavtal/powerhub/) | Tested |
 | Boo Energi | Confirmed working by a user |
-| Norrtälje Energi | Backend exists, untested |
+| Bjäre Kraft, Borås Elhandel, Dala Energi, Falu Energi, Kinnekulle Energi, Kraftringen, Kvänum Energi, Landskrona Energi, Norrtälje Energi, Nossebro Energi, Skånska Energi, Södra Hallands Kraft, Tranås Energi, Trelleborgs Energi, Vaggeryds Energi, Vänerenergi, Varbergsortens Elkraft | Bitvis backend with BankID login exists; untested — please report! |
 
 Another company not listed? Type its name in the setup dialog (lowercase, no spaces, å/ä/ö → a/a/o) and open an issue so it can be added.
 

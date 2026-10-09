@@ -9,6 +9,7 @@ import aiohttp
 import pytest
 from aioresponses import aioresponses
 from homeassistant import config_entries
+from homeassistant.helpers import device_registry as dr
 
 from custom_components.malarenergi_powerhub import _async_link_hub
 from custom_components.malarenergi_powerhub.api import (
@@ -160,43 +161,35 @@ async def test_import_defaults_provider() -> None:
 # ── device link with the core bitvis integration ──────────────────────────────
 
 
-async def _link(*, mac=MAC, ours=None, hub=None, error=None):
+async def _link(*, mac=MAC, error=None, collision=False):
     entry = _entry()
-    dev_reg, ent_reg = MagicMock(), MagicMock()
-    dev_reg.async_get_device.side_effect = lambda identifiers=None, connections=None: ours if identifiers else hub
+    dev_reg = MagicMock()
+    if collision:
+        dev_reg.async_get_or_create.side_effect = dr.DeviceConnectionCollisionError({("mac", mac)}, MagicMock())
     get_device = AsyncMock(side_effect=error, return_value=SimpleNamespace(mac_address=mac))
     with (
         patch("custom_components.malarenergi_powerhub.async_get_clientsession"),
         patch("custom_components.malarenergi_powerhub.PowerApiClient", return_value=MagicMock(get_device=get_device)),
         patch("custom_components.malarenergi_powerhub.dr.async_get", return_value=dev_reg),
-        patch("custom_components.malarenergi_powerhub.er.async_get", return_value=ent_reg),
-        patch(
-            "custom_components.malarenergi_powerhub.er.async_entries_for_device",
-            return_value=[SimpleNamespace(entity_id="sensor.powerhub_x")],
-        ),
     ):
         await _async_link_hub(MagicMock(), entry)
     get_device.assert_awaited_once_with(FACILITY)
-    return dev_reg, ent_reg
+    return dev_reg
 
 
 async def test_link_adds_mac_to_our_device() -> None:
-    dev_reg, ent_reg = await _link(ours=SimpleNamespace(id="ours"))
-    kwargs = dev_reg.async_get_or_create.call_args.kwargs
+    kwargs = (await _link()).async_get_or_create.call_args.kwargs
     assert kwargs["connections"] == {("mac", "94:54:c5:aa:bb:cc")}
     assert kwargs["identifiers"] == {(DOMAIN, "eid-1")}
+    assert kwargs["config_entry_id"] == "eid-1"
+
+
+async def test_link_leaves_a_device_owned_by_another_integration_alone() -> None:
+    dev_reg = await _link(collision=True)  # must not raise
     dev_reg.async_remove_device.assert_not_called()
-
-
-async def test_link_moves_onto_existing_bitvis_device() -> None:
-    dev_reg, ent_reg = await _link(ours=SimpleNamespace(id="ours"), hub=SimpleNamespace(id="hub"))
-    dev_reg.async_update_device.assert_called_once_with("hub", add_config_entry_id="eid-1")
-    ent_reg.async_update_entity.assert_called_once_with("sensor.powerhub_x", device_id="hub")
-    dev_reg.async_remove_device.assert_called_once_with("ours")
-    dev_reg.async_get_or_create.assert_called_once()
+    dev_reg.async_update_device.assert_not_called()
 
 
 async def test_link_skipped_without_mac_or_on_error() -> None:
     for kwargs in ({"mac": ""}, {"error": ValueError("down")}):
-        dev_reg, _ = await _link(**kwargs)
-        dev_reg.async_get_or_create.assert_not_called()
+        (await _link(**kwargs)).async_get_or_create.assert_not_called()
