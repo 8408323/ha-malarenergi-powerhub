@@ -18,7 +18,7 @@ from .api import PowerApiClient, PowerHubApiClient
 from .const import CONF_FACILITY_ID, CONF_TOKEN, DOMAIN
 from .coordinator import PowerHubCoordinator, device_info, provider_of
 from .notifications_coordinator import NotificationsCoordinator
-from .panel import async_refresh_panel, async_remove_panel, async_setup_panel
+from .panel import async_remove_panel, async_setup_panel
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -191,5 +191,5 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.services.async_remove(DOMAIN, SERVICE_DELETE_INVITATION)
         async_remove_panel(hass)
     elif unload_ok:
-        await async_refresh_panel(hass)
+        await async_setup_panel(hass)  # another entry's settings may apply now
     return unload_ok

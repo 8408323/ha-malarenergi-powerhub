@@ -31,10 +31,7 @@ from custom_components.malarenergi_powerhub.const import (
 @pytest.fixture(autouse=True)
 def _no_panel():
     """The sidebar panel has its own tests (test_panel.py)."""
-    with (
-        patch("custom_components.malarenergi_powerhub.async_setup_panel", new=AsyncMock()) as setup,
-        patch("custom_components.malarenergi_powerhub.async_refresh_panel", new=AsyncMock()),
-    ):
+    with patch("custom_components.malarenergi_powerhub.async_setup_panel", new=AsyncMock()) as setup:
         yield setup
 
 

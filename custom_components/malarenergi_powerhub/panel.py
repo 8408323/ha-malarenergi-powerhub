@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 
 import voluptuous as vol
@@ -15,7 +16,9 @@ WWW = Path(__file__).parent / "www"
 URL = f"/{DOMAIN}_static"
 PANEL = "powerhub"
 KEY = f"{DOMAIN}_panel_static"  # static path + websocket commands: registered once per HA run, never removed
-KEY_PANEL = f"{DOMAIN}_panel"  # the sidebar panel itself: removed with the last entry, re-added on the next setup
+KEY_PANEL = f"{DOMAIN}_panel"  # show_panel value the sidebar panel is registered with; absent = not registered
+KEY_LOCK = f"{DOMAIN}_panel_lock"
+_NONE = object()
 
 # Panel settings live in the first loaded config entry's options so they follow the user across devices.
 # sources / has_ev: None = not answered yet, the panel then follows the integration's has_solar/has_battery/ev_type.
@@ -75,36 +78,37 @@ async def _register(hass: HomeAssistant, show: bool) -> None:
         require_admin=False,
         config={},
     )
-    hass.data[KEY_PANEL] = True  # only once it exists: a failed registration is retried on the next setup
 
 
 async def async_setup_panel(hass: HomeAssistant) -> None:
-    """Register the panel once; later config entries reuse it."""
+    """Make the registration match the current state; called on every setup/unload/settings change.
+
+    Entries set up concurrently, the active entry (_entry) can change, and a registration can fail,
+    so rather than one-shot flags this reconciles under a lock: static path + commands once per HA
+    run, and the sidebar panel (re-)registered whenever its show_panel differs from what's registered.
+    """
     if not (WWW / "panel.js").exists():
         return
-    if not hass.data.get(KEY):
-        await hass.http.async_register_static_paths([StaticPathConfig(URL, str(WWW), cache_headers=False)])
-        websocket_api.async_register_command(hass, ws_settings_get)
-        websocket_api.async_register_command(hass, ws_settings_set)
-        hass.data[KEY] = True
-    if hass.data.get(KEY_PANEL):
-        return
-    entry = _entry(hass)
-    await _register(hass, _options(entry)["show_panel"] if entry else True)
+    async with hass.data.setdefault(KEY_LOCK, asyncio.Lock()):
+        if not hass.data.get(KEY):
+            await hass.http.async_register_static_paths([StaticPathConfig(URL, str(WWW), cache_headers=False)])
+            websocket_api.async_register_command(hass, ws_settings_get)
+            websocket_api.async_register_command(hass, ws_settings_set)
+            hass.data[KEY] = True
+        entry = _entry(hass)
+        show = _options(entry)["show_panel"] if entry else True
+        if hass.data.get(KEY_PANEL, _NONE) == show:
+            return
+        async_remove_panel(hass)
+        await _register(hass, show)
+        hass.data[KEY_PANEL] = show  # only once it exists: a failed registration is retried next time
 
 
 @callback
 def async_remove_panel(hass: HomeAssistant) -> None:
-    """Drop the sidebar entry once the last config entry is gone (static path and commands stay registered)."""
-    if hass.data.pop(KEY_PANEL, None):
+    """Drop the sidebar entry (the static path and commands stay registered for the HA run)."""
+    if hass.data.pop(KEY_PANEL, _NONE) is not _NONE:
         frontend.async_remove_panel(hass, PANEL, warn_if_unknown=False)
-
-
-async def async_refresh_panel(hass: HomeAssistant) -> None:
-    """Another entry was unloaded: re-register so show_panel follows the entry whose settings now apply."""
-    if hass.data.get(KEY_PANEL):
-        async_remove_panel(hass)
-        await async_setup_panel(hass)
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/settings/get"})
@@ -131,7 +135,5 @@ async def ws_settings_set(hass, connection, msg):
     new = {**old, **clean}
     kept = {k: v for k, v in entry.options.items() if k not in LEGACY}  # migrated into sources
     hass.config_entries.async_update_entry(entry, options={**kept, **new})
-    if new["show_panel"] != old["show_panel"]:
-        frontend.async_remove_panel(hass, PANEL, warn_if_unknown=False)
-        await _register(hass, new["show_panel"])
+    await async_setup_panel(hass)  # applies a changed show_panel
     connection.send_result(msg["id"], {"options": new})

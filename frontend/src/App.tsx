@@ -261,15 +261,17 @@ function Toggle({ on, set, disabled }: { on: boolean; set: (v: boolean) => void;
 
 function Settings({ hass, t, ents, opts, setOpts }: Ctx & { ents: Ents; opts: Options; setOpts: (o: Options) => void }) {
   const [msg, setMsg] = useState("");
+  const seq = useRef(0);  // only the latest save's response may set the options (older ones would revert it)
   const admin = !!hass.user?.is_admin;
   const save = (patch: Partial<Options>) => {
     setOpts({ ...opts, ...patch });  // optimistic; a failed save reloads what the server actually has
+    const id = ++seq.current;
     hass.connection.sendMessagePromise({ type: "malarenergi_powerhub/settings/set", options: patch })
-      .then((r: any) => { setOpts(r.options); setMsg(t.saved); setTimeout(() => setMsg(""), 1500); })
+      .then((r: any) => { if (id !== seq.current) return; setOpts(r.options); setMsg(t.saved); setTimeout(() => setMsg(""), 1500); })
       .catch((e: any) => {
         setMsg(e?.message ?? String(e));
         hass.connection.sendMessagePromise({ type: "malarenergi_powerhub/settings/get" })
-          .then((r: any) => setOpts(r.options)).catch(() => {});
+          .then((r: any) => { if (id === seq.current) setOpts(r.options); }).catch(() => {});
       });
   };
   const f = flags(hass, ents, opts);
@@ -280,7 +282,8 @@ function Settings({ hass, t, ents, opts, setOpts }: Ctx & { ents: Ents; opts: Op
   const power = sensors(Object.keys(KW)), pct = sensors(["%"]);
   const pickRow = (key: "production_power" | "battery_power" | "battery_soc" | "ev_power", list: string[]) => (
     <label className="setting" key={key}><span>{t[key]}</span>
-      <input className="pick" list={`ph-${key}`} defaultValue={opts[key]} disabled={!admin} placeholder="sensor.…"
+      {/* keyed by the stored value: a rolled-back save remounts the field with it */}
+      <input key={opts[key]} className="pick" list={`ph-${key}`} defaultValue={opts[key]} disabled={!admin} placeholder="sensor.…"
         onBlur={(e) => e.target.value.trim() !== opts[key] && save({ [key]: e.target.value.trim() })} />
       <datalist id={`ph-${key}`}>{list.map((id) => <option key={id} value={id}>{hass.states[id]?.attributes?.friendly_name}</option>)}</datalist>
     </label>
@@ -319,7 +322,7 @@ function Settings({ hass, t, ents, opts, setOpts }: Ctx & { ents: Ents; opts: Op
           </select></label>
         <label className="setting"><span>{t.show_panel}<br /><em className="muted">{t.show_panel_info}</em></span>
           <Toggle on={opts.show_panel} disabled={!admin} set={(v) => save({ show_panel: v })} /></label>
-        {msg && <div className="muted">{msg}</div>}
+        <div className="muted" role="status" aria-live="polite">{msg}</div>
       </section>
     </div>
   );
