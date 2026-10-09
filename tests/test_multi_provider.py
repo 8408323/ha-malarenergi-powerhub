@@ -188,6 +188,13 @@ async def test_link_leaves_a_device_owned_by_another_integration_alone() -> None
     dev_reg.async_get_or_create.assert_not_called()
 
 
+async def test_link_always_tags_our_device_when_devices_are_per_entry() -> None:
+    """HA 2026.8+: core bitvis owning the MAC doesn't stop us tagging our own device."""
+    with patch("custom_components.malarenergi_powerhub._DEVICE_PER_ENTRY", True):
+        dev_reg = await _link(owner=SimpleNamespace(config_entries={"bitvis-entry"}))
+    dev_reg.async_get_or_create.assert_called_once()
+
+
 async def test_link_is_idempotent_on_our_own_device() -> None:
     dev_reg = await _link(owner=SimpleNamespace(config_entries={"eid-1"}))
     dev_reg.async_get_or_create.assert_called_once()

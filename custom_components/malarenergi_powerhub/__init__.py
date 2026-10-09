@@ -56,6 +56,11 @@ def _get_client(hass: HomeAssistant, facility_id: str | None) -> tuple[PowerHubA
     raise ValueError(f"No config entry found for facility_id={facility_id!r}")
 
 
+# Since HA 2026.8 every device belongs to one config entry and connections are
+# per entry, so tagging our own device with the MAC can't collide with anyone's.
+_DEVICE_PER_ENTRY = hasattr(dr.DeviceEntry, "config_entry_id")
+
+
 def _refresh_invitations(hass: HomeAssistant) -> None:
     """Invitations are account-wide, so refresh every facility's coordinator (best-effort)."""
     for e in hass.config_entries.async_entries(DOMAIN):
@@ -82,10 +87,10 @@ async def _async_link_hub(hass: HomeAssistant, entry: ConfigEntry) -> None:
     connection = (dr.CONNECTION_NETWORK_MAC, dr.format_mac(mac))
     dev_reg = dr.async_get(hass)
     owner = dev_reg.async_get_device(connections={connection})
-    if owner and entry.entry_id not in owner.config_entries:
-        # Before HA 2026.10 a MAC belongs to one device, and another integration
-        # (bitvis, or a router's device tracker) already has it. get_or_create
-        # would allow the collision and steal the MAC; leave both devices alone.
+    if not _DEVICE_PER_ENTRY and owner and entry.entry_id not in owner.config_entries:
+        # Older HA shares one device per MAC, and another integration (e.g. a
+        # router's device tracker) already has it. get_or_create would allow the
+        # collision and steal the MAC; leave both devices alone.
         _LOGGER.debug("PowerHub MAC %s already belongs to another device, not linking", mac)
         return
     dev_reg.async_get_or_create(config_entry_id=entry.entry_id, connections={connection}, **device_info(entry))
