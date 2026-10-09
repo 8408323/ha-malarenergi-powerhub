@@ -31,3 +31,9 @@ delete_invitation:
       example: "7adfa928-4081-4c3e-a27d-55c3833fd383"
       selector:
         text:
+    facility_id:
+      name: Facility ID
+      description: Only needed with PowerHubs from several energy companies — a facility of the company the invitation was created on. Defaults to the first configured facility.
+      required: false
+      selector:
+        text:

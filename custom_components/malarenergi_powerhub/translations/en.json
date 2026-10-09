@@ -113,6 +113,10 @@
         "invitation_id": {
           "name": "Invitation ID",
           "description": "The ID of the invitation to delete."
+        },
+        "facility_id": {
+          "name": "Facility ID",
+          "description": "Only needed with PowerHubs from several energy companies — a facility of the company the invitation was created on."
         }
       }
     }

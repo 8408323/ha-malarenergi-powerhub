@@ -41,6 +41,7 @@ _CREATE_SCHEMA = vol.Schema(
 _DELETE_SCHEMA = vol.Schema(
     {
         vol.Required("invitation_id"): cv.string,
+        vol.Optional(CONF_FACILITY_ID): cv.string,
     }
 )
 
@@ -136,10 +137,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             hass.async_create_task(coordinator.async_request_refresh())
 
     async def handle_delete_invitation(call: ServiceCall) -> None:
-        # Invitations are account-wide; any config entry's token is valid.
+        # Invitations are account-wide, but per energy company: with entries for
+        # several companies, facility_id picks the one the invitation was made on.
         invitation_id = call.data["invitation_id"]
         try:
-            client, _ = _get_client(hass, None)
+            client, _ = _get_client(hass, call.data.get(CONF_FACILITY_ID))
         except ValueError as err:
             _LOGGER.error("delete_invitation service failed: %s", err)
             return

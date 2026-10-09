@@ -72,13 +72,14 @@ async def test_get_device_picks_the_facilitys_hub() -> None:
     assert (await _device(hubs)).mac_address == "2"
 
 
-async def test_get_device_lone_hub_is_ours() -> None:
-    assert (await _device([{"facilityId": "other", "macAddress": "1"}])).mac_address == "1"
+async def test_get_device_rejects_a_hub_at_another_facility() -> None:
+    for hubs in ([{"facilityId": "other"}], [{"facilityId": "a"}, {"facilityId": "b"}]):
+        with pytest.raises(ValueError, match="No PowerHub device for facility"):
+            await _device(hubs)
 
 
-async def test_get_device_no_match_among_several_raises() -> None:
-    with pytest.raises(ValueError, match="No PowerHub device for facility"):
-        await _device([{"facilityId": "a"}, {"facilityId": "b"}])
+async def test_get_device_without_facility_takes_the_first() -> None:
+    assert (await _device([{"facilityId": "a", "macAddress": "1"}], facility_id=None)).mac_address == "1"
 
 
 # ── coordinator helpers ───────────────────────────────────────────────────────

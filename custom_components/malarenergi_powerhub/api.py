@@ -841,17 +841,17 @@ class PowerApiClient:
     async def get_device(self, facility_id: str | None = None) -> PowerHubDevice:
         """Get PowerHub device info (deviceId, model, facilityId, macAddress).
 
-        With several hubs on the account, facility_id picks that facility's one.
+        With facility_id, only that facility's hub (accounts can have several
+        facilities, not all with a hub).
         """
         data = await self._get_json("/devices/powerhub")
         if isinstance(data, list):
             if not data:
                 raise ValueError("No PowerHub device returned by backend")
             ours = [x for x in data if facility_id is None or x.get("facilityId") == facility_id]
-            # A lone hub is ours even if its facilityId is spelled differently; among several, only a match is
-            if not ours and len(data) > 1:
+            if not ours:  # the account's hub(s) sit at other facilities
                 raise ValueError(f"No PowerHub device for facility {facility_id}")
-            d = (ours or data)[0]
+            d = ours[0]
         else:
             d = data
         return PowerHubDevice(

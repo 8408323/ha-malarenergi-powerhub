@@ -113,6 +113,10 @@
         "invitation_id": {
           "name": "Inbjudans-ID",
           "description": "ID för inbjudan som ska tas bort."
+        },
+        "facility_id": {
+          "name": "Anläggnings-ID",
+          "description": "Behövs bara med PowerHub från flera energibolag — en anläggning hos bolaget där inbjudan skapades."
         }
       }
     }

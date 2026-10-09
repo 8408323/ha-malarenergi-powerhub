@@ -768,7 +768,7 @@ class TestAsyncStepUser:
     async def test_first_poll_exception_shows_cannot_connect(self) -> None:
         flow = _make_user_flow()
 
-        async def _exploding_poll(session, txn_id):
+        async def _exploding_poll(session, txn_id, provider):
             raise RuntimeError("unexpected")
             yield  # makes it an async generator
 
@@ -850,7 +850,7 @@ class TestRunPoller:
         flow = _make_user_flow()
         flow._transaction_id = "txn-123"
 
-        async def _exploding_poll(session, txn_id):
+        async def _exploding_poll(session, txn_id, provider):
             raise RuntimeError("boom")
             yield  # makes it an async generator
 
