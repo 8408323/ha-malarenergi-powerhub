@@ -314,6 +314,7 @@ async def test_async_update_data_keeps_chargers_when_vehicles_fail() -> None:
 
     result = await coord._async_update_data()
     assert result.ev_devices == [charger]
+    assert coord._cached_ev_vehicles is None
 
     await coord._async_update_data()  # next poll: vehicles retried, chargers still cached
     assert (power.get_ev_chargers.await_count, power.get_ev_vehicles.await_count) == (1, 2)
