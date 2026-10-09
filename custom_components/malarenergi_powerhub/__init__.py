@@ -56,6 +56,13 @@ def _get_client(hass: HomeAssistant, facility_id: str | None) -> tuple[PowerHubA
     raise ValueError(f"No config entry found for facility_id={facility_id!r}")
 
 
+def _refresh_invitations(hass: HomeAssistant) -> None:
+    """Invitations are account-wide, so refresh every facility's coordinator (best-effort)."""
+    for e in hass.config_entries.async_entries(DOMAIN):
+        if coordinator := hass.data[DOMAIN].get(e.entry_id):
+            hass.async_create_task(coordinator.async_request_refresh())
+
+
 async def _async_link_hub(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Give our device the hub's MAC, which is how the core Bitvis Power Hub
     integration (local UDP) and router trackers identify the same hub.
@@ -73,15 +80,15 @@ async def _async_link_hub(hass: HomeAssistant, entry: ConfigEntry) -> None:
     if not mac:
         return
     connection = (dr.CONNECTION_NETWORK_MAC, dr.format_mac(mac))
-    try:
-        dr.async_get(hass).async_get_or_create(
-            config_entry_id=entry.entry_id, connections={connection}, **device_info(entry)
-        )
-    except dr.DeviceConnectionCollisionError:
-        # HA < 2026.10 keeps one device per MAC, and another integration (bitvis,
-        # or a router's device tracker) already owns it. Leave both devices alone:
-        # moving entities onto a device we don't own is not ours to decide.
+    dev_reg = dr.async_get(hass)
+    owner = dev_reg.async_get_device(connections={connection})
+    if owner and entry.entry_id not in owner.config_entries:
+        # Before HA 2026.10 a MAC belongs to one device, and another integration
+        # (bitvis, or a router's device tracker) already has it. get_or_create
+        # would allow the collision and steal the MAC; leave both devices alone.
         _LOGGER.debug("PowerHub MAC %s already belongs to another device, not linking", mac)
+        return
+    dev_reg.async_get_or_create(config_entry_id=entry.entry_id, connections={connection}, **device_info(entry))
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -131,10 +138,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             title="PowerHub — Invitation Created",
             notification_id=f"powerhub_invitation_{result.invitation_id}",
         )
-        # Refresh coordinator so invitation count sensor updates immediately (best-effort)
-        coordinator = hass.data[DOMAIN].get(entry.entry_id)
-        if coordinator:
-            hass.async_create_task(coordinator.async_request_refresh())
+        _refresh_invitations(hass)
 
     async def handle_delete_invitation(call: ServiceCall) -> None:
         # Invitations are account-wide, but per energy company: with entries for
@@ -151,10 +155,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             _LOGGER.error("delete_invitation API call failed: %s", err)
             raise HomeAssistantError(f"Failed to delete invitation: {err}") from err
         _LOGGER.info("Deleted invitation %s", invitation_id)
-        # Refresh coordinator so invitation count sensor updates immediately (best-effort)
-        coordinator = hass.data[DOMAIN].get(entry.entry_id)
-        if coordinator:
-            hass.async_create_task(coordinator.async_request_refresh())
+        _refresh_invitations(hass)
 
     if not hass.services.has_service(DOMAIN, SERVICE_CREATE_INVITATION):
         hass.services.async_register(

@@ -358,6 +358,7 @@ async def test_handle_create_invitation_raises_ha_error_on_api_failure() -> None
 async def test_handle_create_invitation_schedules_coordinator_refresh() -> None:
     hass = _make_setup_hass()
     entry = _make_entry("fac-1", entry_id="eid-1")
+    hass.config_entries.async_entries.return_value = [entry]
     coord, notif = _make_coordinators()
 
     create_hdl, _ = await _setup_and_get_handlers(hass, entry, coord, notif)
@@ -470,6 +471,7 @@ async def test_handle_delete_invitation_raises_ha_error_on_api_failure() -> None
 async def test_handle_delete_invitation_schedules_coordinator_refresh() -> None:
     hass = _make_setup_hass()
     entry = _make_entry("fac-1", entry_id="eid-1")
+    hass.config_entries.async_entries.return_value = [entry]
     coord, notif = _make_coordinators()
 
     _, delete_hdl = await _setup_and_get_handlers(hass, entry, coord, notif)

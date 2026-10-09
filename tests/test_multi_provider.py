@@ -9,7 +9,6 @@ import aiohttp
 import pytest
 from aioresponses import aioresponses
 from homeassistant import config_entries
-from homeassistant.helpers import device_registry as dr
 
 from custom_components.malarenergi_powerhub import _async_link_hub
 from custom_components.malarenergi_powerhub.api import (
@@ -162,11 +161,10 @@ async def test_import_defaults_provider() -> None:
 # ── device link with the core bitvis integration ──────────────────────────────
 
 
-async def _link(*, mac=MAC, error=None, collision=False):
+async def _link(*, mac=MAC, error=None, owner=None):
     entry = _entry()
     dev_reg = MagicMock()
-    if collision:
-        dev_reg.async_get_or_create.side_effect = dr.DeviceConnectionCollisionError({("mac", mac)}, MagicMock())
+    dev_reg.async_get_device.return_value = owner
     get_device = AsyncMock(side_effect=error, return_value=SimpleNamespace(mac_address=mac))
     with (
         patch("custom_components.malarenergi_powerhub.async_get_clientsession"),
@@ -186,9 +184,13 @@ async def test_link_adds_mac_to_our_device() -> None:
 
 
 async def test_link_leaves_a_device_owned_by_another_integration_alone() -> None:
-    dev_reg = await _link(collision=True)  # must not raise
-    dev_reg.async_remove_device.assert_not_called()
-    dev_reg.async_update_device.assert_not_called()
+    dev_reg = await _link(owner=SimpleNamespace(config_entries={"unifi-entry"}))
+    dev_reg.async_get_or_create.assert_not_called()
+
+
+async def test_link_is_idempotent_on_our_own_device() -> None:
+    dev_reg = await _link(owner=SimpleNamespace(config_entries={"eid-1"}))
+    dev_reg.async_get_or_create.assert_called_once()
 
 
 async def test_link_skipped_without_mac_or_on_error() -> None:
