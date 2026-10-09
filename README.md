@@ -21,7 +21,7 @@ Since **Home Assistant 2026.10** HA ships a [Bitvis Power Hub](https://www.home-
 | Monthly insights, year-to-date, baseload | | ✅ |
 | Fuse/power limits, notification settings, sharing | | ✅ |
 
-Both attach to the same hub (matched by its MAC address), so HA shows **one PowerHub device** with entities from both integrations. The local integration needs the hub and HA on the same subnet (or UDP port 58220 and mDNS forwarded between them).
+Both identify the hub by its MAC address. Since HA 2026.10 every integration keeps its own device, so you get two devices for the hub — one local, one cloud; on older HA versions a fresh install joins the existing device. The local integration needs the hub and HA on the same subnet (or UDP port 58220 and mDNS forwarded between them).
 
 > **Status**: Working prototype — BankID auth + cloud API implemented.
 

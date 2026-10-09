@@ -41,7 +41,7 @@ Tests use `aioresponses` to mock all HTTP — never make real network calls in t
 
 ## Pitfalls
 
-- The hub has no open TCP ports, but pushes readings over UDP 58220 on the LAN; HA core's `bitvis` integration (2026.10+) reads that. We share its device via the hub MAC (`_async_link_hub`); do not duplicate local readings here.
+- The hub has no open TCP ports, but pushes readings over UDP 58220 on the LAN; HA core's `bitvis` integration (2026.10+) reads that. We tag our device with the hub MAC (`_async_link_hub`); do not duplicate local readings here.
 - BankID polling uses an async generator (`bankid_poll`). Awaiting it incorrectly will break the config flow.
 - `pyrightconfig.json` suppresses missing-import warnings (HA stubs unavailable locally); type errors in HA-provided classes are expected.
 - Unit for spot price is `öre/kWh` (Swedish öre — not EUR, not SEK). Do not change this unit.

@@ -55,8 +55,8 @@ def provider_of(entry: ConfigEntry) -> str:
 def device_info(entry: ConfigEntry) -> DeviceInfo:
     """The hub's device, shared by every entity of the entry.
 
-    async_setup_entry also attaches the hub's MAC to it, so HA merges it with
-    the core Bitvis Power Hub integration's device for the same hub.
+    async_setup_entry also attaches the hub's MAC to it, the key the core
+    Bitvis Power Hub integration uses for the same hub.
     """
     provider = provider_of(entry)
     return DeviceInfo(
