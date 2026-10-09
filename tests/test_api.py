@@ -549,6 +549,18 @@ class TestGetMonthlyInsights:
         # non-nullable fields still populated
         assert result.current_year_value == pytest.approx(1200.0)
 
+    async def test_empty_month_is_unknown_not_zero(self):
+        """No utility readings yet (every section null) → None, so sensors show unknown, not 0."""
+        url = f"{BASE_URL}/facility/{FACILITY_ID}/insights/monthly/{TS}?meterType=consumption&region=SE3"
+        payload = {k: None for k in ("priceComparison", "yearComparison", "baseload", "offPeakScore")}
+        async with aiohttp.ClientSession() as session:
+            client = PowerHubApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.get(url, payload={**payload, "powerPeaks": {"dailyPeaks": []}})
+                result = await client.get_monthly_insights(FACILITY_ID, TS)
+
+        assert (result.current_year_value, result.baseload_kw, result.total_kwh) == (None, None, None)
+
 
 # ---------------------------------------------------------------------------
 # Protobuf decoders
