@@ -180,6 +180,8 @@ function Overview({ hass, t, locale, narrow, ents, bv, opts }: Ctx & { ents: Ent
   const han = st[ents.han_port_state]?.state;
   const val = (e: string, d = 0, u?: string) => fmt(num(e), d, u ?? st[e]?.attributes?.unit_of_measurement ?? "");
 
+  const gridSub = grid == null ? "" : exporting ? (f.sources.length ? t.exporting : t.unexplained) : grid > 0.03 ? t.importing : t.idle;
+  const invLabel = node.every((x) => x === "solar" || x === "battery") ? t.inverter : t.production;
   return (
     <>
       <div className="kpis">
@@ -197,12 +199,15 @@ function Overview({ hass, t, locale, narrow, ents, bv, opts }: Ctx & { ents: Ent
           <House v={{
             live: !!local, grid, house: houseW, inv, ev, sources: node, hasEv, soc,
             text: {
-              grid: kwTxt(grid), gridSub: grid == null ? "" : exporting ? (f.sources.length ? t.exporting : t.unexplained) : grid > 0.03 ? t.importing : t.idle,
+              grid: kwTxt(grid), gridSub,
               house, inv: kwTxt(inv), invSub: parts || t.not_measured,
               ev: kwTxt(ev), evSub: ev == null ? t.not_measured : ev < -0.03 ? t.ev_discharging : "",
             },
-            labels: { grid: t.grid, house: t.house, inverter: node.every((x) => x === "solar" || x === "battery") ? t.inverter : t.production,
-              ev: t.ev, powerhub: t.powerhub },
+            labels: { grid: t.grid, house: t.house, inverter: invLabel, ev: t.ev, powerhub: t.powerhub },
+            // the scene's text is hidden inside role="img", so its name carries the same readings
+            ariaLabel: [`${t.grid}: ${kwTxt(grid)}${gridSub ? ` (${gridSub})` : ""}`, `${t.house}: ${house}`,
+              node.length ? `${invLabel}: ${kwTxt(inv)}${parts ? ` (${parts})` : ""}` : "",
+              hasEv ? `${t.ev}: ${kwTxt(ev)}` : ""].filter(Boolean).join(". "),
           }} />
           {f.sources.length > 0 && <div className="muted center">{from}</div>}
         </section>
@@ -257,10 +262,14 @@ function Settings({ hass, t, ents, opts, setOpts }: Ctx & { ents: Ents; opts: Op
   const [msg, setMsg] = useState("");
   const admin = !!hass.user?.is_admin;
   const save = (patch: Partial<Options>) => {
-    setOpts({ ...opts, ...patch });
+    setOpts({ ...opts, ...patch });  // optimistic; a failed save reloads what the server actually has
     hass.connection.sendMessagePromise({ type: "malarenergi_powerhub/settings/set", options: patch })
       .then((r: any) => { setOpts(r.options); setMsg(t.saved); setTimeout(() => setMsg(""), 1500); })
-      .catch((e: any) => setMsg(e?.message ?? String(e)));
+      .catch((e: any) => {
+        setMsg(e?.message ?? String(e));
+        hass.connection.sendMessagePromise({ type: "malarenergi_powerhub/settings/get" })
+          .then((r: any) => setOpts(r.options)).catch(() => {});
+      });
   };
   const f = flags(hass, ents, opts);
   const has = (x: Source) => f.sources.includes(x);

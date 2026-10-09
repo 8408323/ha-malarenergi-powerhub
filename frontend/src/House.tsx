@@ -56,6 +56,7 @@ export type HouseValues = {
   sources: Source[]; hasEv: boolean; soc: number | null;  // sources: the production node's, no v2g
   text: { grid: string; gridSub: string; house: string; inv: string; invSub: string; ev: string; evSub: string };
   labels: { grid: string; house: string; inverter: string; ev: string; powerhub: string };
+  ariaLabel: string;
 };
 
 // axis-aligned box seen from the front-right: front face (y = y1), right face (x = x1), top (z = z1)
@@ -113,7 +114,7 @@ export default function House({ v }: { v: HouseValues }) {
   const max = Math.max(1e-9, ...[v.grid, v.house, v.inv, v.ev].map((x) => Math.abs(x ?? 0)));
   const W = 4.04; // wire plane, just in front of the front wall
   return (
-    <svg viewBox={v.hasEv ? "0 105 600 410" : "90 105 510 410"} className="house-scene" role="img" aria-label="energy flow">
+    <svg viewBox={v.hasEv ? "0 105 600 410" : "90 105 510 410"} className="house-scene" role="img" aria-label={v.ariaLabel}>
       <defs>
         <linearGradient id="hs-wall" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#f4f7fb" /><stop offset="100%" stopColor="#dde4ee" />

@@ -63,7 +63,6 @@ def _valid(key: str, value) -> bool:
 
 
 async def _register(hass: HomeAssistant, show: bool) -> None:
-    hass.data[KEY_PANEL] = True
     v = int((WWW / "panel.js").stat().st_mtime)
     await panel_custom.async_register_panel(
         hass,
@@ -76,6 +75,7 @@ async def _register(hass: HomeAssistant, show: bool) -> None:
         require_admin=False,
         config={},
     )
+    hass.data[KEY_PANEL] = True  # only once it exists: a failed registration is retried on the next setup
 
 
 async def async_setup_panel(hass: HomeAssistant) -> None:
@@ -83,10 +83,10 @@ async def async_setup_panel(hass: HomeAssistant) -> None:
     if not (WWW / "panel.js").exists():
         return
     if not hass.data.get(KEY):
-        hass.data[KEY] = True
         await hass.http.async_register_static_paths([StaticPathConfig(URL, str(WWW), cache_headers=False)])
         websocket_api.async_register_command(hass, ws_settings_get)
         websocket_api.async_register_command(hass, ws_settings_set)
+        hass.data[KEY] = True
     if hass.data.get(KEY_PANEL):
         return
     entry = _entry(hass)
@@ -98,6 +98,13 @@ def async_remove_panel(hass: HomeAssistant) -> None:
     """Drop the sidebar entry once the last config entry is gone (static path and commands stay registered)."""
     if hass.data.pop(KEY_PANEL, None):
         frontend.async_remove_panel(hass, PANEL, warn_if_unknown=False)
+
+
+async def async_refresh_panel(hass: HomeAssistant) -> None:
+    """Another entry was unloaded: re-register so show_panel follows the entry whose settings now apply."""
+    if hass.data.get(KEY_PANEL):
+        async_remove_panel(hass)
+        await async_setup_panel(hass)
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/settings/get"})

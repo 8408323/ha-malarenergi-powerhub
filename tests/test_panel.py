@@ -189,3 +189,40 @@ def test_settings_entry_is_first_loaded_one() -> None:
     off, on = _entry({"language": "fi"}, "off"), _entry({"language": "sv"}, "on")
     assert panel._entry(_hass([off, on], running=[on])) is on
     assert panel._entry(_hass([off], running=[])) is None
+
+
+async def test_failed_registration_is_retried_on_next_setup(tmp_path) -> None:
+    (tmp_path / "panel.js").write_text("x")
+    hass = _hass([_entry()])
+    with (
+        patch(f"{MOD}.WWW", tmp_path),
+        patch(f"{MOD}.panel_custom.async_register_panel", new=AsyncMock(side_effect=[RuntimeError, None])) as reg,
+        patch(f"{MOD}.websocket_api.async_register_command"),
+    ):
+        try:
+            await panel.async_setup_panel(hass)
+        except RuntimeError:
+            pass
+        assert panel.KEY_PANEL not in hass.data
+        await panel.async_setup_panel(hass)
+    assert reg.await_count == 2 and hass.data[panel.KEY_PANEL]
+
+
+async def test_refresh_follows_the_remaining_entry(tmp_path) -> None:
+    """After the first entry unloads, show_panel comes from the entry whose settings now apply."""
+    (tmp_path / "panel.js").write_text("x")
+    first, second = _entry({"show_panel": True}), _entry({"show_panel": False}, "eid-2")
+    hass = _hass([first, second])
+    with (
+        patch(f"{MOD}.WWW", tmp_path),
+        patch(f"{MOD}.panel_custom.async_register_panel", new=AsyncMock()) as reg,
+        patch(f"{MOD}.websocket_api.async_register_command"),
+        patch(f"{MOD}.frontend.async_remove_panel") as rm,
+    ):
+        await panel.async_refresh_panel(hass)  # nothing registered yet: no-op
+        reg.assert_not_awaited()
+        await panel.async_setup_panel(hass)
+        hass.data[DOMAIN].pop("eid-1")
+        await panel.async_refresh_panel(hass)
+    rm.assert_called_once()
+    assert reg.await_args.kwargs["sidebar_title"] is None
