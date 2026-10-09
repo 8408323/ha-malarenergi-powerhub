@@ -178,7 +178,8 @@ def _make_power_client_mock(**overrides) -> MagicMock:
     )
     client.get_facility_control = AsyncMock(return_value=_make_facility_control())
     client.get_fcr_status = AsyncMock(return_value=FcrStatus(fcrd_down_enabled=False))
-    client.get_ev_devices = AsyncMock(return_value=[])
+    client.get_ev_chargers = AsyncMock(return_value=[])
+    client.get_ev_vehicles = AsyncMock(return_value=[])
     client.get_hourly_energy = AsyncMock(
         return_value=[
             HourlyEnergy(
@@ -223,7 +224,8 @@ def _make_coordinator(facility_id="fac-1") -> PowerHubCoordinator:
     coord._cached_agreements = None
     coord._cached_facility_info = None
     coord._facility_info_resolved = False
-    coord._cached_ev_devices = None
+    coord._cached_ev_chargers = None
+    coord._cached_ev_vehicles = None
     coord._degraded_endpoints = set()
     coord.data = None
     coord.async_request_refresh = AsyncMock()
@@ -291,6 +293,28 @@ async def test_async_update_data_consumption_none_when_no_past_points() -> None:
     result = await coord._async_update_data()
 
     assert result.consumption_today_kwh is None
+
+
+@pytest.mark.asyncio
+async def test_async_update_data_keeps_chargers_when_vehicles_fail() -> None:
+    """A failing vehicles endpoint must not hide the chargers (and is retried next poll)."""
+    from aiohttp import ClientResponseError
+
+    from custom_components.malarenergi_powerhub.api import EvDevice
+
+    coord = _make_coordinator()
+    charger = EvDevice("charger", "c1", None, None, None, max_charge_current_a=16)
+    err = ClientResponseError(MagicMock(), (), status=500, message="boom")
+    power = _make_power_client_mock(
+        get_ev_chargers=AsyncMock(return_value=[charger]), get_ev_vehicles=AsyncMock(side_effect=err)
+    )
+    coord._make_client = MagicMock(return_value=_make_api_client_mock())
+    coord._make_power_client = MagicMock(return_value=power)
+
+    result = await coord._async_update_data()
+
+    assert result.ev_devices == [charger]
+    assert coord._cached_ev_vehicles is None
 
 
 @pytest.mark.asyncio

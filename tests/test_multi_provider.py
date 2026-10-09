@@ -212,6 +212,8 @@ async def test_get_ev_devices_filters_facility_and_maps_fields() -> None:
     chargers = [
         {"deviceId": "c1", "facilityId": FACILITY, "name": "Garage", "manufacturer": "Easee", "model": "Home",
          "maxChargeCurrentA": 32, "userDefinedMaxChargeCurrentA": 16},
+        {"deviceId": "c0", "facilityId": FACILITY, "maxChargeCurrentA": 32, "userDefinedMaxChargeCurrentA": 0},
+        {"deviceId": "cx", "facilityId": FACILITY, "maxChargeCurrentA": 32},
         {"deviceId": "c2", "facilityId": "other", "maxChargeCurrentA": 32},
     ]  # fmt: skip
     vehicles = [{"deviceId": "v1", "facilityId": FACILITY, "batterySize": 77, "maxChargePower": 11.0}]
@@ -219,10 +221,11 @@ async def test_get_ev_devices_filters_facility_and_maps_fields() -> None:
         with aioresponses() as m:
             m.get(f"{POWER_BASE_URL}/devices/chargers", payload=chargers)
             m.get(f"{POWER_BASE_URL}/devices/vehicles", payload=vehicles)
-            devs = await PowerApiClient(session, "tok").get_ev_devices(FACILITY)
-    assert [(d.kind, d.device_id) for d in devs] == [("charger", "c1"), ("vehicle", "v1")]
-    assert devs[0].max_charge_current_a == 16  # the user's limit wins over the hardware max
-    assert (devs[1].battery_kwh, devs[1].max_charge_power_kw) == (77, 11.0)
+            client = PowerApiClient(session, "tok")
+            ch, ve = await client.get_ev_chargers(FACILITY), await client.get_ev_vehicles(FACILITY)
+    # the user's limit wins over the hardware max, including an explicit 0
+    assert [(d.device_id, d.max_charge_current_a) for d in ch] == [("c1", 16), ("c0", 0), ("cx", 32)]
+    assert (ve[0].kind, ve[0].battery_kwh, ve[0].max_charge_power_kw) == ("vehicle", 77, 11.0)
 
 
 async def test_get_ev_devices_empty() -> None:
@@ -230,4 +233,5 @@ async def test_get_ev_devices_empty() -> None:
         with aioresponses() as m:
             m.get(f"{POWER_BASE_URL}/devices/chargers", payload=[])
             m.get(f"{POWER_BASE_URL}/devices/vehicles", payload=None)
-            assert await PowerApiClient(session, "tok").get_ev_devices(FACILITY) == []
+            client = PowerApiClient(session, "tok")
+            assert await client.get_ev_chargers(FACILITY) == await client.get_ev_vehicles(FACILITY) == []

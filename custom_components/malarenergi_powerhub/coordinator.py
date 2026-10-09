@@ -154,7 +154,8 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
         self._cached_agreements: list[Agreement] | None = None
         self._cached_facility_info: FacilityInfo | None = None
         self._facility_info_resolved = False
-        self._cached_ev_devices: list[EvDevice] | None = None
+        self._cached_ev_chargers: list[EvDevice] | None = None
+        self._cached_ev_vehicles: list[EvDevice] | None = None
         # Names of non-critical endpoints currently failing. Used to log the
         # first failure at WARNING and subsequent repeats at DEBUG (avoids
         # flooding the HA log every 60s while a backend endpoint stays down),
@@ -253,9 +254,14 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
                             self._facility_id,
                         )
 
-            if self._cached_ev_devices is None:
-                self._cached_ev_devices = await self._fetch_static(
-                    power_client.get_ev_devices(self._facility_id), "ev_devices"
+            # Chargers and vehicles cached separately: one failing must not hide the other
+            if self._cached_ev_chargers is None:
+                self._cached_ev_chargers = await self._fetch_static(
+                    power_client.get_ev_chargers(self._facility_id), "ev_chargers"
+                )
+            if self._cached_ev_vehicles is None:
+                self._cached_ev_vehicles = await self._fetch_static(
+                    power_client.get_ev_vehicles(self._facility_id), "ev_vehicles"
                 )
 
             # Notification settings (fetched each poll — user may change in app)
@@ -367,7 +373,7 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
             hourly_energy_today=hourly_energy_today,
             monthly_insights=monthly_insights,
             production_ytd_kwh=production_ytd_kwh,
-            ev_devices=self._cached_ev_devices or [],
+            ev_devices=(self._cached_ev_chargers or []) + (self._cached_ev_vehicles or []),
         )
 
     async def async_update_facility_control(self, **kwargs) -> None:

@@ -873,10 +873,9 @@ class PowerApiClient:
             mac_address=d.get("macAddress", ""),
         )
 
-    async def get_ev_devices(self, facility_id: str) -> list[EvDevice]:
-        """EV chargers and vehicles of the facility (Device Service v3 schema)."""
+    async def get_ev_chargers(self, facility_id: str) -> list[EvDevice]:
+        """EV chargers of the facility (Device Service v3 schema)."""
         chargers = await self._get_json("/devices/chargers") or []
-        vehicles = await self._get_json("/devices/vehicles") or []
         return [
             EvDevice(
                 kind="charger",
@@ -884,11 +883,21 @@ class PowerApiClient:
                 name=c.get("name"),
                 manufacturer=c.get("manufacturer"),
                 model=c.get("model"),
-                max_charge_current_a=c.get("userDefinedMaxChargeCurrentA") or c.get("maxChargeCurrentA"),
+                # the user's limit, which may legitimately be 0; else the hardware max
+                max_charge_current_a=(
+                    c["userDefinedMaxChargeCurrentA"]
+                    if c.get("userDefinedMaxChargeCurrentA") is not None
+                    else c.get("maxChargeCurrentA")
+                ),
             )
             for c in chargers
             if c.get("facilityId") == facility_id
-        ] + [
+        ]
+
+    async def get_ev_vehicles(self, facility_id: str) -> list[EvDevice]:
+        """Vehicles of the facility (Device Service v3 schema)."""
+        vehicles = await self._get_json("/devices/vehicles") or []
+        return [
             EvDevice(
                 kind="vehicle",
                 device_id=v.get("deviceId", ""),
