@@ -234,7 +234,11 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 candidates = [
                     e
                     for e in self.hass.config_entries.async_entries(DOMAIN)
-                    if e.unique_id and any(f.facility_id == e.unique_id for f in facilities)
+                    if (
+                        e.unique_id
+                        and e.data.get(CONF_PROVIDER, DEFAULT_PROVIDER) == self._provider
+                        and any(f.facility_id == e.unique_id for f in facilities)
+                    )
                 ]
                 if len(candidates) == 1:
                     existing = candidates[0]
@@ -268,6 +272,7 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     sibling.entry_id != existing.entry_id
                     and sibling.unique_id
                     and sibling.unique_id in account_facility_ids
+                    and sibling.data.get(CONF_PROVIDER, DEFAULT_PROVIDER) == self._provider
                     and sibling.data.get(CONF_TOKEN) != token
                 ):
                     self.hass.config_entries.async_update_entry(
