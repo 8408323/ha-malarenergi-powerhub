@@ -19,7 +19,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pytest pytest-asyncio pytest-cov aioresponses aiohttp homeassistant "qrcode[pil]==8.0"
+          pip install pytest pytest-asyncio pytest-cov aioresponses aiohttp "homeassistant==2024.12.5" "qrcode[pil]==8.0"
 
       - name: Run tests with coverage
         run: |
