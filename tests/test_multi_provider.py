@@ -73,7 +73,7 @@ async def test_get_device_picks_the_facilitys_hub() -> None:
 
 
 async def test_get_device_rejects_a_hub_at_another_facility() -> None:
-    for hubs in ([{"facilityId": "other"}], [{"facilityId": "a"}, {"facilityId": "b"}]):
+    for hubs in ({"facilityId": "other"}, [{"facilityId": "other"}], [{"facilityId": "a"}, {"facilityId": "b"}]):
         with pytest.raises(ValueError, match="No PowerHub device for facility"):
             await _device(hubs)
 

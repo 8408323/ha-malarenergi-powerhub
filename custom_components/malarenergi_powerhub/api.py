@@ -845,15 +845,13 @@ class PowerApiClient:
         facilities, not all with a hub).
         """
         data = await self._get_json("/devices/powerhub")
-        if isinstance(data, list):
-            if not data:
-                raise ValueError("No PowerHub device returned by backend")
-            ours = [x for x in data if facility_id is None or x.get("facilityId") == facility_id]
-            if not ours:  # the account's hub(s) sit at other facilities
-                raise ValueError(f"No PowerHub device for facility {facility_id}")
-            d = ours[0]
-        else:
-            d = data
+        hubs = data if isinstance(data, list) else [data]  # the backend returns either shape
+        if not hubs:
+            raise ValueError("No PowerHub device returned by backend")
+        ours = [x for x in hubs if facility_id is None or x.get("facilityId") == facility_id]
+        if not ours:  # the account's hub(s) sit at other facilities
+            raise ValueError(f"No PowerHub device for facility {facility_id}")
+        d = ours[0]
         return PowerHubDevice(
             device_id=d.get("deviceId", ""),
             model=d.get("model", ""),
