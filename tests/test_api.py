@@ -549,6 +549,18 @@ class TestGetMonthlyInsights:
         # non-nullable fields still populated
         assert result.current_year_value == pytest.approx(1200.0)
 
+    async def test_empty_month_is_unknown_not_zero(self):
+        """No utility readings yet (every section null) → None, so sensors show unknown, not 0."""
+        url = f"{BASE_URL}/facility/{FACILITY_ID}/insights/monthly/{TS}?meterType=consumption&region=SE3"
+        payload = {k: None for k in ("priceComparison", "yearComparison", "baseload", "offPeakScore")}
+        async with aiohttp.ClientSession() as session:
+            client = PowerHubApiClient(session, FAKE_TOKEN)
+            with aioresponses() as m:
+                m.get(url, payload={**payload, "powerPeaks": {"dailyPeaks": []}})
+                result = await client.get_monthly_insights(FACILITY_ID, TS)
+
+        assert (result.current_year_value, result.baseload_kw, result.total_kwh) == (None, None, None)
+
 
 # ---------------------------------------------------------------------------
 # Protobuf decoders
@@ -742,8 +754,8 @@ class TestDecodeHourlyEnergyProto:
         assert r.window_start.timestamp() == pytest.approx(1000)
         assert r.window_end.timestamp() == pytest.approx(3600)
         assert r.sample_count == 4
-        assert r.energy_import_wh == pytest.approx(500.0, abs=0.1)
-        assert r.energy_export_wh == pytest.approx(100.0, abs=0.1)
+        assert r.energy_import_kwh == pytest.approx(500.0, abs=0.1)
+        assert r.energy_export_kwh == pytest.approx(100.0, abs=0.1)
 
     def test_two_buckets(self):
         raw = _make_hourly_energy_bytes(1000, 1000, 3600, 4, 500.0, 0.0) + _make_hourly_energy_bytes(
@@ -751,8 +763,8 @@ class TestDecodeHourlyEnergyProto:
         )
         results = _decode_hourly_energy_proto(raw)
         assert len(results) == 2
-        assert results[0].energy_import_wh == pytest.approx(500.0, abs=0.1)
-        assert results[1].energy_import_wh == pytest.approx(480.0, abs=0.1)
+        assert results[0].energy_import_kwh == pytest.approx(500.0, abs=0.1)
+        assert results[1].energy_import_kwh == pytest.approx(480.0, abs=0.1)
 
     def test_empty_bytes_returns_empty_list(self):
         assert _decode_hourly_energy_proto(b"") == []
@@ -894,8 +906,8 @@ class TestGetHourlyEnergy:
                 )
                 result = await client.get_hourly_energy(FACILITY_ID, start, end)
         assert len(result) == 2
-        assert result[0].energy_import_wh == pytest.approx(500.0, abs=0.1)
-        assert result[1].energy_export_wh == pytest.approx(20.0, abs=0.1)
+        assert result[0].energy_import_kwh == pytest.approx(500.0, abs=0.1)
+        assert result[1].energy_export_kwh == pytest.approx(20.0, abs=0.1)
 
 
 class TestGetDiagnostics:

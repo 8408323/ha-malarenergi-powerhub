@@ -164,15 +164,15 @@ class MonthlyInsights:
     your_average_price: float | None  # öre/kWh or kr/kWh; None for production meter
     monthly_average_price: float | None  # öre/kWh or kr/kWh - market average; None for production
     price_trend: str | None  # "ABOVE" / "BELOW"; None for production
-    current_year_value: float  # kWh year-to-date
+    current_year_value: float | None  # kWh year-to-date; None until the utility has readings
     previous_year_value: float | None  # kWh same period last year
     year_percentage_change: float | None
     year_trend: str | None
     daily_peaks: list[dict]
-    baseload_kw: float
-    baseload_kwh: float
-    baseload_percentage: float
-    total_kwh: float
+    baseload_kw: float | None  # None until the utility has the month's readings
+    baseload_kwh: float | None
+    baseload_percentage: float | None
+    total_kwh: float | None
     off_peak_score: float | None  # None for production meter
     off_peak_rating: str | None  # e.g. "GOOD" / "AVERAGE" / "POOR"
 
@@ -511,15 +511,15 @@ class PowerHubApiClient:
             your_average_price=price.get("yourAveragePrice"),
             monthly_average_price=price.get("monthlyAveragePrice"),
             price_trend=price.get("trend"),
-            current_year_value=year.get("currentYearValue", 0.0),
+            current_year_value=year.get("currentYearValue"),
             previous_year_value=year.get("previousYearValue"),
             year_percentage_change=year.get("percentageChange"),
             year_trend=year.get("trend"),
             daily_peaks=(peaks.get("dailyPeaks") or []),
-            baseload_kw=baseload_obj.get("baseload", 0.0),
-            baseload_kwh=baseload_obj.get("baseloadKwh", 0.0),
-            baseload_percentage=baseload_obj.get("baseloadPercentage", 0.0),
-            total_kwh=baseload_obj.get("totalKwh", 0.0),
+            baseload_kw=baseload_obj.get("baseload"),
+            baseload_kwh=baseload_obj.get("baseloadKwh"),
+            baseload_percentage=baseload_obj.get("baseloadPercentage"),
+            total_kwh=baseload_obj.get("totalKwh"),
             off_peak_score=off_peak.get("offPeakScore") if off_peak else None,
             off_peak_rating=off_peak.get("rating") if off_peak else None,
         )
@@ -589,8 +589,8 @@ class HourlyEnergy:
     window_start: datetime
     window_end: datetime
     sample_count: int
-    energy_import_wh: float
-    energy_export_wh: float
+    energy_import_kwh: float
+    energy_export_kwh: float
 
 
 @dataclass
@@ -761,8 +761,8 @@ def _decode_hourly_energy_proto(raw: bytes) -> list[HourlyEnergy]:
       field2 varint: sample count
       field3 (msg): window start ts submessage
       field4 (msg): window end ts submessage
-      field7 float32: energy_import_wh
-      field10 float32: energy_export_wh
+      field7 float32: energy_import_kwh (kWh — checked against a utility meter)
+      field10 float32: energy_export_kwh
     """
     results: list[HourlyEnergy] = []
     pos = 0
@@ -794,8 +794,8 @@ def _decode_hourly_energy_proto(raw: bytes) -> list[HourlyEnergy]:
                 window_start=datetime.fromtimestamp(win_start_ts, tz=timezone.utc),
                 window_end=datetime.fromtimestamp(win_end_ts, tz=timezone.utc),
                 sample_count=int(f.get(2, 0)),
-                energy_import_wh=float(f.get(7, 0.0)),
-                energy_export_wh=float(f.get(10, 0.0)),
+                energy_import_kwh=float(f.get(7, 0.0)),
+                energy_export_kwh=float(f.get(10, 0.0)),
             )
         )
     return results

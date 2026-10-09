@@ -328,6 +328,14 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
         except Exception as err:
             raise UpdateFailed(f"API error: {err}") from err
 
+        # The Flow meter endpoints only fill in once the utility has the day's
+        # readings (often days later, sometimes never), so fall back to the hub's
+        # own hourly energy for today.
+        if consumption_kwh is None and hourly_energy_today:
+            consumption_kwh = round(sum(h.energy_import_kwh for h in hourly_energy_today), 3)
+        if production_kwh is None and hourly_energy_today:
+            production_kwh = round(sum(h.energy_export_kwh for h in hourly_energy_today), 3)
+
         # Poll succeeded — if the user just completed re-auth, clear the flag
         # so a future token expiry triggers a fresh reauth flow.
         self._reauth_pending = False
