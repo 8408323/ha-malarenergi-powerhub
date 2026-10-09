@@ -226,7 +226,8 @@ def _make_coordinator(facility_id="fac-1") -> PowerHubCoordinator:
     coord._facility_info_resolved = False
     coord._cached_ev_chargers = None
     coord._cached_ev_vehicles = None
-    coord._ev_fetched_at = float("-inf")
+    coord._ev_chargers_fetched_at = float("-inf")
+    coord._ev_vehicles_fetched_at = float("-inf")
     coord._degraded_endpoints = set()
     coord.data = None
     coord.async_request_refresh = AsyncMock()
@@ -319,8 +320,40 @@ async def test_async_update_data_keeps_chargers_when_vehicles_fail() -> None:
     await coord._async_update_data()  # next poll: vehicles retried, chargers still cached
     assert (power.get_ev_chargers.await_count, power.get_ev_vehicles.await_count) == (1, 2)
 
-    coord._ev_fetched_at -= 3601  # an hour later both are refetched
+    coord._ev_chargers_fetched_at -= 3601  # an hour later both are refetched
+    coord._ev_vehicles_fetched_at -= 3601
     await coord._async_update_data()
+    assert (power.get_ev_chargers.await_count, power.get_ev_vehicles.await_count) == (2, 3)
+
+
+@pytest.mark.asyncio
+async def test_async_update_data_hourly_ev_refresh_failure_keeps_last_good_data() -> None:
+    """Hourly EV refresh failure keeps stale data and retries only the failing endpoint."""
+    from aiohttp import ClientResponseError
+
+    from custom_components.malarenergi_powerhub.api import EvDevice
+
+    coord = _make_coordinator()
+    charger = EvDevice("charger", "c1", None, None, None, max_charge_current_a=16)
+    vehicle = EvDevice("vehicle", "v1", None, None, None, battery_kwh=77)
+    err = ClientResponseError(MagicMock(), (), status=500, message="boom")
+    power = _make_power_client_mock(
+        get_ev_chargers=AsyncMock(return_value=[charger]),
+        get_ev_vehicles=AsyncMock(side_effect=[[vehicle], err, [vehicle]]),
+    )
+    coord._make_client = MagicMock(return_value=_make_api_client_mock())
+    coord._make_power_client = MagicMock(return_value=power)
+
+    first = await coord._async_update_data()
+    assert first.ev_devices == [charger, vehicle]
+
+    coord._ev_chargers_fetched_at -= 3601
+    coord._ev_vehicles_fetched_at -= 3601
+    second = await coord._async_update_data()
+    assert second.ev_devices == [charger, vehicle]
+    assert (power.get_ev_chargers.await_count, power.get_ev_vehicles.await_count) == (2, 2)
+
+    await coord._async_update_data()  # next poll retries vehicles only
     assert (power.get_ev_chargers.await_count, power.get_ev_vehicles.await_count) == (2, 3)
 
 
