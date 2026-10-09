@@ -178,6 +178,7 @@ def _make_power_client_mock(**overrides) -> MagicMock:
     )
     client.get_facility_control = AsyncMock(return_value=_make_facility_control())
     client.get_fcr_status = AsyncMock(return_value=FcrStatus(fcrd_down_enabled=False))
+    client.get_ev_devices = AsyncMock(return_value=[])
     client.get_hourly_energy = AsyncMock(
         return_value=[
             HourlyEnergy(
@@ -222,6 +223,7 @@ def _make_coordinator(facility_id="fac-1") -> PowerHubCoordinator:
     coord._cached_agreements = None
     coord._cached_facility_info = None
     coord._facility_info_resolved = False
+    coord._cached_ev_devices = None
     coord._degraded_endpoints = set()
     coord.data = None
     coord.async_request_refresh = AsyncMock()

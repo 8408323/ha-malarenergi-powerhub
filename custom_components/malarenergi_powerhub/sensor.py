@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from typing import Callable
 
@@ -253,6 +253,12 @@ SENSORS: tuple[PowerHubSensorDescription, ...] = (
     ),
     # ── Sharing (diagnostic) ─────────────────────────────────────────────
     PowerHubSensorDescription(
+        key="ev_devices",
+        translation_key="ev_devices",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: len(d.ev_devices),
+    ),
+    PowerHubSensorDescription(
         key="active_invitations",
         translation_key="active_invitations",
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -322,6 +328,9 @@ class PowerHubSensor(CoordinatorEntity[PowerHubCoordinator], SensorEntity):
                     for inv in self.coordinator.data.invitations
                 ]
             }
+
+        if key == "ev_devices":
+            return {"devices": [asdict(d) for d in self.coordinator.data.ev_devices]}
 
         if key == "invitees":
             return {

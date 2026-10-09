@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from dataclasses import replace as dataclass_replace
 from datetime import datetime, timedelta, timezone
 from typing import Awaitable, TypeVar, overload
@@ -19,6 +19,7 @@ from .api import (
     AccountProfile,
     Agreement,
     AuthError,
+    EvDevice,
     FacilityAttributes,
     FacilityControl,
     FacilityInfo,
@@ -91,6 +92,7 @@ class PowerHubData:
     facility_control: FacilityControl | None  # Fuse/power limits
     fcr_status: FcrStatus | None  # FCR enablement
     hourly_energy_today: list[HourlyEnergy]  # Hourly energy buckets (today)
+    ev_devices: list[EvDevice] = field(default_factory=list)  # EV chargers/vehicles (static)
 
 
 def _day_start_ms() -> int:
@@ -152,6 +154,7 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
         self._cached_agreements: list[Agreement] | None = None
         self._cached_facility_info: FacilityInfo | None = None
         self._facility_info_resolved = False
+        self._cached_ev_devices: list[EvDevice] | None = None
         # Names of non-critical endpoints currently failing. Used to log the
         # first failure at WARNING and subsequent repeats at DEBUG (avoids
         # flooding the HA log every 60s while a backend endpoint stays down),
@@ -249,6 +252,11 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
                             "Please verify the facility_id in your configuration or reconfigure the integration.",
                             self._facility_id,
                         )
+
+            if self._cached_ev_devices is None:
+                self._cached_ev_devices = await self._fetch_static(
+                    power_client.get_ev_devices(self._facility_id), "ev_devices"
+                )
 
             # Notification settings (fetched each poll — user may change in app)
             notification_settings = await power_client.get_notification_settings(self._facility_id)
@@ -359,6 +367,7 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
             hourly_energy_today=hourly_energy_today,
             monthly_insights=monthly_insights,
             production_ytd_kwh=production_ytd_kwh,
+            ev_devices=self._cached_ev_devices or [],
         )
 
     async def async_update_facility_control(self, **kwargs) -> None:
