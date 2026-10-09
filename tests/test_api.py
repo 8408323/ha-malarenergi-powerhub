@@ -742,8 +742,8 @@ class TestDecodeHourlyEnergyProto:
         assert r.window_start.timestamp() == pytest.approx(1000)
         assert r.window_end.timestamp() == pytest.approx(3600)
         assert r.sample_count == 4
-        assert r.energy_import_wh == pytest.approx(500.0, abs=0.1)
-        assert r.energy_export_wh == pytest.approx(100.0, abs=0.1)
+        assert r.energy_import_kwh == pytest.approx(500.0, abs=0.1)
+        assert r.energy_export_kwh == pytest.approx(100.0, abs=0.1)
 
     def test_two_buckets(self):
         raw = _make_hourly_energy_bytes(1000, 1000, 3600, 4, 500.0, 0.0) + _make_hourly_energy_bytes(
@@ -751,8 +751,8 @@ class TestDecodeHourlyEnergyProto:
         )
         results = _decode_hourly_energy_proto(raw)
         assert len(results) == 2
-        assert results[0].energy_import_wh == pytest.approx(500.0, abs=0.1)
-        assert results[1].energy_import_wh == pytest.approx(480.0, abs=0.1)
+        assert results[0].energy_import_kwh == pytest.approx(500.0, abs=0.1)
+        assert results[1].energy_import_kwh == pytest.approx(480.0, abs=0.1)
 
     def test_empty_bytes_returns_empty_list(self):
         assert _decode_hourly_energy_proto(b"") == []
@@ -894,8 +894,8 @@ class TestGetHourlyEnergy:
                 )
                 result = await client.get_hourly_energy(FACILITY_ID, start, end)
         assert len(result) == 2
-        assert result[0].energy_import_wh == pytest.approx(500.0, abs=0.1)
-        assert result[1].energy_export_wh == pytest.approx(20.0, abs=0.1)
+        assert result[0].energy_import_kwh == pytest.approx(500.0, abs=0.1)
+        assert result[1].energy_export_kwh == pytest.approx(20.0, abs=0.1)
 
 
 class TestGetDiagnostics:

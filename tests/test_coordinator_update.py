@@ -185,8 +185,8 @@ def _make_power_client_mock(**overrides) -> MagicMock:
                 window_start=now_ts,
                 window_end=now_ts,
                 sample_count=1,
-                energy_import_wh=500.0,
-                energy_export_wh=0.0,
+                energy_import_kwh=500.0,
+                energy_export_kwh=0.0,
             )
         ]
     )
@@ -282,13 +282,35 @@ async def test_async_update_data_consumption_none_when_no_past_points() -> None:
     future_only = [MeterData(timestamp_ms=now_ms + 3_600_000, value_wh=500.0)]
     api = _make_api_client_mock()
     api.get_today_consumption = AsyncMock(return_value=future_only)
-    power = _make_power_client_mock()
+    power = _make_power_client_mock(get_hourly_energy=AsyncMock(return_value=[]))
     coord._make_client = MagicMock(return_value=api)
     coord._make_power_client = MagicMock(return_value=power)
 
     result = await coord._async_update_data()
 
     assert result.consumption_today_kwh is None
+
+
+@pytest.mark.asyncio
+async def test_async_update_data_today_falls_back_to_hub_hourly_energy() -> None:
+    """Empty Flow meter data (utility readings not in yet) → sum the hub's hourly kWh."""
+    coord = _make_coordinator()
+    now = datetime.now(timezone.utc)
+    hours = [
+        HourlyEnergy(now, now, now, 360, energy_import_kwh=1.25, energy_export_kwh=0.5),
+        HourlyEnergy(now, now, now, 360, energy_import_kwh=0.75, energy_export_kwh=0.0),
+    ]
+    api = _make_api_client_mock()
+    api.get_today_consumption = AsyncMock(return_value=[])
+    api.get_today_production = AsyncMock(return_value=[])
+    coord._make_client = MagicMock(return_value=api)
+    coord._make_power_client = MagicMock(
+        return_value=_make_power_client_mock(get_hourly_energy=AsyncMock(return_value=hours))
+    )
+
+    result = await coord._async_update_data()
+
+    assert (result.consumption_today_kwh, result.production_today_kwh) == (2.0, 0.5)
 
 
 @pytest.mark.asyncio

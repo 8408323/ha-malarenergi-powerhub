@@ -589,8 +589,8 @@ class HourlyEnergy:
     window_start: datetime
     window_end: datetime
     sample_count: int
-    energy_import_wh: float
-    energy_export_wh: float
+    energy_import_kwh: float
+    energy_export_kwh: float
 
 
 @dataclass
@@ -761,8 +761,8 @@ def _decode_hourly_energy_proto(raw: bytes) -> list[HourlyEnergy]:
       field2 varint: sample count
       field3 (msg): window start ts submessage
       field4 (msg): window end ts submessage
-      field7 float32: energy_import_wh
-      field10 float32: energy_export_wh
+      field7 float32: energy_import_kwh (kWh — checked against a utility meter)
+      field10 float32: energy_export_kwh
     """
     results: list[HourlyEnergy] = []
     pos = 0
@@ -794,8 +794,8 @@ def _decode_hourly_energy_proto(raw: bytes) -> list[HourlyEnergy]:
                 window_start=datetime.fromtimestamp(win_start_ts, tz=timezone.utc),
                 window_end=datetime.fromtimestamp(win_end_ts, tz=timezone.utc),
                 sample_count=int(f.get(2, 0)),
-                energy_import_wh=float(f.get(7, 0.0)),
-                energy_export_wh=float(f.get(10, 0.0)),
+                energy_import_kwh=float(f.get(7, 0.0)),
+                energy_export_kwh=float(f.get(10, 0.0)),
             )
         )
     return results
