@@ -2,19 +2,30 @@
   "config": {
     "step": {
       "user": {
-        "title": "Mälarenergi PowerHub",
-        "description": "Logga in med BankID. Tryck Nästa för att visa QR-kod."
+        "title": "PowerHub",
+        "description": "Välj energibolaget som din PowerHub kommer från. Du loggar in med BankID i nästa steg.",
+        "data": {
+          "provider": "Energibolag"
+        },
+        "data_description": {
+          "provider": "Finns det inte i listan? Skriv bolagets namn med små bokstäver, utan mellanslag och med å/ä/ö som a/a/o, t.ex. `norrtaljeenergi` — och öppna gärna ett ärende på GitHub så att det läggs till."
+        }
+      },
+      "bankid": {
+        "title": "PowerHub",
+        "description": "Logga in med BankID. Tryck Skicka för att visa QR-kod."
       },
       "bankid_qr": {
         "title": "Skanna QR-kod med BankID",
-        "description": "Logga in med Mobilt BankID:\n1. Öppna BankID-appen på din telefon\n2. Tryck **Skicka** för att generera en ny QR-kod\n3. Skanna QR-koden omedelbart med BankID\n4. Godkänn inloggningen i BankID och tryck sedan **Skicka** igen för att slutföra\n\nQR-koden roterar varje sekund — tryck Skicka precis innan du skannar.\n\n**Ha tålamod:** om Mälarenergis servrar är långsamma kan inloggningen ta 1–2 minuter efter godkännandet. Fortsätt trycka Skicka med några sekunders mellanrum tills dialogrutan stängs — skanna inte om."
+        "description": "Logga in med Mobilt BankID:\n1. Öppna BankID-appen på din telefon\n2. Tryck **Skicka** för att generera en ny QR-kod\n3. Skanna QR-koden omedelbart med BankID\n4. Godkänn inloggningen i BankID och tryck sedan **Skicka** igen för att slutföra\n\nQR-koden roterar varje sekund — tryck Skicka precis innan du skannar.\n\n**Ha tålamod:** om servrarna är långsamma kan inloggningen ta 1–2 minuter efter godkännandet. Fortsätt trycka Skicka med några sekunders mellanrum tills dialogrutan stängs — skanna inte om."
       }
     },
     "error": {
-      "cannot_connect": "Kunde inte ansluta till Mälarenergi. Kontrollera internetanslutningen.",
+      "cannot_connect": "Kunde inte ansluta till energibolagets PowerHub-tjänst. Kontrollera internetanslutningen och valt bolag.",
       "bankid_failed": "BankID-inloggning misslyckades. Försök igen.",
       "invalid_auth": "Ogiltig autentisering.",
-      "no_facilities": "Inga anläggningar hittades för detta konto."
+      "no_facilities": "Inga anläggningar hittades för detta konto.",
+      "invalid_provider": "Använd bara små bokstäver, siffror och bindestreck, t.ex. `booenergi`."
     },
     "abort": {
       "already_configured": "Denna anläggning är redan konfigurerad.",

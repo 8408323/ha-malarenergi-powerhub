@@ -1,4 +1,4 @@
-"""Mälarenergi PowerHub integration for Home Assistant."""
+"""PowerHub integration for Home Assistant (Mälarenergi, Boo Energi, Norrtälje Energi)."""
 
 from __future__ import annotations
 
@@ -11,11 +11,13 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .api import PowerHubApiClient
+from .api import PowerApiClient, PowerHubApiClient
 from .const import CONF_FACILITY_ID, CONF_TOKEN, DOMAIN
-from .coordinator import PowerHubCoordinator
+from .coordinator import PowerHubCoordinator, device_info, provider_of
 from .notifications_coordinator import NotificationsCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -50,13 +52,43 @@ def _get_client(hass: HomeAssistant, facility_id: str | None) -> tuple[PowerHubA
         fid = entry.data[CONF_FACILITY_ID]
         if facility_id is None or fid == facility_id:
             session = async_get_clientsession(hass)
-            return PowerHubApiClient(session, entry.data[CONF_TOKEN]), fid
+            return PowerHubApiClient(session, entry.data[CONF_TOKEN], provider_of(entry)), fid
     raise ValueError(f"No config entry found for facility_id={facility_id!r}")
+
+
+async def _async_link_hub(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Give our device the hub's MAC, so HA shows one device together with the
+    core Bitvis Power Hub integration (local UDP), which identifies the hub by MAC.
+
+    Best-effort: the entities work without it.
+    """
+    client = PowerApiClient(async_get_clientsession(hass), entry.data[CONF_TOKEN])
+    try:
+        mac = (await client.get_device(entry.data[CONF_FACILITY_ID])).mac_address
+    except Exception as err:  # noqa: BLE001 — any failure just skips the link
+        _LOGGER.debug("PowerHub MAC lookup failed, not linking devices: %s", err)
+        return
+    if not mac:
+        return
+    connection = (dr.CONNECTION_NETWORK_MAC, dr.format_mac(mac))
+    dev_reg = dr.async_get(hass)
+    ours = dev_reg.async_get_device(identifiers={(DOMAIN, entry.entry_id)})
+    hub = dev_reg.async_get_device(connections={connection})
+    if ours and hub and ours.id != hub.id:
+        # Core Bitvis was set up before we had the link: both devices exist and a
+        # MAC can't be on two. Move our entities onto its device and drop ours.
+        dev_reg.async_update_device(hub.id, add_config_entry_id=entry.entry_id)
+        ent_reg = er.async_get(hass)
+        for ent in er.async_entries_for_device(ent_reg, ours.id, include_disabled_entities=True):
+            ent_reg.async_update_entity(ent.entity_id, device_id=hub.id)
+        dev_reg.async_remove_device(ours.id)
+    dev_reg.async_get_or_create(config_entry_id=entry.entry_id, connections={connection}, **device_info(entry))
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator = PowerHubCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
+    await _async_link_hub(hass, entry)
 
     notifications_coordinator = NotificationsCoordinator(hass, entry)
     # Use async_refresh so a transient API error doesn't abort the whole entry setup.

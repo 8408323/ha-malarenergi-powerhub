@@ -14,6 +14,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .api import AuthError, PowerHubApiClient
 from .const import CONF_TOKEN, DOMAIN
+from .coordinator import provider_of
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -48,7 +49,7 @@ class NotificationsCoordinator(DataUpdateCoordinator[NotificationData]):
 
     async def _async_update_data(self) -> NotificationData:
         session = async_get_clientsession(self.hass)
-        client = PowerHubApiClient(session, self._token)
+        client = PowerHubApiClient(session, self._token, provider_of(self._entry))
         try:
             notifications = await client.get_notifications()
         except AuthError:

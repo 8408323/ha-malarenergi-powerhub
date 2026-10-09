@@ -25,7 +25,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
-from .coordinator import PowerHubCoordinator, PowerHubData
+from .coordinator import PowerHubCoordinator, PowerHubData, device_info
 from .notifications_coordinator import NotificationData, NotificationsCoordinator
 
 
@@ -295,12 +295,7 @@ class PowerHubSensor(CoordinatorEntity[PowerHubCoordinator], SensorEntity):
         self.entity_description = description
         assert coordinator.config_entry is not None
         self._attr_unique_id = f"{coordinator.config_entry.entry_id}_{description.key}"
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, coordinator.config_entry.entry_id)},
-            "name": f"PowerHub {coordinator.config_entry.title}",
-            "manufacturer": "Bitvis / Mälarenergi",
-            "model": "PowerHub (ESP32, Kaifa MA304)",
-        }
+        self._attr_device_info = device_info(coordinator.config_entry)
 
     @property
     def native_value(self) -> float | str | int | bool | None:
@@ -357,12 +352,7 @@ class NotificationSensor(CoordinatorEntity[NotificationsCoordinator], SensorEnti
     ) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_latest_notification"
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, entry.entry_id)},
-            "name": f"PowerHub {entry.title}",
-            "manufacturer": "Bitvis / Mälarenergi",
-            "model": "PowerHub (ESP32, Kaifa MA304)",
-        }
+        self._attr_device_info = device_info(entry)
 
     @property
     def native_value(self) -> str | None:

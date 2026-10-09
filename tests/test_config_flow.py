@@ -593,7 +593,7 @@ def _make_user_flow() -> PowerHubConfigFlow:
 def _make_async_gen(*items):
     """Return an async-generator factory that yields the given items."""
 
-    async def _gen(session, transaction_id):
+    async def _gen(session, transaction_id, provider="malarenergi"):
         for item in items:
             yield item
 
@@ -611,7 +611,7 @@ class TestAsyncStepUser:
                 AsyncMock(side_effect=RuntimeError("network error")),
             ),
         ):
-            result = await flow.async_step_user()
+            result = await flow.async_step_bankid()
 
         assert result["type"] == "form"
         assert result["errors"] == {"base": "cannot_connect"}
@@ -630,7 +630,7 @@ class TestAsyncStepUser:
                 _make_async_gen(("pending", "qr-data", None)),
             ),
         ):
-            result = await flow.async_step_user()
+            result = await flow.async_step_bankid()
 
         assert result["type"] == "form"
         assert result["step_id"] == "bankid_qr"
@@ -652,7 +652,7 @@ class TestAsyncStepUser:
                 _make_async_gen(("failed", None, None)),
             ),
         ):
-            result = await flow.async_step_user()
+            result = await flow.async_step_bankid()
 
         assert result["type"] == "form"
         assert result["errors"] == {"base": "bankid_failed"}
@@ -675,7 +675,7 @@ class TestAsyncStepUser:
                 _exploding_poll,
             ),
         ):
-            result = await flow.async_step_user()
+            result = await flow.async_step_bankid()
 
         assert result["type"] == "form"
         assert result["errors"] == {"base": "cannot_connect"}
@@ -808,13 +808,13 @@ class TestAsyncStepBankidQr:
         flow._failed = True
 
         step_user_result = {"type": "form", "step_id": "user"}
-        flow.async_step_user = AsyncMock(return_value=step_user_result)
+        flow.async_step_bankid = AsyncMock(return_value=step_user_result)
         flow._cancel_task = MagicMock()
 
         result = await flow.async_step_bankid_qr()
 
         flow._cancel_task.assert_called_once()
-        flow.async_step_user.assert_awaited_once()
+        flow.async_step_bankid.assert_awaited_once()
         assert result == step_user_result
 
     async def test_poll_task_done_without_token_restarts_user_step(self) -> None:
@@ -827,11 +827,11 @@ class TestAsyncStepBankidQr:
         flow._failed = False
 
         step_user_result = {"type": "form", "step_id": "user"}
-        flow.async_step_user = AsyncMock(return_value=step_user_result)
+        flow.async_step_bankid = AsyncMock(return_value=step_user_result)
 
         result = await flow.async_step_bankid_qr()
 
-        flow.async_step_user.assert_awaited_once()
+        flow.async_step_bankid.assert_awaited_once()
         assert result == step_user_result
 
     async def test_no_token_or_failure_shows_refreshed_qr(self) -> None:
@@ -862,11 +862,11 @@ class TestAsyncStepReauth:
         flow.hass.async_create_task = MagicMock()
 
         step_user_result = {"type": "form", "step_id": "user"}
-        flow.async_step_user = AsyncMock(return_value=step_user_result)
+        flow.async_step_bankid = AsyncMock(return_value=step_user_result)
 
         result = await flow.async_step_reauth(None)
 
-        flow.async_step_user.assert_awaited_once()
+        flow.async_step_bankid.assert_awaited_once()
         assert result == step_user_result
 
 
@@ -905,7 +905,7 @@ class TestAsyncStepUserFirstPollComplete:
                 _make_async_gen(("complete", None, "jwt-token")),
             ),
         ):
-            result = await flow.async_step_user()
+            result = await flow.async_step_bankid()
 
         flow._async_finish.assert_awaited_once_with("jwt-token")
         assert result == finish_result
@@ -920,7 +920,7 @@ class TestRunPollerCancelledError:
         flow = _make_user_flow()
         flow._transaction_id = "txn-123"
 
-        async def _cancelling_poll(session, txn_id):
+        async def _cancelling_poll(session, txn_id, provider):
             raise asyncio.CancelledError()
             yield  # pragma: no cover — unreachable; marks function as async generator
 
