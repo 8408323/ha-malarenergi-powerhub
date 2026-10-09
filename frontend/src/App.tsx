@@ -26,25 +26,26 @@ const kwTxt = (v: number | null) => fmt(v == null ? null : Math.abs(v), Math.abs
 // Our entities, by translation_key (entity ids differ between installs/languages), on the PowerHub device of
 // the config entry whose settings the panel shows (settings/get returns its entry_id).
 // ponytail: one hub (that entry's); add a hub picker if anyone wants to switch between facilities.
-function hubEntities(hass: any, entryId?: string | null): { dev?: string; ents?: Ents } {
+function hubEntities(hass: any, entryId?: string | null): { dev?: string; ents?: Ents; hubs: number } {
   const byDev: Record<string, Ents> = {};
   for (const e of Object.values((hass.entities ?? {}) as Record<string, any>))
     if (e.platform === "malarenergi_powerhub" && e.device_id && e.translation_key) (byDev[e.device_id] ??= {})[e.translation_key] = e.entity_id;
   const devs = Object.keys(byDev);
   const dev = devs.find((d) => entryId && hass.devices?.[d]?.config_entries?.includes(entryId)) ?? devs[0];
-  return { dev, ents: dev ? byDev[dev] : undefined };
+  return { dev, ents: dev ? byDev[dev] : undefined, hubs: devs.length };
 }
 
 // HA core's Bitvis integration reads the same hub locally, on its own device. Ours carries the hub's MAC as a
-// connection (since v0.3.0), so the Bitvis device sharing that MAC is the same hub; without a MAC match a
-// single Bitvis device is unambiguous. Per-phase sensors share a translation_key; the phase comes from the
+// connection (since v0.3.0), so the Bitvis device sharing that MAC is the same hub. Without a MAC match, a
+// single Bitvis device is only trusted when there's also a single PowerHub and no MAC says they differ. Per-phase sensors share a translation_key; the phase comes from the
 // entity id (from the "phase_current_l1"-style key), the friendly name only as a fallback.
-function bitvisEntities(hass: any, dev?: string): Ents | undefined {
+function bitvisEntities(hass: any, dev: string | undefined, hubs: number): Ents | undefined {
   const all = Object.values((hass.entities ?? {}) as Record<string, any>).filter((e) => e.platform === "bitvis" && e.device_id);
   const devs = [...new Set(all.map((e) => e.device_id as string))];
   const macs = (d?: string) => ((d && hass.devices?.[d]?.connections) ?? []).filter((c: string[]) => c[0] === "mac").map((c: string[]) => c[1]);
   const ours = macs(dev);
-  const use = devs.find((d) => macs(d).some((m: string) => ours.includes(m))) ?? (devs.length === 1 ? devs[0] : undefined);
+  const use = devs.find((d) => macs(d).some((m: string) => ours.includes(m)))
+    ?? (devs.length === 1 && hubs === 1 && !(ours.length && macs(devs[0]).length) ? devs[0] : undefined);
   if (!use) return undefined;
   const out: Ents = {};
   for (const e of all.filter((e) => e.device_id === use && e.translation_key)) {
@@ -103,8 +104,8 @@ export default function App({ hass, narrow }: { hass: any; narrow: boolean }) {
   };
   useEffect(load, []);
   const go = (x: Tab) => { setTab(x); try { localStorage.setItem("ph_tab", x); } catch { /* private mode */ } };
-  const { dev, ents } = hubEntities(hass, entryId);
-  const bv = bitvisEntities(hass, dev);
+  const { dev, ents, hubs } = hubEntities(hass, entryId);
+  const bv = bitvisEntities(hass, dev, hubs);
   const ctx = { hass, t, locale, narrow };
   return (
     <div className={`page ${narrow ? "narrow" : ""}`}>

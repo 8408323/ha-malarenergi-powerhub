@@ -10750,18 +10750,19 @@ function xe(e, t) {
 	let r = Object.keys(n), i = r.find((n) => t && e.devices?.[n]?.config_entries?.includes(t)) ?? r[0];
 	return {
 		dev: i,
-		ents: i ? n[i] : void 0
+		ents: i ? n[i] : void 0,
+		hubs: r.length
 	};
 }
-function Se(e, t) {
-	let n = Object.values(e.entities ?? {}).filter((e) => e.platform === "bitvis" && e.device_id), r = [...new Set(n.map((e) => e.device_id))], i = (t) => ((t && e.devices?.[t]?.connections) ?? []).filter((e) => e[0] === "mac").map((e) => e[1]), a = i(t), o = r.find((e) => i(e).some((e) => a.includes(e))) ?? (r.length === 1 ? r[0] : void 0);
-	if (!o) return;
-	let s = {};
-	for (let t of n.filter((e) => e.device_id === o && e.translation_key)) {
+function Se(e, t, n) {
+	let r = Object.values(e.entities ?? {}).filter((e) => e.platform === "bitvis" && e.device_id), i = [...new Set(r.map((e) => e.device_id))], a = (t) => ((t && e.devices?.[t]?.connections) ?? []).filter((e) => e[0] === "mac").map((e) => e[1]), o = a(t), s = i.find((e) => a(e).some((e) => o.includes(e))) ?? (i.length === 1 && n === 1 && !(o.length && a(i[0]).length) ? i[0] : void 0);
+	if (!s) return;
+	let c = {};
+	for (let t of r.filter((e) => e.device_id === s && e.translation_key)) {
 		let n = (/_l([123])(?:_|$)/i.exec(t.entity_id) ?? /\bL([123])\b/i.exec(e.states[t.entity_id]?.attributes?.friendly_name ?? ""))?.[1];
-		s[n ? `${t.translation_key}_l${n}` : t.translation_key] = t.entity_id;
+		c[n ? `${t.translation_key}_l${n}` : t.translation_key] = t.entity_id;
 	}
-	return s;
+	return c;
 }
 function Ce(e) {
 	let t = e.states, n = (e) => {
@@ -10840,7 +10841,7 @@ function Ee({ hass: e, narrow: t }) {
 		try {
 			localStorage.setItem("ph_tab", e);
 		} catch {}
-	}, { dev: g, ents: _ } = xe(e, i), v = Se(e, g), y = {
+	}, { dev: g, ents: _, hubs: v } = xe(e, i), y = Se(e, g, v), b = {
 		hass: e,
 		t: u,
 		locale: f,
@@ -10870,12 +10871,12 @@ function Ee({ hass: e, narrow: t }) {
 				children: u.retry
 			})]
 		}) : n ? /* @__PURE__ */ (0, p.jsxs)(p.Fragment, { children: [c === "overview" && /* @__PURE__ */ (0, p.jsx)(T, {
-			...y,
+			...b,
 			ents: _,
-			bv: v,
+			bv: y,
 			opts: n
 		}), c === "settings" && /* @__PURE__ */ (0, p.jsx)(Oe, {
-			...y,
+			...b,
 			ents: _,
 			opts: n,
 			setOpts: r
