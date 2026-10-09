@@ -165,7 +165,8 @@ function Overview({ hass, t, locale, narrow, ents, bv, opts }: Ctx & { ents: Ent
   const exact = grid != null && prodOk && battOk && evOk;
   const bound = grid != null && battOk && evOk;
   const houseW = bound ? grid! + (prod ?? 0) + (batt ?? 0) - (ev ?? 0) : null;
-  // negative = export nothing selected explains: the arrow shows it, a negative house load would be nonsense
+  const houseFlow = houseW != null && houseW >= 0 ? houseW : null;
+  // negative = export nothing selected explains it; a negative house load would be nonsense
   const house = houseW == null || houseW < 0 ? "–" : exact ? kwTxt(houseW) : `≥ ${kwTxt(houseW)}`;
   const parts = [prod != null && kwTxt(prod), batt != null && `${t.battery} ${batt < 0 ? "↑" : "↓"} ${kwTxt(batt)}`,
     soc != null && `${Math.round(soc)} %`].filter(Boolean).join(" · ");
@@ -197,7 +198,7 @@ function Overview({ hass, t, locale, narrow, ents, bv, opts }: Ctx & { ents: Ent
             <span className={`chip ${local ? "ok" : ""}`}>{local ? t.live_local : t.live_cloud}<Info text={local ? t.live_local_info : t.live_cloud_info} /></span>
           </div>
           <House v={{
-            live: !!local, grid, house: houseW, inv, ev, sources: node, hasEv, soc,
+            live: !!local, grid, house: houseFlow, inv, ev, sources: node, hasEv, soc,
             text: {
               grid: kwTxt(grid), gridSub,
               house, inv: kwTxt(inv), invSub: parts || t.not_measured,
