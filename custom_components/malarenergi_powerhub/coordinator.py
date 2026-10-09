@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from dataclasses import dataclass, field
 from dataclasses import replace as dataclass_replace
 from datetime import datetime, timedelta, timezone
@@ -46,6 +47,8 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+EV_REFRESH_S = 3600  # EV chargers/vehicles change rarely (set up in the energy company's app)
 
 
 def provider_of(entry: ConfigEntry) -> str:
@@ -156,6 +159,7 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
         self._facility_info_resolved = False
         self._cached_ev_chargers: list[EvDevice] | None = None
         self._cached_ev_vehicles: list[EvDevice] | None = None
+        self._ev_fetched_at = float("-inf")
         # Names of non-critical endpoints currently failing. Used to log the
         # first failure at WARNING and subsequent repeats at DEBUG (avoids
         # flooding the HA log every 60s while a backend endpoint stays down),
@@ -254,7 +258,11 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
                             self._facility_id,
                         )
 
-            # Chargers and vehicles cached separately: one failing must not hide the other
+            # Chargers and vehicles cached separately (one failing must not hide the
+            # other) and refetched hourly, so app-side changes show up without a reload
+            if time.monotonic() - self._ev_fetched_at > EV_REFRESH_S:
+                self._cached_ev_chargers = self._cached_ev_vehicles = None
+                self._ev_fetched_at = time.monotonic()
             if self._cached_ev_chargers is None:
                 self._cached_ev_chargers = await self._fetch_static(
                     power_client.get_ev_chargers(self._facility_id), "ev_chargers"

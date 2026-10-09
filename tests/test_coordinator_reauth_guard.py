@@ -46,6 +46,7 @@ def _make_coordinator_env(cls):
     coord._facility_info_resolved = True
     coord._cached_ev_chargers = []
     coord._cached_ev_vehicles = []
+    coord._ev_fetched_at = float("inf")
     return coord, entry
 
 

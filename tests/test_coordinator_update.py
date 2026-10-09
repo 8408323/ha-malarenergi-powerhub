@@ -226,6 +226,7 @@ def _make_coordinator(facility_id="fac-1") -> PowerHubCoordinator:
     coord._facility_info_resolved = False
     coord._cached_ev_chargers = None
     coord._cached_ev_vehicles = None
+    coord._ev_fetched_at = float("-inf")
     coord._degraded_endpoints = set()
     coord.data = None
     coord.async_request_refresh = AsyncMock()
@@ -312,9 +313,14 @@ async def test_async_update_data_keeps_chargers_when_vehicles_fail() -> None:
     coord._make_power_client = MagicMock(return_value=power)
 
     result = await coord._async_update_data()
-
     assert result.ev_devices == [charger]
-    assert coord._cached_ev_vehicles is None
+
+    await coord._async_update_data()  # next poll: vehicles retried, chargers still cached
+    assert (power.get_ev_chargers.await_count, power.get_ev_vehicles.await_count) == (1, 2)
+
+    coord._ev_fetched_at -= 3601  # an hour later both are refetched
+    await coord._async_update_data()
+    assert (power.get_ev_chargers.await_count, power.get_ev_vehicles.await_count) == (2, 3)
 
 
 @pytest.mark.asyncio
