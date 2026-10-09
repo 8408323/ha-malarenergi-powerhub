@@ -1,14 +1,14 @@
-# Setup Guide — Mälarenergi PowerHub
+# Setup Guide — PowerHub
 
-This guide walks you through installing and configuring the Mälarenergi PowerHub integration in Home Assistant from scratch.
+This guide walks you through installing and configuring the PowerHub integration in Home Assistant from scratch.
 
 ---
 
 ## What you need
 
-- A Mälarenergi electricity subscription with a [PowerHub device](https://www.malarenergi.se/el/elavtal/powerhub/) installed at your property
+- A PowerHub from your energy company (e.g. [Mälarenergi](https://www.malarenergi.se/el/elavtal/powerhub/), Kraftringen, Boo Energi — see the README for the full list) installed at your property
 - [HACS](https://hacs.xyz/) installed in Home Assistant
-- The **BankID** app on your phone (same one used for Mälarenergi's own app)
+- The **BankID** app on your phone (same one used for your energy company's app)
 
 ---
 
@@ -33,7 +33,7 @@ This guide walks you through installing and configuring the Mälarenergi PowerHu
 
 ## Step 2 — Find the repository in HACS
 
-Back in the HACS dashboard, search for **Mälarenergi** to locate the newly added repository.
+Back in the HACS dashboard, search for **PowerHub** to locate the newly added repository.
 
 ![HACS dashboard with Mälarenergi search](images/03_hacs_search_repo.png)
 
@@ -69,17 +69,19 @@ Wait ~30 seconds for Home Assistant to come back online.
 
 1. Go to **Settings → Devices & Services**
 2. Click **+ Add integration** (bottom right)
-3. Search for **Mälarenergi PowerHub**
+3. Search for **PowerHub**
 
-   ![Search result showing Mälarenergi PowerHub](images/06_add_integration_search.png)
+   ![Search result showing the PowerHub integration](images/06_add_integration_search.png)
 
 4. Click the result — a setup dialog appears
+5. Choose your **energy company** (Mälarenergi, Kraftringen, Boo Energi, …) and click **Submit**. Not in the list? Type its name in lowercase without spaces, with å/ä/ö as a/a/o (e.g. `norrtaljeenergi`).
+6. Click **Submit** once more to show the BankID QR code
 
 ---
 
 ## Step 6 — Scan the BankID QR code
 
-The integration uses **Swedish BankID** for authentication — the same login as the Mälarenergi app.
+The integration uses **Swedish BankID** for authentication — the same login as your energy company's PowerHub app.
 
 A QR code is displayed in the dialog:
 
@@ -95,13 +97,13 @@ A QR code is displayed in the dialog:
 
 > **Note:** The QR code rotates every few seconds. If it expires before you scan it, click **Submit** in the dialog to get a fresh one.
 >
-> **Be patient after approving:** once you approve in BankID, sign-in can take **1–2 minutes** to complete if Mälarenergi's servers are slow. Keep clicking **Submit** every few seconds until the dialog closes — do not re-scan.
+> **Be patient after approving:** once you approve in BankID, sign-in can take **1–2 minutes** to complete if the servers are slow. Keep clicking **Submit** every few seconds until the dialog closes — do not re-scan.
 
 ---
 
 ## Step 7 — Done!
 
-After a successful BankID login, a **PowerHub** device is created under *Settings → Devices & Services → Mälarenergi PowerHub*. The two energy sensors below can be used directly in Home Assistant's **Energy dashboard**; the spot price sensor is a monetary sensor (not an Energy-dashboard source, but useful for automations and cost cards):
+After a successful BankID login, a **PowerHub** device is created under *Settings → Devices & Services → PowerHub*. The two energy sensors below can be used directly in Home Assistant's **Energy dashboard**; the spot price sensor is a monetary sensor (not an Energy-dashboard source, but useful for automations and cost cards):
 
 | Entity | Description | Unit |
 |---|---|---|
@@ -115,7 +117,7 @@ The full entity list — including real-time power, per-phase currents, facility
 
 ### What the device looks like in Home Assistant
 
-Opening the **PowerHub** device under *Settings → Devices & Services → Mälarenergi PowerHub* shows all sensors, configuration entities, and diagnostics:
+Opening the **PowerHub** device under *Settings → Devices & Services → PowerHub* shows all sensors, configuration entities, and diagnostics:
 
 ![PowerHub device — sensors tab](images/09_device_sensors.png)
 
@@ -133,7 +135,7 @@ Diagnostic entities (Wi-Fi signal, firmware version, HAN port state, uptime) are
 
 The JWT token issued by BankID expires after some time. When it does, Home Assistant will show a notification:
 
-> *Mälarenergi PowerHub — re-authentication required*
+> *PowerHub — re-authentication required*
 
 ![Re-authentication required notification](images/12_reauth_required_notification.png)
 
@@ -144,14 +146,14 @@ Click the notification and follow the same BankID QR flow to renew your session.
 ## Troubleshooting
 
 **The setup dialog appears blank (no QR code)**
-Make sure you have the latest version installed. In HACS, go to the Mälarenergi PowerHub page → three-dot menu → **Update information**, then **Redownload**. Restart Home Assistant.
+Make sure you have the latest version installed. In HACS, go to the PowerHub page → three-dot menu → **Update information**, then **Redownload**. Restart Home Assistant.
 
 **BankID login fails or times out**
-- Ensure your BankID is registered with the same personal identity number as your Mälarenergi account
+- Ensure your BankID is registered with the same personal identity number as your energy company account
 - Close and reopen the BankID app and try again
 
 **"No facilities found" error**
-Your Mälarenergi account must have an active PowerHub device registered. Contact Mälarenergi if you believe this is incorrect.
+Your energy company account must have an active PowerHub device registered. Contact your energy company if you believe this is incorrect.
 
 **Sensors show 0 kWh**
 This is expected early in the day (shortly after midnight) or if your PowerHub has not reported data yet. Values update as the day progresses.
