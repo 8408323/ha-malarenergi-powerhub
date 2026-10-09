@@ -157,10 +157,8 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
         self._cached_agreements: list[Agreement] | None = None
         self._cached_facility_info: FacilityInfo | None = None
         self._facility_info_resolved = False
-        self._cached_ev_chargers: list[EvDevice] | None = None
-        self._cached_ev_vehicles: list[EvDevice] | None = None
-        self._ev_chargers_fetched_at = float("-inf")
-        self._ev_vehicles_fetched_at = float("-inf")
+        self._ev: dict[str, list[EvDevice]] = {"chargers": [], "vehicles": []}
+        self._ev_due = {"chargers": float("-inf"), "vehicles": float("-inf")}  # monotonic time of next fetch
         # Names of non-critical endpoints currently failing. Used to log the
         # first failure at WARNING and subsequent repeats at DEBUG (avoids
         # flooding the HA log every 60s while a backend endpoint stays down),
@@ -259,23 +257,15 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
                             self._facility_id,
                         )
 
-            # Chargers and vehicles are refreshed independently. Keep last-known
-            # values if a refresh fails, and retry only the failing endpoint.
-            ev_refresh_now = time.monotonic()
-            if self._cached_ev_chargers is None or ev_refresh_now - self._ev_chargers_fetched_at > EV_REFRESH_S:
-                ev_chargers = await self._fetch_static(
-                    power_client.get_ev_chargers(self._facility_id), "ev_chargers"
-                )
-                if ev_chargers is not None:
-                    self._cached_ev_chargers = ev_chargers
-                    self._ev_chargers_fetched_at = ev_refresh_now
-            if self._cached_ev_vehicles is None or ev_refresh_now - self._ev_vehicles_fetched_at > EV_REFRESH_S:
-                ev_vehicles = await self._fetch_static(
-                    power_client.get_ev_vehicles(self._facility_id), "ev_vehicles"
-                )
-                if ev_vehicles is not None:
-                    self._cached_ev_vehicles = ev_vehicles
-                    self._ev_vehicles_fetched_at = ev_refresh_now
+            # Chargers and vehicles are fetched separately (one failing must not hide
+            # the other) and refreshed hourly; a failed refresh keeps the last good list
+            # and is retried on the next poll.
+            for kind, fetch in (("chargers", power_client.get_ev_chargers), ("vehicles", power_client.get_ev_vehicles)):
+                if time.monotonic() >= self._ev_due[kind]:
+                    found = await self._fetch_static(fetch(self._facility_id), f"ev_{kind}")
+                    if found is not None:
+                        self._ev[kind] = found
+                        self._ev_due[kind] = time.monotonic() + EV_REFRESH_S
 
             # Notification settings (fetched each poll — user may change in app)
             notification_settings = await power_client.get_notification_settings(self._facility_id)
@@ -386,7 +376,7 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
             hourly_energy_today=hourly_energy_today,
             monthly_insights=monthly_insights,
             production_ytd_kwh=production_ytd_kwh,
-            ev_devices=(self._cached_ev_chargers or []) + (self._cached_ev_vehicles or []),
+            ev_devices=self._ev["chargers"] + self._ev["vehicles"],
         )
 
     async def async_update_facility_control(self, **kwargs) -> None:

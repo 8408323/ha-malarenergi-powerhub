@@ -44,9 +44,8 @@ def _make_coordinator_env(cls):
     coord._cached_agreements = []
     coord._cached_facility_info = MagicMock()
     coord._facility_info_resolved = True
-    coord._cached_ev_chargers = []
-    coord._cached_ev_vehicles = []
-    coord._ev_fetched_at = float("inf")
+    coord._ev = {"chargers": [], "vehicles": []}
+    coord._ev_due = {"chargers": float("inf"), "vehicles": float("inf")}
     return coord, entry
 
 
