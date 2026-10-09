@@ -90,10 +90,12 @@ A **PowerHub** sidebar panel shows grid import/export as an animated house pictu
 fuse, today's energy, prices and device status. If Home Assistant's built-in **Bitvis** integration is set up for
 the same hub, the panel uses its local real-time values (badge "Live (local)"); otherwise the 1-minute cloud values.
 
-The PowerHub only measures the grid connection. Under **Settings** in the panel you can say whether you have solar
-panels, a home battery or an EV charger (shown as one inverter node and a garage), and optionally pick existing
-sensors for their power so they appear in the picture too. The panel can be hidden from the sidebar there
-(it stays reachable at `/powerhub`).
+The PowerHub only measures the grid connection, so it can't tell where exported power comes from. Under
+**Settings** in the panel you tick your local sources (solar, home battery, wind, generator/CHP, EV with V2H/V2G,
+other) and whether you have a plain EV charger. Production sources are drawn as one node with an icon each; a V2G
+car can feed the house from the garage. Optionally pick a combined production-power sensor, battery sensors and an
+EV power sensor so their values appear in the picture. The panel can be hidden from the sidebar there (it stays
+reachable at `/powerhub`).
 
 ![Panel](docs/images/13_panel_overview.jpg)
 

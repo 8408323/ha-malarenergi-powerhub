@@ -154,3 +154,4 @@ td.r, th.r { text-align: right; }
 .pick { width: min(260px, 55vw); padding: 6px 10px; font: inherit; color: inherit; background: var(--me-bg); border: 1px solid var(--me-line); border-radius: 10px; }
 .pick:focus { outline: 2px solid var(--me-accent); outline-offset: -1px; }
 .setting em { font-style: normal; }
+.center { text-align: center; padding: 0 8px 4px; }

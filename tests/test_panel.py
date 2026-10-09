@@ -73,9 +73,9 @@ def test_remove_panel_only_when_registered() -> None:
 
 def test_settings_get_returns_defaults_merged() -> None:
     conn = MagicMock()
-    panel.ws_settings_get(_hass([_entry({"has_solar": True, "junk": 1})]), conn, {"id": 1})
+    panel.ws_settings_get(_hass([_entry({"sources": ["wind"], "junk": 1})]), conn, {"id": 1})
     opts = conn.send_result.call_args.args[1]["options"]
-    assert opts["has_solar"] is True and opts["show_panel"] is True and "junk" not in opts
+    assert opts["sources"] == ["wind"] and opts["show_panel"] is True and "junk" not in opts
     panel.ws_settings_get(_hass(), conn, {"id": 2})
     assert conn.send_result.call_args.args[1]["options"] == panel.DEFAULT_OPTIONS
 
@@ -87,9 +87,9 @@ async def test_settings_set_validates_and_saves() -> None:
     msg = {
         "id": 1,
         "options": {
-            "has_solar": True,
+            "sources": ["solar", "v2g"],
             "has_ev": None,
-            "solar_power": "sensor.pv",
+            "production_power": "sensor.pv",
             "ev_power": 5,
             "battery_invert": "no",
             "x": 1,
@@ -97,7 +97,9 @@ async def test_settings_set_validates_and_saves() -> None:
     }
     await _set(hass, conn, msg)
     saved = hass.config_entries.async_update_entry.call_args.kwargs["options"]
-    assert saved["other"] == "kept" and saved["has_solar"] is True and saved["solar_power"] == "sensor.pv"
+    assert (
+        saved["other"] == "kept" and saved["sources"] == ["solar", "v2g"] and saved["production_power"] == "sensor.pv"
+    )
     assert saved["ev_power"] == "" and saved["battery_invert"] is False and "x" not in saved
     conn.send_result.assert_called_once()
 
@@ -119,3 +121,27 @@ async def test_settings_set_without_entry_errors() -> None:
     conn = MagicMock()
     await _set(_hass(), conn, {"id": 1, "options": {}})
     conn.send_error.assert_called_once()
+
+
+def test_legacy_booleans_migrate_into_sources() -> None:
+    assert panel._options(_entry({"has_solar": True, "has_battery": False}))["sources"] == ["solar"]
+    assert panel._options(_entry({"has_solar": False}))["sources"] == []
+    assert panel._options(_entry())["sources"] is None  # never answered: panel follows the hub
+    # an explicit list wins over the old booleans
+    assert panel._options(_entry({"has_solar": True, "sources": ["wind"]}))["sources"] == ["wind"]
+
+
+def test_sources_validation() -> None:
+    assert panel._valid("sources", None)
+    assert panel._valid("sources", ["solar", "battery", "wind", "generator", "v2g", "other"])
+    assert not panel._valid("sources", ["nuclear"])
+    assert not panel._valid("sources", "solar")
+
+
+async def test_settings_set_drops_legacy_keys_after_migrating() -> None:
+    entry = _entry({"has_solar": True, "has_battery": True, "keep": 1})
+    hass = _hass([entry])
+    await _set(hass, MagicMock(), {"id": 1, "options": {"show_panel": True}})
+    saved = hass.config_entries.async_update_entry.call_args.kwargs["options"]
+    assert saved["sources"] == ["solar", "battery"] and saved["keep"] == 1
+    assert "has_solar" not in saved and "has_battery" not in saved

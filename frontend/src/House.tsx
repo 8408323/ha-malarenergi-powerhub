@@ -1,5 +1,5 @@
 // Isometric house scene (adapted from the villa-energy panel): grid pole, the PowerHub at the meter, and,
-// when the user has them, one inverter (solar and/or battery) and a garage with an EV. Pure SVG, back to front.
+// when the user has them, one local-production node (an icon per source) and a garage with an EV. Pure SVG, back to front.
 
 type V = [number, number, number];
 const S = 32, CX = 288, CY = 262;
@@ -9,6 +9,8 @@ const pts = (vs: V[]) => vs.map((v) => P(v).join(",")).join(" ");
 const path = (vs: V[]) => vs.map((v, i) => `${i ? "L" : "M"}${P(v).join(",")}`).join(" ");
 
 const C = { sun: "#f5b301", grid: "#7c8cff", batt: "#2ec27e", house: "#3daee9", ev: "#c061cb", inv: "#f5a524" };
+
+import type { Source } from "./App";
 
 // one wire segment: dashes run in the flow direction, faster for bigger flows
 function Wire({ route, w, max, color }: { route: V[]; w: number | null; max: number; color: string }) {
@@ -48,7 +50,7 @@ function Tag({ at, title, value, sub, color, align = "middle" }:
 // Wire values in kW, + along the route as written; null = not measured, so the cable is drawn but nothing flows.
 export type HouseValues = {
   live: boolean; grid: number | null; house: number | null; inv: number | null; ev: number | null;
-  solar: boolean; battery: boolean; hasEv: boolean; soc: number | null;
+  sources: Source[]; hasEv: boolean; soc: number | null;  // sources: the production node's, no v2g
   text: { grid: string; gridSub: string; house: string; inv: string; invSub: string; ev: string; evSub: string };
   labels: { grid: string; house: string; inverter: string; ev: string; powerhub: string };
 };
@@ -81,11 +83,32 @@ function Battery({ x, y, soc }: { x: number; y: number; soc: number | null }) {
     <rect x={x - 3} y={y + 6 - 12 * lvl} width={6} height={12 * lvl} fill={C.batt} /></g>;
 }
 
+function Wind({ x, y }: { x: number; y: number }) {
+  return <g stroke="#9fb4ff" strokeWidth={1.6} strokeLinecap="round"><line x1={x} y1={y} x2={x} y2={y + 9} />
+    {[-90, 30, 150].map((a) => { const r = (a * Math.PI) / 180; return <line key={a} x1={x} y1={y} x2={x + 8 * Math.cos(r)} y2={y + 8 * Math.sin(r)} />; })}</g>;
+}
+function Generator({ x, y }: { x: number; y: number }) {
+  return <g><rect x={x - 7} y={y - 5} width={14} height={10} rx={2} fill="none" stroke="#e5484d" strokeWidth={1.6} />
+    <text x={x} y={y + 3.5} textAnchor="middle" fontSize={8} fontWeight={700} fill="#e5484d">G</text></g>;
+}
+function Bolt({ x, y }: { x: number; y: number }) {
+  return <path d={`M${x + 1} ${y - 8} L${x - 4} ${y + 1} H${x} L${x - 1} ${y + 8} L${x + 4} ${y - 1} H${x} Z`} fill="#c3ccd8" />;
+}
+// one icon per source on the node's face: up to two per row, smaller when there are several
+function Icons({ sources, soc }: { sources: Source[]; soc: number | null }) {
+  const one = sources.length === 1;
+  return <>{sources.map((s, i) => {
+    const [x, y] = one ? P([5.1, 4.04, 1.1]) : P([4.82 + (i % 2) * 0.56, 4.04, 1.5 - Math.floor(i / 2) * 0.42]);
+    const icon = s === "solar" ? <Sun x={0} y={0} /> : s === "battery" ? <Battery x={0} y={0} soc={soc} />
+      : s === "wind" ? <Wind x={0} y={0} /> : s === "generator" ? <Generator x={0} y={0} /> : <Bolt x={0} y={0} />;
+    return <g key={s} transform={`translate(${x},${y + (one ? 4 : 0)}) scale(${one ? 1 : 0.72})`}>{icon}</g>;
+  })}</>;
+}
+
 export default function House({ v }: { v: HouseValues }) {
-  const hasInv = v.solar || v.battery;
+  const hasInv = v.sources.length > 0;
   const max = Math.max(1e-9, ...[v.grid, v.house, v.inv, v.ev].map((x) => Math.abs(x ?? 0)));
   const W = 4.04; // wire plane, just in front of the front wall
-  const [ix, iy] = P([5.1, W, 1.1]);  // inverter face centre
   return (
     <svg viewBox={v.hasEv ? "0 105 600 410" : "90 105 510 410"} className="house-scene" role="img" aria-label="energy flow">
       <defs>
@@ -140,11 +163,10 @@ export default function House({ v }: { v: HouseValues }) {
       <polygon points={pts([[3.45, W, 1.6], [4.15, W, 1.6], [4.15, W, 2.35], [3.45, W, 2.35]])} fill="#f8fafc" stroke="#aab4c3">
         <title>{v.labels.powerhub}</title></polygon>
       <circle cx={P([3.8, W, 1.8])[0]} cy={P([3.8, W, 1.8])[1]} r={2.2} fill={v.live ? "#2ec27e" : "#9aa4b2"} />
-      {/* one inverter for solar and/or battery: the grid meter can't tell them apart */}
+      {/* one node for every local source: the grid meter can't tell them apart */}
       {hasInv && <g>
         <polygon points={pts([[4.55, W, 0.45], [5.65, W, 0.45], [5.65, W, 1.75], [4.55, W, 1.75]])} fill="#f8fafc" stroke="#aab4c3" />
-        {v.solar && <Sun x={v.battery ? ix - 8 : ix} y={iy + 4} />}
-        {v.battery && <Battery x={v.solar ? ix + 9 : ix} y={iy + 4} soc={v.soc} />}
+        <Icons sources={v.sources} soc={v.soc} />
       </g>}
       {tree(7.6, 3.4)}
 

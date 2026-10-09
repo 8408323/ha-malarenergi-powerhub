@@ -3,12 +3,15 @@ import House from "./House";
 import { T, pick } from "./i18n";
 
 type Options = {
-  show_panel: boolean; has_solar: boolean | null; has_battery: boolean | null; has_ev: boolean | null;
-  solar_power: string; battery_power: string; battery_soc: string; battery_invert: boolean; ev_power: string;
+  show_panel: boolean; sources: Source[] | null; has_ev: boolean | null;
+  production_power: string; battery_power: string; battery_soc: string; battery_invert: boolean; ev_power: string;
 };
 type Ctx = { hass: any; t: T; locale: string; narrow: boolean };
 type Ents = Record<string, string>;  // translation_key -> entity_id
 
+// local sources export can come from (panel.py SOURCES); v2g is the EV node, the rest share one node
+export const SOURCES = ["solar", "battery", "wind", "generator", "v2g", "other"] as const;
+export type Source = (typeof SOURCES)[number];
 const TABS = ["overview", "settings"] as const;
 type Tab = (typeof TABS)[number];
 const KW: Record<string, number> = { mW: 1e-6, W: 1e-3, kW: 1, MW: 1e3 };  // HA power units -> kW
@@ -105,12 +108,12 @@ export default function App({ hass, narrow }: { hass: any; narrow: boolean }) {
 // What the user has behind the meter: their own answer in Settings wins, else what they told the energy company.
 function flags(hass: any, ents: Ents, o: Options) {
   const st = hass.states;
-  const ev = st[ents.ev_type]?.state;
-  return {
-    solar: o.has_solar ?? st[ents.has_solar]?.state === "on",
-    battery: o.has_battery ?? st[ents.has_battery]?.state === "on",
-    ev: o.has_ev ?? (!!ev && !["NONE", "unknown", "unavailable"].includes(ev)),
-  };
+  const evType = st[ents.ev_type]?.state;
+  const sources: Source[] = o.sources ?? [
+    ...(st[ents.has_solar]?.state === "on" ? ["solar" as const] : []),
+    ...(st[ents.has_battery]?.state === "on" ? ["battery" as const] : []),
+  ];
+  return { sources, ev: o.has_ev ?? (!!evType && !["NONE", "unknown", "unavailable"].includes(evType)) };
 }
 
 function Overview({ hass, t, locale, narrow, ents, bv, opts }: Ctx & { ents: Ents; bv?: Ents; opts: Options }) {
@@ -121,21 +124,27 @@ function Overview({ hass, t, locale, narrow, ents, bv, opts }: Ctx & { ents: Ent
   const exp = local ? kw(bv!.power_active_export) : kw(ents.power_export);
   const grid = imp == null || exp == null ? null : imp - exp;  // + buying
   const f = flags(hass, ents, opts);
-  const solar = f.solar && opts.solar_power ? kw(opts.solar_power) : null;
-  const batt0 = f.battery && opts.battery_power ? kw(opts.battery_power) : null;
+  const node = f.sources.filter((x) => x !== "v2g");  // the one local-production node
+  const has = (x: Source) => f.sources.includes(x);
+  const v2g = has("v2g"), hasEv = f.ev || v2g;
+  const prod0 = node.some((x) => x !== "battery") && opts.production_power ? kw(opts.production_power) : null;
+  const prod = prod0 == null ? null : Math.max(0, prod0);
+  const batt0 = has("battery") && opts.battery_power ? kw(opts.battery_power) : null;
   const batt = batt0 == null ? null : opts.battery_invert ? -batt0 : batt0;  // + discharging
-  const inv = solar == null && batt == null ? null : Math.max(0, solar ?? 0) + (batt ?? 0);
-  const ev = f.ev && opts.ev_power ? kw(opts.ev_power) : null;
-  const soc = f.battery && opts.battery_soc ? num(opts.battery_soc) : null;
-  const hasInv = f.solar || f.battery;
-  // house load is only known when every source behind the meter is; otherwise the wire still shows the
-  // grid direction (import into the house, export out of it)
-  const known = grid != null && (!hasInv || inv != null);
-  // unknown inverter: import still goes into the house, but export can't be attributed to the house
-  const houseW = grid == null ? null : known ? grid + (inv ?? 0) - (ev ?? 0) : Math.max(0, grid - (ev ?? 0));
-  const house = known ? kwTxt(houseW) : houseW ? `≥ ${kwTxt(houseW)}` : "–";
-  const parts = [solar != null && `${t.solar} ${kwTxt(solar)}`, batt != null && `${t.battery} ${batt < 0 ? "↑" : "↓"} ${kwTxt(batt)}`,
+  const inv = prod == null && batt == null ? null : (prod ?? 0) + (batt ?? 0);
+  const ev0 = hasEv && opts.ev_power ? kw(opts.ev_power) : null;
+  const ev = ev0 == null ? null : v2g ? ev0 : Math.max(0, ev0);  // + charging; only V2G may feed back
+  const soc = has("battery") && opts.battery_soc ? num(opts.battery_soc) : null;
+  // house load is only known when every source behind the meter is; otherwise import still goes into
+  // the house, but export can't be attributed to it
+  const known = grid != null && (!node.length || inv != null) && (!v2g || ev != null);
+  const houseW = grid == null ? null : known ? grid + (inv ?? 0) - (ev ?? 0) : Math.max(0, grid - Math.max(0, ev ?? 0));
+  // negative = export nothing selected explains: the arrow shows it, a negative house load would be nonsense
+  const house = houseW != null && houseW < 0 ? "–" : known ? kwTxt(houseW) : houseW ? `≥ ${kwTxt(houseW)}` : "–";
+  const parts = [prod != null && kwTxt(prod), batt != null && `${t.battery} ${batt < 0 ? "↑" : "↓"} ${kwTxt(batt)}`,
     soc != null && `${Math.round(soc)} %`].filter(Boolean).join(" · ");
+  const exporting = grid != null && grid < -0.03;
+  const from = `${t.export_from}: ${f.sources.map((x) => t[`src_${x}`]).join(", ")}`;
 
   // phases: Bitvis' local currents, else ours
   const amps = [1, 2, 3].map((n) => conv(bv?.[`phase_current_l${n}`], AMP) ?? conv(ents[`current_l${n}`], AMP));
@@ -160,14 +169,16 @@ function Overview({ hass, t, locale, narrow, ents, bv, opts }: Ctx & { ents: Ent
             <span className={`chip ${local ? "ok" : ""}`}>{local ? t.live_local : t.live_cloud}<Info text={local ? t.live_local_info : t.live_cloud_info} /></span>
           </div>
           <House v={{
-            live: !!local, grid, house: houseW, inv, ev, solar: f.solar, battery: f.battery, hasEv: f.ev, soc,
+            live: !!local, grid, house: houseW, inv, ev, sources: node, hasEv, soc,
             text: {
-              grid: kwTxt(grid), gridSub: grid == null ? "" : grid > 0.03 ? t.importing : grid < -0.03 ? t.exporting : t.idle,
-              house, inv: inv == null ? "" : kwTxt(inv), invSub: inv == null ? t.inv_static : parts,
-              ev: kwTxt(ev), evSub: ev == null ? t.not_measured : "",
+              grid: kwTxt(grid), gridSub: grid == null ? "" : exporting ? (f.sources.length ? t.exporting : t.unexplained) : grid > 0.03 ? t.importing : t.idle,
+              house, inv: kwTxt(inv), invSub: inv == null ? t.not_measured : parts,
+              ev: kwTxt(ev), evSub: ev == null ? t.not_measured : ev < -0.03 ? t.ev_discharging : "",
             },
-            labels: { grid: t.grid, house: t.house, inverter: t.inverter, ev: t.ev, powerhub: t.powerhub },
+            labels: { grid: t.grid, house: t.house, inverter: node.every((x) => x === "solar" || x === "battery") ? t.inverter : t.production,
+              ev: t.ev, powerhub: t.powerhub },
           }} />
+          {f.sources.length > 0 && <div className="muted center">{from}</div>}
         </section>
         <div className="side">
           <section className="card">
@@ -225,11 +236,12 @@ function Settings({ hass, t, ents, opts, setOpts }: Ctx & { ents: Ents; opts: Op
       .catch((e: any) => setMsg(e?.message ?? String(e)));
   };
   const f = flags(hass, ents, opts);
+  const has = (x: Source) => f.sources.includes(x);
   // sensors offered in the pickers: anything with a power unit, or % for the battery charge
   const sensors = (units: string[]) => Object.values(hass.states as Record<string, any>)
     .filter((s) => s.entity_id.startsWith("sensor.") && units.includes(s.attributes?.unit_of_measurement)).map((s) => s.entity_id).sort();
   const power = sensors(Object.keys(KW)), pct = sensors(["%"]);
-  const pickRow = (key: "solar_power" | "battery_power" | "battery_soc" | "ev_power", list: string[]) => (
+  const pickRow = (key: "production_power" | "battery_power" | "battery_soc" | "ev_power", list: string[]) => (
     <div className="setting" key={key}><span>{t[key]}</span>
       <input className="pick" list={`ph-${key}`} defaultValue={opts[key]} disabled={!admin} placeholder="sensor.…"
         onBlur={(e) => e.target.value.trim() !== opts[key] && save({ [key]: e.target.value.trim() })} />
@@ -240,21 +252,26 @@ function Settings({ hass, t, ents, opts, setOpts }: Ctx & { ents: Ents; opts: Op
     <div className="settings-grid">
       {!admin && <div className="card muted">{t.admin_only}</div>}
       <section className="card">
-        <h2>{t.s_home}<Info text={t.s_home_info} /></h2>
-        {(["has_solar", "has_battery", "has_ev"] as const).map((k) => (
-          <div className="setting" key={k}>
-            <span>{t[k]}{opts[k] == null && <em className="muted"> · {t.from_hub}</em>}</span>
-            <Toggle on={f[k === "has_solar" ? "solar" : k === "has_battery" ? "battery" : "ev"]} disabled={!admin} set={(v) => save({ [k]: v })} />
+        <h2>{t.s_sources}<Info text={t.s_sources_info} /></h2>
+        {SOURCES.map((x) => (
+          <div className="setting" key={x}>
+            <span>{t[`opt_${x}`]}{opts.sources == null && <em className="muted"> · {t.from_hub}</em>}</span>
+            <Toggle on={has(x)} disabled={!admin}
+              set={(v) => save({ sources: v ? SOURCES.filter((y) => y === x || has(y)) : f.sources.filter((y) => y !== x) })} />
           </div>
         ))}
+        <div className="setting">
+          <span>{t.has_ev}{opts.has_ev == null && <em className="muted"> · {t.from_hub}</em>}</span>
+          <Toggle on={f.ev} disabled={!admin} set={(v) => save({ has_ev: v })} />
+        </div>
       </section>
       <section className="card">
         <h2>{t.s_sensors}<Info text={t.s_sensors_info} /></h2>
-        {f.solar && pickRow("solar_power", power)}
-        {f.battery && <>{pickRow("battery_power", power)}{pickRow("battery_soc", pct)}
+        {f.sources.some((x) => x !== "battery" && x !== "v2g") && pickRow("production_power", power)}
+        {has("battery") && <>{pickRow("battery_power", power)}{pickRow("battery_soc", pct)}
           <div className="setting"><span>{t.battery_invert}</span><Toggle on={opts.battery_invert} disabled={!admin} set={(v) => save({ battery_invert: v })} /></div></>}
-        {f.ev && pickRow("ev_power", power)}
-        {!f.solar && !f.battery && !f.ev && <div className="muted">{t.s_home_info}</div>}
+        {(f.ev || has("v2g")) && pickRow("ev_power", power)}
+        {!f.sources.length && !f.ev && <div className="muted">{t.s_sources_info}</div>}
       </section>
       <section className="card">
         <h2>{t.s_panel}</h2>

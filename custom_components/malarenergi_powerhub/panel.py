@@ -17,14 +17,15 @@ PANEL = "powerhub"
 KEY = f"{DOMAIN}_panel"  # static path + websocket commands registered (once per HA run)
 
 # Panel settings live in the (first) config entry's options so they follow the user across devices.
-# has_*: None = not answered yet, the panel then follows the integration's has_solar/has_battery/ev_type.
+# sources / has_ev: None = not answered yet, the panel then follows the integration's has_solar/has_battery/ev_type.
 # Entity fields are optional extras the PowerHub can't measure itself; "" means not configured.
+SOURCES = ("solar", "battery", "wind", "generator", "v2g", "other")  # local sources export can come from
+LEGACY = ("has_solar", "has_battery")  # pre-"sources" booleans, migrated on read
 DEFAULT_OPTIONS: dict = {
     "show_panel": True,
-    "has_solar": None,
-    "has_battery": None,
-    "has_ev": None,
-    "solar_power": "",
+    "sources": None,
+    "has_ev": None,  # plain EV charger (consumption only); bidirectional is the "v2g" source
+    "production_power": "",
     "battery_power": "",
     "battery_soc": "",
     "battery_invert": False,  # some inverters report + as charging; the panel expects + = discharging
@@ -38,11 +39,17 @@ def _entry(hass: HomeAssistant):
 
 
 def _options(entry) -> dict:
-    return {**DEFAULT_OPTIONS, **{k: v for k, v in (entry.options or {}).items() if k in DEFAULT_OPTIONS}}
+    stored = entry.options or {}
+    opts = {**DEFAULT_OPTIONS, **{k: v for k, v in stored.items() if k in DEFAULT_OPTIONS}}
+    if opts["sources"] is None and any(stored.get(k) is not None for k in LEGACY):
+        opts["sources"] = [k[4:] for k in LEGACY if stored.get(k)]
+    return opts
 
 
 def _valid(key: str, value) -> bool:
     default = DEFAULT_OPTIONS[key]
+    if key == "sources":
+        return value is None or (isinstance(value, list) and all(v in SOURCES for v in value))
     if isinstance(default, str):
         return isinstance(value, str)
     return isinstance(value, bool) or (default is None and value is None)
@@ -100,7 +107,8 @@ async def ws_settings_set(hass, connection, msg):
     old = _options(entry)
     clean = {k: v for k, v in msg["options"].items() if k in DEFAULT_OPTIONS and _valid(k, v)}
     new = {**old, **clean}
-    hass.config_entries.async_update_entry(entry, options={**entry.options, **new})
+    kept = {k: v for k, v in entry.options.items() if k not in LEGACY}  # migrated into sources
+    hass.config_entries.async_update_entry(entry, options={**kept, **new})
     if new["show_panel"] != old["show_panel"]:
         frontend.async_remove_panel(hass, PANEL, warn_if_unknown=False)
         await _register(hass, new["show_panel"])
