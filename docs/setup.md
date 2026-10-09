@@ -74,8 +74,7 @@ Wait ~30 seconds for Home Assistant to come back online.
    ![Search result showing the PowerHub integration](images/06_add_integration_search.png)
 
 4. Click the result — a setup dialog appears
-5. Choose your **energy company** (Mälarenergi, Kraftringen, Boo Energi, …) and click **Submit**. Not in the list? Type its name in lowercase without spaces, with å/ä/ö as a/a/o (e.g. `norrtaljeenergi`).
-6. Click **Submit** once more to show the BankID QR code
+5. Choose your **energy company** (Mälarenergi, Kraftringen, Boo Energi, …) and click **Submit** — the BankID QR code appears. Not in the list? Type its name in lowercase without spaces, with å/ä/ö as a/a/o (e.g. `norrtaljeenergi`).
 
 ---
 
