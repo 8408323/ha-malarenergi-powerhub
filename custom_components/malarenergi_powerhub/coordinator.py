@@ -12,6 +12,7 @@ from aiohttp import ClientError, ClientResponseError
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import (
@@ -33,9 +34,37 @@ from .api import (
     PowerHubApiClient,
     PowerTelemetry,
 )
-from .const import CONF_FACILITY_ID, CONF_TOKEN, DEFAULT_SCAN_INTERVAL, DOMAIN
+from .const import (
+    CONF_FACILITY_ID,
+    CONF_PROVIDER,
+    CONF_TOKEN,
+    DEFAULT_PROVIDER,
+    DEFAULT_SCAN_INTERVAL,
+    DOMAIN,
+    PROVIDERS,
+)
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def provider_of(entry: ConfigEntry) -> str:
+    """The entry's energy company slug; entries from before multi-provider are Mälarenergi."""
+    return entry.data.get(CONF_PROVIDER, DEFAULT_PROVIDER)
+
+
+def device_info(entry: ConfigEntry) -> DeviceInfo:
+    """The hub's device, shared by every entity of the entry.
+
+    async_setup_entry also attaches the hub's MAC to it, the key the core
+    Bitvis Power Hub integration uses for the same hub.
+    """
+    provider = provider_of(entry)
+    return DeviceInfo(
+        identifiers={(DOMAIN, entry.entry_id)},
+        name=f"PowerHub {entry.title}",
+        manufacturer=f"Bitvis / {PROVIDERS.get(provider, provider)}",
+        model="PowerHub (ESP32, Kaifa MA304)",
+    )
 
 
 @dataclass
@@ -143,7 +172,7 @@ class PowerHubCoordinator(DataUpdateCoordinator[PowerHubData]):
 
     def _make_client(self) -> PowerHubApiClient:
         session = async_get_clientsession(self.hass)
-        return PowerHubApiClient(session, self._token)
+        return PowerHubApiClient(session, self._token, provider_of(self._entry))
 
     def _make_power_client(self) -> PowerApiClient:
         session = async_get_clientsession(self.hass)

@@ -1,6 +1,27 @@
 # ha-malarenergi-powerhub
 
-Home Assistant custom integration for [Mälarenergi PowerHub](https://www.malarenergi.se/el/elavtal/powerhub/) — a cloud-connected energy monitor manufactured by [Bitvis AB](https://bitvis.se/).
+Home Assistant custom integration for the **PowerHub** — the HAN-port energy monitor made by [Bitvis AB](https://bitvis.se/) and sold by Swedish energy companies:
+
+| Energy company | Status |
+|---|---|
+| [Mälarenergi](https://www.malarenergi.se/el/elavtal/powerhub/) | Tested |
+| Boo Energi | Confirmed working by a user |
+| Bjäre Kraft, Borås Elhandel, Dala Energi, Falu Energi, Kinnekulle Energi, Kraftringen, Kvänum Energi, Landskrona Energi, Norrtälje Energi, Nossebro Energi, Skånska Energi, Södra Hallands Kraft, Tranås Energi, Trelleborgs Energi, Vaggeryds Energi, Vänerenergi, Varbergsortens Elkraft | Bitvis backend with BankID login exists; untested — please report! |
+
+Another company not listed? Type its name in the setup dialog (lowercase, no spaces, å/ä/ö → a/a/o) and open an issue so it can be added.
+
+## Works together with the built-in Bitvis Power Hub integration
+
+Since **Home Assistant 2026.10** HA ships a [Bitvis Power Hub](https://www.home-assistant.io/integrations/bitvis) integration that reads the meter **locally** (UDP push on your LAN, no login). Use both:
+
+| | Built-in `bitvis` (local) | This integration (cloud) |
+|---|---|---|
+| Real-time power, per-phase voltage/current, meter energy totals | ✅ best source — use for the Energy dashboard | 1-minute power and currents |
+| Spot price, agreement, price model/zone | | ✅ |
+| Monthly insights, year-to-date, baseload | | ✅ |
+| Fuse/power limits, notification settings, sharing | | ✅ |
+
+Both identify the hub by its MAC address, but HA keeps one device per integration, so the hub shows up as two devices — one local, one cloud. (On HA versions before 2026.8, if another integration such as a router's device tracker already claims the hub's MAC, the cloud device simply doesn't get the MAC.) The local integration needs the hub and HA on the same subnet (or UDP port 58220 and mDNS forwarded between them).
 
 > **Status**: Working prototype — BankID auth + cloud API implemented.
 
@@ -8,14 +29,14 @@ Home Assistant custom integration for [Mälarenergi PowerHub](https://www.malare
 
 | Property | Value |
 |---|---|
-| Manufacturer | Bitvis AB (OEM for Mälarenergi) |
+| Manufacturer | Bitvis AB (OEM for the energy companies above) |
 | SoC | Espressif ESP32 (OUI `94:54:C5`) |
 | Connectivity | Wi-Fi 2.4 GHz |
 | HAN port | RJ45 (Norwegian standard, P1/IEC 62056-21) |
 | Meter | Kaifa MA304 |
-| Cloud backend | Bitvis "Flow" platform — `malarenergi.prod.flow.bitv.is` |
+| Cloud backend | Bitvis "Flow" platform — `<company>.prod.flow.bitv.is` |
 
-The device has **no local API** — all communication goes through Bitvis's cloud (confirmed by full TCP port scan: 0 open ports). This integration uses the same REST API as the Mälarenergi iPhone/Android app.
+The hub has no open TCP ports; it **pushes** meter readings over UDP on the LAN (what the built-in `bitvis` integration reads) and to Bitvis's cloud. This integration uses the same REST API as the energy companies' PowerHub apps.
 
 ## Support
 
@@ -33,7 +54,7 @@ Or manually:
 
 1. In HACS, go to **Integrations → ⋮ → Custom repositories**.
 2. Add `https://github.com/8408323/ha-malarenergi-powerhub` as an **Integration**.
-3. Search for **Mälarenergi PowerHub** and click **Download**.
+3. Search for **PowerHub** and click **Download**.
 4. Restart Home Assistant.
 
 ### Manual
@@ -44,8 +65,9 @@ Or manually:
 ## Configuration
 
 1. Go to **Settings → Devices & Services → Add Integration**.
-2. Search for *Mälarenergi PowerHub*.
-3. Scan the BankID QR code that appears with the BankID app.
+2. Search for *PowerHub*.
+3. Choose your energy company.
+4. Scan the BankID QR code that appears with the BankID app.
 
 See the **[full setup guide](docs/setup.md)** for step-by-step instructions with screenshots.
 
@@ -56,7 +78,7 @@ See the **[full setup guide](docs/setup.md)** for step-by-step instructions with
 - Monthly insights: your average price vs. market, year-to-date consumption and production, baseload estimate
 - Device diagnostics: Wi-Fi signal, firmware, uptime, HAN port state
 - Writable fuse/power limits and notification preferences
-- Push notification mirroring (Mälarenergi → HA sensor)
+- Push notification mirroring (energy company → HA sensor)
 - Facility sharing services (create / revoke invitations)
 - Automatic token re-auth when JWT expires
 
@@ -64,7 +86,7 @@ See the **[user manual](docs/user_manual.md)** for the full entity list and usag
 
 ## Authentication
 
-Login uses **Swedish BankID** (same as the Mälarenergi app). During setup a QR code is displayed in the HA config flow — scan it with the BankID app on your phone.
+Login uses **Swedish BankID** (same as your energy company's PowerHub app). During setup a QR code is displayed in the HA config flow — scan it with the BankID app on your phone.
 
 The integration stores the JWT Bearer token in the HA config entry. When the token expires, HA triggers a re-auth flow automatically.
 
@@ -97,6 +119,10 @@ CAPTURE_PHONE_IP=192.168.1.x mitmdump -s tools/capture.py --listen-port 8080 --s
 ```
 
 See [docs/reverse_engineering.md](docs/reverse_engineering.md) for full findings on the cloud API.
+
+## Disclaimer
+
+The cloud APIs are internal to Bitvis and not officially supported; they may change without notice. For guaranteed-stable meter data use the built-in `bitvis` integration.
 
 ## Contributing
 

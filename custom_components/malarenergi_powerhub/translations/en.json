@@ -2,19 +2,30 @@
   "config": {
     "step": {
       "user": {
-        "title": "Mälarenergi PowerHub",
-        "description": "Sign in with BankID. Click Next to show the QR code."
+        "title": "PowerHub",
+        "description": "Choose the energy company your PowerHub comes from. You sign in with BankID in the next step.",
+        "data": {
+          "provider": "Energy company"
+        },
+        "data_description": {
+          "provider": "Not listed? Type the company name in lowercase, without spaces and with å/ä/ö as a/a/o, e.g. `norrtaljeenergi` — and please open a GitHub issue so it can be added."
+        }
+      },
+      "bankid": {
+        "title": "PowerHub",
+        "description": "Sign in with BankID. Click Submit to show the QR code."
       },
       "bankid_qr": {
         "title": "Scan QR code with BankID",
-        "description": "Sign in with Mobile BankID:\n1. Open the BankID app on your phone\n2. Click **Submit** to generate a fresh QR code\n3. Scan the QR code immediately with BankID\n4. Approve the login in BankID, then click **Submit** again to finalise\n\nThe QR rotates every second — click Submit right before scanning.\n\n**Be patient:** if Mälarenergi's servers are slow, sign-in can take 1–2 minutes after approving. Keep clicking Submit every few seconds until the dialog closes — do not re-scan."
+        "description": "Sign in with Mobile BankID:\n1. Open the BankID app on your phone\n2. Click **Submit** to generate a fresh QR code\n3. Scan the QR code immediately with BankID\n4. Approve the login in BankID, then click **Submit** again to finalise\n\nThe QR rotates every second — click Submit right before scanning.\n\n**Be patient:** if the servers are slow, sign-in can take 1–2 minutes after approving. Keep clicking Submit every few seconds until the dialog closes — do not re-scan."
       }
     },
     "error": {
-      "cannot_connect": "Could not connect to Mälarenergi. Check your internet connection.",
+      "cannot_connect": "Could not connect to your energy company's PowerHub service. Check your internet connection and the company you chose.",
       "bankid_failed": "BankID login failed. Please try again.",
       "invalid_auth": "Invalid authentication.",
-      "no_facilities": "No facilities found for this account."
+      "no_facilities": "No facilities found for this account.",
+      "invalid_provider": "Use only lowercase letters, digits and hyphens, e.g. `booenergi`."
     },
     "abort": {
       "already_configured": "This facility is already configured.",
@@ -102,6 +113,10 @@
         "invitation_id": {
           "name": "Invitation ID",
           "description": "The ID of the invitation to delete."
+        },
+        "facility_id": {
+          "name": "Facility ID",
+          "description": "Only needed with PowerHubs from several energy companies — a facility of the company the invitation was created on."
         }
       }
     }

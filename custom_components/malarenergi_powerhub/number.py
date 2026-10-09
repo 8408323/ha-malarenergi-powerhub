@@ -23,7 +23,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api import FacilityAttributes, FacilityControl
 from .const import DOMAIN
-from .coordinator import PowerHubCoordinator
+from .coordinator import PowerHubCoordinator, device_info
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -117,12 +117,7 @@ class PowerHubNumber(CoordinatorEntity[PowerHubCoordinator], NumberEntity):
         self.entity_description = description
         assert coordinator.config_entry is not None
         self._attr_unique_id = f"{coordinator.config_entry.entry_id}_{description.key}"
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, coordinator.config_entry.entry_id)},
-            "name": f"PowerHub {coordinator.config_entry.title}",
-            "manufacturer": "Bitvis / Mälarenergi",
-            "model": "PowerHub (ESP32, Kaifa MA304)",
-        }
+        self._attr_device_info = device_info(coordinator.config_entry)
 
     @property
     def native_value(self) -> float | None:
@@ -148,12 +143,7 @@ class PowerControlNumber(CoordinatorEntity[PowerHubCoordinator], NumberEntity):
         self.entity_description = description
         assert coordinator.config_entry is not None
         self._attr_unique_id = f"{coordinator.config_entry.entry_id}_{description.key}"
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, coordinator.config_entry.entry_id)},
-            "name": f"PowerHub {coordinator.config_entry.title}",
-            "manufacturer": "Bitvis / Mälarenergi",
-            "model": "PowerHub (ESP32, Kaifa MA304)",
-        }
+        self._attr_device_info = device_info(coordinator.config_entry)
 
     @property
     def native_value(self) -> float | None:

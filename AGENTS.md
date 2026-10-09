@@ -1,6 +1,6 @@
 # Agent Instructions — ha-malarenergi-powerhub
 
-Home Assistant custom integration for the Mälarenergi PowerHub cloud energy monitor.
+Home Assistant custom integration for the Bitvis PowerHub cloud API (Mälarenergi, Kraftringen and ~17 other energy companies; per-provider Flow backend, see `const.PROVIDERS`).
 See [README.md](README.md) for hardware/API context and [CONTRIBUTING.md](CONTRIBUTING.md) for branch/commit conventions.
 
 ## Build & Test
@@ -41,7 +41,7 @@ Tests use `aioresponses` to mock all HTTP — never make real network calls in t
 
 ## Pitfalls
 
-- The device has **no local API** — any local-only approach will not work.
+- The hub has no open TCP ports, but pushes readings over UDP 58220 on the LAN; HA core's `bitvis` integration (2026.10+) reads that. We tag our device with the hub MAC (`_async_link_hub`); do not duplicate local readings here.
 - BankID polling uses an async generator (`bankid_poll`). Awaiting it incorrectly will break the config flow.
 - `pyrightconfig.json` suppresses missing-import warnings (HA stubs unavailable locally); type errors in HA-provided classes are expected.
 - Unit for spot price is `öre/kWh` (Swedish öre — not EUR, not SEK). Do not change this unit.

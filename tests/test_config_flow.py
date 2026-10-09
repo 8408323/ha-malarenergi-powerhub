@@ -16,7 +16,7 @@ from homeassistant import config_entries
 
 from custom_components.malarenergi_powerhub.api import FacilityInfo
 from custom_components.malarenergi_powerhub.config_flow import PowerHubConfigFlow
-from custom_components.malarenergi_powerhub.const import CONF_FACILITY_ID, CONF_TOKEN
+from custom_components.malarenergi_powerhub.const import CONF_FACILITY_ID, CONF_PROVIDER, CONF_TOKEN
 
 FACILITY = FacilityInfo(
     facility_id="facility-uuid-123",
@@ -131,6 +131,40 @@ class TestAsyncFinishReauth:
         flow = _make_flow(config_entries.SOURCE_REAUTH, entry_id=None)
         flow.hass.config_entries.async_get_entry.return_value = None
         flow.hass.config_entries.async_entries = MagicMock(return_value=[])
+
+        fake_client = MagicMock()
+        fake_client.get_facilities = AsyncMock(return_value=[FACILITY])
+
+        with (
+            patch("custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"),
+            patch(
+                "custom_components.malarenergi_powerhub.api.PowerHubApiClient",
+                return_value=fake_client,
+            ),
+        ):
+            result = await flow._async_finish(NEW_TOKEN)
+
+        flow.hass.config_entries.async_update_entry.assert_not_called()
+        flow.hass.config_entries.async_reload.assert_not_awaited()
+        assert result["type"] == "abort"
+        assert result["reason"] == "reauth_unresolved"
+
+    async def test_reauth_fallback_ignores_entry_from_other_provider(self) -> None:
+        """When entry_id is missing, fallback matching must stay within the
+        provider currently being reauthed."""
+        flow = _make_flow(config_entries.SOURCE_REAUTH, entry_id=None)
+        flow._provider = "malarenergi"
+        flow.hass.config_entries.async_get_entry.return_value = None
+
+        other_provider_entry = MagicMock()
+        other_provider_entry.entry_id = "entry-other-provider"
+        other_provider_entry.unique_id = FACILITY.facility_id
+        other_provider_entry.data = {
+            CONF_TOKEN: "old-token",
+            CONF_FACILITY_ID: FACILITY.facility_id,
+            CONF_PROVIDER: "booenergi",
+        }
+        flow.hass.config_entries.async_entries = MagicMock(return_value=[other_provider_entry])
 
         fake_client = MagicMock()
         fake_client.get_facilities = AsyncMock(return_value=[FACILITY])
@@ -435,6 +469,7 @@ class TestReauthSiblingTokenPropagation:
         existing_entry.data = {
             CONF_TOKEN: "old-token",
             CONF_FACILITY_ID: FACILITY.facility_id,
+            CONF_PROVIDER: "malarenergi",
         }
         sibling_entry = MagicMock()
         sibling_entry.entry_id = "sibling-entry-id"
@@ -442,6 +477,7 @@ class TestReauthSiblingTokenPropagation:
         sibling_entry.data = {
             CONF_TOKEN: "old-token",
             CONF_FACILITY_ID: "other-uuid-999",
+            CONF_PROVIDER: "malarenergi",
         }
         flow.hass.config_entries.async_get_entry.return_value = existing_entry
         flow.hass.config_entries.async_entries = MagicMock(return_value=[existing_entry, sibling_entry])
@@ -474,6 +510,78 @@ class TestReauthSiblingTokenPropagation:
         reloaded_ids = {call.args[0] for call in reload_calls}
         assert reloaded_ids == {OLD_ENTRY_ID, "sibling-entry-id"}
 
+        assert result["type"] == "abort"
+        assert result["reason"] == "reauth_successful"
+
+    async def test_reauth_does_not_update_siblings_from_other_provider(self) -> None:
+        """Token propagation should stay within entries for the reauthed provider."""
+        flow = _make_flow(config_entries.SOURCE_REAUTH, entry_id=OLD_ENTRY_ID)
+        flow._provider = "malarenergi"
+
+        existing_entry = MagicMock()
+        existing_entry.entry_id = OLD_ENTRY_ID
+        existing_entry.unique_id = FACILITY.facility_id
+        existing_entry.data = {
+            CONF_TOKEN: "old-token",
+            CONF_FACILITY_ID: FACILITY.facility_id,
+            CONF_PROVIDER: "malarenergi",
+        }
+        same_provider_sibling = MagicMock()
+        same_provider_sibling.entry_id = "sibling-same-provider"
+        same_provider_sibling.unique_id = "other-uuid-999"
+        same_provider_sibling.data = {
+            CONF_TOKEN: "old-token",
+            CONF_FACILITY_ID: "other-uuid-999",
+            CONF_PROVIDER: "malarenergi",
+        }
+        other_provider_sibling = MagicMock()
+        other_provider_sibling.entry_id = "sibling-other-provider"
+        other_provider_sibling.unique_id = "third-uuid-333"
+        other_provider_sibling.data = {
+            CONF_TOKEN: "old-token",
+            CONF_FACILITY_ID: "third-uuid-333",
+            CONF_PROVIDER: "booenergi",
+        }
+        flow.hass.config_entries.async_get_entry.return_value = existing_entry
+        flow.hass.config_entries.async_entries = MagicMock(
+            return_value=[existing_entry, same_provider_sibling, other_provider_sibling]
+        )
+
+        same_provider_facility = FacilityInfo(
+            facility_id="other-uuid-999",
+            street="Lillgatan",
+            house_number=5,
+            city="Västerås",
+            meter_id="meter-2",
+            region="SE3",
+            customer_id="cust-1",
+        )
+        other_provider_facility = FacilityInfo(
+            facility_id="third-uuid-333",
+            street="Annangatan",
+            house_number=7,
+            city="Västerås",
+            meter_id="meter-3",
+            region="SE3",
+            customer_id="cust-1",
+        )
+        fake_client = MagicMock()
+        fake_client.get_facilities = AsyncMock(return_value=[FACILITY, same_provider_facility, other_provider_facility])
+
+        with (
+            patch("custom_components.malarenergi_powerhub.config_flow.async_get_clientsession"),
+            patch(
+                "custom_components.malarenergi_powerhub.api.PowerHubApiClient",
+                return_value=fake_client,
+            ),
+        ):
+            result = await flow._async_finish(NEW_TOKEN)
+
+        # existing entry + same-provider sibling only
+        assert flow.hass.config_entries.async_update_entry.call_count == 2
+        reload_calls = flow.hass.config_entries.async_reload.await_args_list
+        reloaded_ids = {call.args[0] for call in reload_calls}
+        assert reloaded_ids == {OLD_ENTRY_ID, "sibling-same-provider"}
         assert result["type"] == "abort"
         assert result["reason"] == "reauth_successful"
 
@@ -593,7 +701,7 @@ def _make_user_flow() -> PowerHubConfigFlow:
 def _make_async_gen(*items):
     """Return an async-generator factory that yields the given items."""
 
-    async def _gen(session, transaction_id):
+    async def _gen(session, transaction_id, provider="malarenergi"):
         for item in items:
             yield item
 
@@ -611,7 +719,7 @@ class TestAsyncStepUser:
                 AsyncMock(side_effect=RuntimeError("network error")),
             ),
         ):
-            result = await flow.async_step_user()
+            result = await flow.async_step_bankid()
 
         assert result["type"] == "form"
         assert result["errors"] == {"base": "cannot_connect"}
@@ -630,7 +738,7 @@ class TestAsyncStepUser:
                 _make_async_gen(("pending", "qr-data", None)),
             ),
         ):
-            result = await flow.async_step_user()
+            result = await flow.async_step_bankid()
 
         assert result["type"] == "form"
         assert result["step_id"] == "bankid_qr"
@@ -652,7 +760,7 @@ class TestAsyncStepUser:
                 _make_async_gen(("failed", None, None)),
             ),
         ):
-            result = await flow.async_step_user()
+            result = await flow.async_step_bankid()
 
         assert result["type"] == "form"
         assert result["errors"] == {"base": "bankid_failed"}
@@ -660,7 +768,7 @@ class TestAsyncStepUser:
     async def test_first_poll_exception_shows_cannot_connect(self) -> None:
         flow = _make_user_flow()
 
-        async def _exploding_poll(session, txn_id):
+        async def _exploding_poll(session, txn_id, provider):
             raise RuntimeError("unexpected")
             yield  # makes it an async generator
 
@@ -675,7 +783,7 @@ class TestAsyncStepUser:
                 _exploding_poll,
             ),
         ):
-            result = await flow.async_step_user()
+            result = await flow.async_step_bankid()
 
         assert result["type"] == "form"
         assert result["errors"] == {"base": "cannot_connect"}
@@ -742,7 +850,7 @@ class TestRunPoller:
         flow = _make_user_flow()
         flow._transaction_id = "txn-123"
 
-        async def _exploding_poll(session, txn_id):
+        async def _exploding_poll(session, txn_id, provider):
             raise RuntimeError("boom")
             yield  # makes it an async generator
 
@@ -808,13 +916,13 @@ class TestAsyncStepBankidQr:
         flow._failed = True
 
         step_user_result = {"type": "form", "step_id": "user"}
-        flow.async_step_user = AsyncMock(return_value=step_user_result)
+        flow.async_step_bankid = AsyncMock(return_value=step_user_result)
         flow._cancel_task = MagicMock()
 
         result = await flow.async_step_bankid_qr()
 
         flow._cancel_task.assert_called_once()
-        flow.async_step_user.assert_awaited_once()
+        flow.async_step_bankid.assert_awaited_once()
         assert result == step_user_result
 
     async def test_poll_task_done_without_token_restarts_user_step(self) -> None:
@@ -827,11 +935,11 @@ class TestAsyncStepBankidQr:
         flow._failed = False
 
         step_user_result = {"type": "form", "step_id": "user"}
-        flow.async_step_user = AsyncMock(return_value=step_user_result)
+        flow.async_step_bankid = AsyncMock(return_value=step_user_result)
 
         result = await flow.async_step_bankid_qr()
 
-        flow.async_step_user.assert_awaited_once()
+        flow.async_step_bankid.assert_awaited_once()
         assert result == step_user_result
 
     async def test_no_token_or_failure_shows_refreshed_qr(self) -> None:
@@ -862,11 +970,11 @@ class TestAsyncStepReauth:
         flow.hass.async_create_task = MagicMock()
 
         step_user_result = {"type": "form", "step_id": "user"}
-        flow.async_step_user = AsyncMock(return_value=step_user_result)
+        flow.async_step_bankid = AsyncMock(return_value=step_user_result)
 
         result = await flow.async_step_reauth(None)
 
-        flow.async_step_user.assert_awaited_once()
+        flow.async_step_bankid.assert_awaited_once()
         assert result == step_user_result
 
 
@@ -905,7 +1013,7 @@ class TestAsyncStepUserFirstPollComplete:
                 _make_async_gen(("complete", None, "jwt-token")),
             ),
         ):
-            result = await flow.async_step_user()
+            result = await flow.async_step_bankid()
 
         flow._async_finish.assert_awaited_once_with("jwt-token")
         assert result == finish_result
@@ -920,7 +1028,7 @@ class TestRunPollerCancelledError:
         flow = _make_user_flow()
         flow._transaction_id = "txn-123"
 
-        async def _cancelling_poll(session, txn_id):
+        async def _cancelling_poll(session, txn_id, provider):
             raise asyncio.CancelledError()
             yield  # pragma: no cover — unreachable; marks function as async generator
 

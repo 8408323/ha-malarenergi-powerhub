@@ -358,6 +358,7 @@ async def test_handle_create_invitation_raises_ha_error_on_api_failure() -> None
 async def test_handle_create_invitation_schedules_coordinator_refresh() -> None:
     hass = _make_setup_hass()
     entry = _make_entry("fac-1", entry_id="eid-1")
+    hass.config_entries.async_entries.return_value = [entry]
     coord, notif = _make_coordinators()
 
     create_hdl, _ = await _setup_and_get_handlers(hass, entry, coord, notif)
@@ -410,6 +411,21 @@ async def test_handle_delete_invitation_calls_api() -> None:
     mock_client.delete_invitation.assert_awaited_once_with("inv-abc")
 
 
+async def test_handle_delete_invitation_routes_by_facility() -> None:
+    """With entries for several energy companies, facility_id picks the company's backend."""
+    hass = _make_setup_hass()
+    entry = _make_entry("fac-1", entry_id="eid-1")
+    coord, notif = _make_coordinators()
+    _, delete_hdl = await _setup_and_get_handlers(hass, entry, coord, notif)
+    mock_client = MagicMock(delete_invitation=AsyncMock())
+    with patch(
+        "custom_components.malarenergi_powerhub._get_client",
+        return_value=(mock_client, "fac-2"),
+    ) as get_client:
+        await delete_hdl(MagicMock(data={"invitation_id": "inv-abc", CONF_FACILITY_ID: "fac-2"}))
+    get_client.assert_called_once_with(hass, "fac-2")
+
+
 async def test_handle_delete_invitation_logs_error_on_missing_entry() -> None:
     hass = _make_setup_hass()
     entry = _make_entry("fac-1", entry_id="eid-1")
@@ -455,6 +471,7 @@ async def test_handle_delete_invitation_raises_ha_error_on_api_failure() -> None
 async def test_handle_delete_invitation_schedules_coordinator_refresh() -> None:
     hass = _make_setup_hass()
     entry = _make_entry("fac-1", entry_id="eid-1")
+    hass.config_entries.async_entries.return_value = [entry]
     coord, notif = _make_coordinators()
 
     _, delete_hdl = await _setup_and_get_handlers(hass, entry, coord, notif)

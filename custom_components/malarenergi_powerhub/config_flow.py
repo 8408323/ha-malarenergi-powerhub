@@ -1,18 +1,29 @@
-"""Config flow for Mälarenergi PowerHub — BankID QR authentication."""
+"""Config flow for PowerHub — energy company choice + BankID QR authentication."""
 
 from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from typing import Any
 
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.selector import QrCodeSelector, QrCodeSelectorConfig
+from homeassistant.helpers.selector import (
+    QrCodeSelector,
+    QrCodeSelectorConfig,
+    SelectOptionDict,
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
+)
 
 from .api import AuthError, bankid_poll, bankid_start
-from .const import CONF_FACILITY_ID, CONF_TOKEN, DOMAIN
+from .const import CONF_FACILITY_ID, CONF_PROVIDER, CONF_TOKEN, DEFAULT_PROVIDER, DOMAIN, PROVIDERS
+
+# A typed-in provider becomes part of a hostname (<slug>.prod.flow.bitv.is)
+PROVIDER_SLUG = re.compile(r"^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$")
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,7 +36,7 @@ SUBMIT_WAIT_INTERVAL = 0.1
 
 
 class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """BankID QR config flow for Mälarenergi PowerHub."""
+    """Energy company choice + BankID QR config flow for PowerHub."""
 
     VERSION = 1
 
@@ -35,6 +46,7 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._token: str | None = None
         self._failed: bool = False
         self._poll_task: asyncio.Task | None = None
+        self._provider: str = DEFAULT_PROVIDER
 
     def _cancel_task(self) -> None:
         if self._poll_task and not self._poll_task.done():
@@ -46,6 +58,31 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._cancel_task()
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> config_entries.ConfigFlowResult:
+        """Pick the energy company; each has its own login and API backend."""
+        errors = {}
+        if user_input is not None:
+            provider = user_input.get(CONF_PROVIDER, "").strip().lower()
+            if PROVIDER_SLUG.match(provider):
+                self._provider = provider
+                return await self.async_step_bankid()
+            errors[CONF_PROVIDER] = "invalid_provider"
+        return self.async_show_form(
+            step_id="user",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_PROVIDER, default=self._provider): SelectSelector(
+                        SelectSelectorConfig(
+                            options=[SelectOptionDict(value=k, label=v) for k, v in PROVIDERS.items()],
+                            custom_value=True,
+                            mode=SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                }
+            ),
+            errors=errors,
+        )
+
+    async def async_step_bankid(self, user_input: dict[str, Any] | None = None) -> config_entries.ConfigFlowResult:
         """Start BankID session, fetch first QR synchronously, then poll in bg."""
         self._cancel_task()
         self._token = None
@@ -54,17 +91,17 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         session = async_get_clientsession(self.hass)
         try:
-            self._transaction_id, _ = await bankid_start(session)
+            self._transaction_id, _ = await bankid_start(session, self._provider)
         except Exception as err:
             _LOGGER.error("Failed to start BankID session: %s", err)
             return self.async_show_form(
-                step_id="user",
+                step_id="bankid",
                 errors={"base": "cannot_connect"},
             )
 
         # Fetch first QR synchronously so it's ready when the form renders
         try:
-            async for status, qr, token in bankid_poll(session, self._transaction_id):
+            async for status, qr, token in bankid_poll(session, self._transaction_id, self._provider):
                 if status == "pending" and qr:
                     self._qr_code = qr
                     break
@@ -72,13 +109,13 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     return await self._async_finish(token)
                 if status == "failed":
                     return self.async_show_form(
-                        step_id="user",
+                        step_id="bankid",
                         errors={"base": "bankid_failed"},
                     )
         except Exception as err:
             _LOGGER.error("BankID first poll failed: %s", err)
             return self.async_show_form(
-                step_id="user",
+                step_id="bankid",
                 errors={"base": "cannot_connect"},
             )
 
@@ -92,7 +129,7 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         session = async_get_clientsession(self.hass)
         assert self._transaction_id is not None
         try:
-            async for status, qr, token in bankid_poll(session, self._transaction_id):
+            async for status, qr, token in bankid_poll(session, self._transaction_id, self._provider):
                 if status == "pending" and qr:
                     self._qr_code = qr
                 elif status == "complete" and token:
@@ -124,7 +161,7 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # Guard: if transaction is missing (e.g. flow resumed after HA restart),
         # restart from the beginning so we get a fresh BankID session.
         if not self._transaction_id or not self._poll_task:
-            return await self.async_step_user()
+            return await self.async_step_bankid()
 
         # If the user has already scanned the QR on their phone, BankID
         # typically reports `complete` within a few seconds. Rather than
@@ -142,10 +179,10 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if self._failed:
             self._cancel_task()
-            return await self.async_step_user()
+            return await self.async_step_bankid()
 
         if self._poll_task.done():
-            return await self.async_step_user()
+            return await self.async_step_bankid()
 
         # Return updated QR (background task keeps _qr_code fresh)
         return self._show_qr_form()
@@ -161,24 +198,24 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         from .api import PowerHubApiClient
 
         session = async_get_clientsession(self.hass)
-        client = PowerHubApiClient(session, token)
+        client = PowerHubApiClient(session, token, self._provider)
         try:
             facilities = await client.get_facilities()
         except AuthError:
             return self.async_show_form(
-                step_id="user",
+                step_id="bankid",
                 errors={"base": "invalid_auth"},
             )
         except Exception as err:
             _LOGGER.error("Failed to fetch facilities: %s", err)
             return self.async_show_form(
-                step_id="user",
+                step_id="bankid",
                 errors={"base": "cannot_connect"},
             )
 
         if not facilities:
             return self.async_show_form(
-                step_id="user",
+                step_id="bankid",
                 errors={"base": "no_facilities"},
             )
 
@@ -197,7 +234,11 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 candidates = [
                     e
                     for e in self.hass.config_entries.async_entries(DOMAIN)
-                    if e.unique_id and any(f.facility_id == e.unique_id for f in facilities)
+                    if (
+                        e.unique_id
+                        and e.data.get(CONF_PROVIDER, DEFAULT_PROVIDER) == self._provider
+                        and any(f.facility_id == e.unique_id for f in facilities)
+                    )
                 ]
                 if len(candidates) == 1:
                     existing = candidates[0]
@@ -231,6 +272,7 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     sibling.entry_id != existing.entry_id
                     and sibling.unique_id
                     and sibling.unique_id in account_facility_ids
+                    and sibling.data.get(CONF_PROVIDER, DEFAULT_PROVIDER) == self._provider
                     and sibling.data.get(CONF_TOKEN) != token
                 ):
                     self.hass.config_entries.async_update_entry(
@@ -274,6 +316,7 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     data={
                         CONF_TOKEN: token,
                         CONF_FACILITY_ID: facility.facility_id,
+                        CONF_PROVIDER: self._provider,
                         "street": facility.street,
                         "house_number": facility.house_number,
                     },
@@ -288,6 +331,7 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data={
                 CONF_TOKEN: token,
                 CONF_FACILITY_ID: first.facility_id,
+                CONF_PROVIDER: self._provider,
             },
         )
 
@@ -317,9 +361,12 @@ class PowerHubConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data={
                 CONF_TOKEN: token,
                 CONF_FACILITY_ID: facility_id,
+                CONF_PROVIDER: import_data.get(CONF_PROVIDER, DEFAULT_PROVIDER),
             },
         )
 
     async def async_step_reauth(self, user_input: dict[str, Any] | None = None) -> config_entries.ConfigFlowResult:
-        """Re-authenticate when token expires."""
-        return await self.async_step_user()
+        """Re-authenticate when token expires, with the entry's own energy company."""
+        # HA passes the entry's data here
+        self._provider = (user_input or {}).get(CONF_PROVIDER, DEFAULT_PROVIDER)
+        return await self.async_step_bankid()

@@ -1,6 +1,6 @@
 """Mälarenergi PowerHub — Bitvis Flow API client + Bitvis Power API client.
 
-Flow API base URL:  https://malarenergi.prod.flow.bitv.is/powerapi/v1
+Flow API base URL:  https://<provider>.prod.flow.bitv.is/powerapi/v1  (one per energy company)
 Power API base URL: https://api.prod.power.bitv.is
 Auth (both):        Bearer <JWT token> obtained via BankID QR flow
 
@@ -26,7 +26,13 @@ import aiohttp
 
 _LOGGER = logging.getLogger(__name__)
 
-BASE_URL = "https://malarenergi.prod.flow.bitv.is/powerapi/v1"
+
+def flow_url(provider: str) -> str:
+    """Flow API base URL for an energy company's slug (see const.PROVIDERS)."""
+    return f"https://{provider}.prod.flow.bitv.is/powerapi/v1"
+
+
+BASE_URL = flow_url("malarenergi")
 POLL_INTERVAL = 1  # seconds between bankid/check polls
 POLL_TIMEOUT = 180  # seconds before giving up
 
@@ -174,16 +180,17 @@ class MonthlyInsights:
 class PowerHubApiClient:
     """Async HTTP client for the Bitvis Flow PowerAPI."""
 
-    def __init__(self, session: aiohttp.ClientSession, token: str) -> None:
+    def __init__(self, session: aiohttp.ClientSession, token: str, provider: str = "malarenergi") -> None:
         self._session = session
         self._token = token
+        self._base = flow_url(provider)
 
     @property
     def _headers(self) -> dict:
         return {"Authorization": f"Bearer {self._token}"}
 
     async def _get(self, path: str, **params) -> Any:
-        url = f"{BASE_URL}{path}"
+        url = f"{self._base}{path}"
         async with self._session.get(
             url,
             headers=self._headers,
@@ -196,7 +203,7 @@ class PowerHubApiClient:
             return await resp.json(content_type=None)
 
     async def _post(self, path: str, body: dict) -> Any:
-        url = f"{BASE_URL}{path}"
+        url = f"{self._base}{path}"
         async with self._session.post(
             url,
             headers=self._headers,
@@ -209,7 +216,7 @@ class PowerHubApiClient:
             return await resp.json(content_type=None)
 
     async def _put(self, path: str, body: dict) -> object:
-        url = f"{BASE_URL}{path}"
+        url = f"{self._base}{path}"
         async with self._session.put(
             url,
             headers=self._headers,
@@ -222,7 +229,7 @@ class PowerHubApiClient:
             return await resp.json(content_type=None)
 
     async def _delete(self, path: str) -> None:
-        url = f"{BASE_URL}{path}"
+        url = f"{self._base}{path}"
         async with self._session.delete(
             url,
             headers=self._headers,
@@ -831,15 +838,20 @@ class PowerApiClient:
             resp.raise_for_status()
             return await resp.read()
 
-    async def get_device(self) -> PowerHubDevice:
-        """Get PowerHub device info (deviceId, model, facilityId)."""
+    async def get_device(self, facility_id: str | None = None) -> PowerHubDevice:
+        """Get PowerHub device info (deviceId, model, facilityId, macAddress).
+
+        With facility_id, only that facility's hub (accounts can have several
+        facilities, not all with a hub).
+        """
         data = await self._get_json("/devices/powerhub")
-        if isinstance(data, list):
-            if not data:
-                raise ValueError("No PowerHub device returned by backend")
-            d = data[0]
-        else:
-            d = data
+        hubs = data if isinstance(data, list) else [data]  # the backend returns either shape
+        if not hubs:
+            raise ValueError("No PowerHub device returned by backend")
+        ours = [x for x in hubs if facility_id is None or x.get("facilityId") == facility_id]
+        if not ours:  # the account's hub(s) sit at other facilities
+            raise ValueError(f"No PowerHub device for facility {facility_id}")
+        d = ours[0]
         return PowerHubDevice(
             device_id=d.get("deviceId", ""),
             model=d.get("model", ""),
@@ -991,13 +1003,13 @@ class PowerApiClient:
 # ------------------------------------------------------------------
 
 
-async def bankid_start(session: aiohttp.ClientSession) -> tuple[str, str]:
+async def bankid_start(session: aiohttp.ClientSession, provider: str = "malarenergi") -> tuple[str, str]:
     """Start a BankID auth session.
 
     Returns (transaction_id, auto_start_token).
     """
     async with session.get(
-        f"{BASE_URL}/bankid/auth",
+        f"{flow_url(provider)}/bankid/auth",
         timeout=aiohttp.ClientTimeout(total=15),
     ) as resp:
         resp.raise_for_status()
@@ -1008,6 +1020,7 @@ async def bankid_start(session: aiohttp.ClientSession) -> tuple[str, str]:
 async def bankid_poll(
     session: aiohttp.ClientSession,
     transaction_id: str,
+    provider: str = "malarenergi",
 ) -> AsyncGenerator[tuple[str, str | None, str | None], None]:
     """Poll BankID check endpoint until complete or failed.
 
@@ -1019,7 +1032,7 @@ async def bankid_poll(
     deadline = asyncio.get_event_loop().time() + POLL_TIMEOUT
     while asyncio.get_event_loop().time() < deadline:
         async with session.get(
-            f"{BASE_URL}/bankid/check/{transaction_id}",
+            f"{flow_url(provider)}/bankid/check/{transaction_id}",
             timeout=aiohttp.ClientTimeout(total=15),
         ) as resp:
             resp.raise_for_status()
