@@ -87,7 +87,7 @@ function Kpi({ label, value, sub, tone }: { label: string; value: string; sub?: 
   return <div className="kpi"><div className="label">{label}</div><div className={`value ${tone ?? ""}`}>{value}</div>{sub && <div className="muted">{sub}</div>}</div>;
 }
 
-export default function App({ hass, narrow }: { hass: any; narrow: boolean }) {
+export default function App({ hass, narrow, active }: { hass: any; narrow: boolean; active?: string | null }) {
   const [opts, setOpts] = useState<Options | null>(null);
   const [entryId, setEntryId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -102,7 +102,7 @@ export default function App({ hass, narrow }: { hass: any; narrow: boolean }) {
       .then((r: any) => { setOpts(r.options); setEntryId(r.entry_id ?? null); })
       .catch((e: any) => setErr(e?.message ?? String(e)));
   };
-  useEffect(load, []);
+  useEffect(load, [active]);  // the backend switched to another entry: its settings apply now
   const go = (x: Tab) => { setTab(x); try { localStorage.setItem("ph_tab", x); } catch { /* private mode */ } };
   const { dev, ents, hubs } = hubEntities(hass, entryId);
   const bv = bitvisEntities(hass, dev, hubs);
@@ -112,7 +112,7 @@ export default function App({ hass, narrow }: { hass: any; narrow: boolean }) {
       <header>
         <div className="brand"><h1>{t.title}</h1></div>
         <nav className="tabs">
-          {TABS.map((x) => <button key={x} className={tab === x ? "on" : ""} onClick={() => go(x)}>{t[`tab_${x}`]}</button>)}
+          {TABS.map((x) => <button key={x} className={tab === x ? "on" : ""} aria-pressed={tab === x} onClick={() => go(x)}>{t[`tab_${x}`]}</button>)}
         </nav>
       </header>
       {!ents ? <div className="card">{t.no_hub}</div>
@@ -269,6 +269,7 @@ function Settings({ hass, t, ents, opts, setOpts }: Ctx & { ents: Ents; opts: Op
     hass.connection.sendMessagePromise({ type: "malarenergi_powerhub/settings/set", options: patch })
       .then((r: any) => { if (id !== seq.current) return; setOpts(r.options); setMsg(t.saved); setTimeout(() => setMsg(""), 1500); })
       .catch((e: any) => {
+        if (id !== seq.current) return;  // a newer save already decided what's shown
         setMsg(e?.message ?? String(e));
         hass.connection.sendMessagePromise({ type: "malarenergi_powerhub/settings/get" })
           .then((r: any) => { if (id === seq.current) setOpts(r.options); }).catch(() => {});

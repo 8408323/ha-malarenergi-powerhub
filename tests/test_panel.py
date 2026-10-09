@@ -113,7 +113,7 @@ async def test_settings_set_toggles_sidebar(tmp_path) -> None:
     entry = _entry()
     hass = _hass([entry])
     hass.config_entries.async_update_entry.side_effect = lambda e, options: setattr(e, "options", options)
-    hass.data.update({panel.KEY: True, panel.KEY_PANEL: True})  # registered, shown
+    hass.data.update({panel.KEY: True, panel.KEY_PANEL: ("eid-1", True)})  # registered, shown
     with (
         patch(f"{MOD}.WWW", tmp_path),
         patch(f"{MOD}.frontend.async_remove_panel") as rm,
@@ -124,7 +124,8 @@ async def test_settings_set_toggles_sidebar(tmp_path) -> None:
     rm.assert_called_once()
     reg.assert_awaited_once()
     assert reg.await_args.kwargs["sidebar_title"] is None
-    assert hass.data[panel.KEY_PANEL] is False
+    assert hass.data[panel.KEY_PANEL] == ("eid-1", False)
+    assert reg.await_args.kwargs["config"] == {"entry_id": "eid-1"}
 
 
 async def test_settings_set_without_entry_errors() -> None:
@@ -247,3 +248,20 @@ async def test_concurrent_setups_register_once(tmp_path) -> None:
         await asyncio.gather(panel.async_setup_panel(hass), panel.async_setup_panel(hass))
     hass.http.async_register_static_paths.assert_awaited_once()
     assert ws.call_count == 2 and reg.await_count == 1
+
+
+async def test_reconcile_when_active_entry_changes_with_same_visibility(tmp_path) -> None:
+    """Same show_panel, different active entry: re-register so the open panel reloads that entry's settings."""
+    (tmp_path / "panel.js").write_text("x")
+    first, second = _entry(), _entry(entry_id="eid-2")
+    hass = _hass([first, second])
+    with (
+        patch(f"{MOD}.WWW", tmp_path),
+        patch(f"{MOD}.panel_custom.async_register_panel", new=AsyncMock()) as reg,
+        patch(f"{MOD}.websocket_api.async_register_command"),
+        patch(f"{MOD}.frontend.async_remove_panel"),
+    ):
+        await panel.async_setup_panel(hass)
+        hass.data[DOMAIN].pop("eid-1")
+        await panel.async_setup_panel(hass)
+    assert [c.kwargs["config"] for c in reg.await_args_list] == [{"entry_id": "eid-1"}, {"entry_id": "eid-2"}]

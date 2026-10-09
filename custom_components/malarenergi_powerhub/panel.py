@@ -16,7 +16,7 @@ WWW = Path(__file__).parent / "www"
 URL = f"/{DOMAIN}_static"
 PANEL = "powerhub"
 KEY = f"{DOMAIN}_panel_static"  # static path + websocket commands: registered once per HA run, never removed
-KEY_PANEL = f"{DOMAIN}_panel"  # show_panel value the sidebar panel is registered with; absent = not registered
+KEY_PANEL = f"{DOMAIN}_panel"  # (active entry_id, show_panel) the sidebar panel is registered with; absent = none
 KEY_LOCK = f"{DOMAIN}_panel_lock"
 _NONE = object()
 
@@ -65,7 +65,7 @@ def _valid(key: str, value) -> bool:
     return isinstance(value, bool) or (default is None and value is None)
 
 
-async def _register(hass: HomeAssistant, show: bool) -> None:
+async def _register(hass: HomeAssistant, show: bool, entry_id: str | None) -> None:
     v = int((WWW / "panel.js").stat().st_mtime)
     await panel_custom.async_register_panel(
         hass,
@@ -76,7 +76,7 @@ async def _register(hass: HomeAssistant, show: bool) -> None:
         sidebar_title="PowerHub" if show else None,
         sidebar_icon="mdi:home-lightning-bolt-outline",
         require_admin=False,
-        config={},
+        config={"entry_id": entry_id},  # the open panel reloads its settings when this changes
     )
 
 
@@ -96,12 +96,12 @@ async def async_setup_panel(hass: HomeAssistant) -> None:
             websocket_api.async_register_command(hass, ws_settings_set)
             hass.data[KEY] = True
         entry = _entry(hass)
-        show = _options(entry)["show_panel"] if entry else True
-        if hass.data.get(KEY_PANEL, _NONE) == show:
+        state = (entry.entry_id if entry else None, _options(entry)["show_panel"] if entry else True)
+        if hass.data.get(KEY_PANEL, _NONE) == state:
             return
         async_remove_panel(hass)
-        await _register(hass, show)
-        hass.data[KEY_PANEL] = show  # only once it exists: a failed registration is retried next time
+        await _register(hass, state[1], state[0])
+        hass.data[KEY_PANEL] = state  # only once it exists: a failed registration is retried next time
 
 
 @callback

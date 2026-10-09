@@ -10820,72 +10820,73 @@ function Te({ label: e, value: t, sub: n, tone: r }) {
 		]
 	});
 }
-function Ee({ hass: e, narrow: t }) {
-	let [n, r] = (0, d.useState)(null), [i, a] = (0, d.useState)(null), [o, s] = (0, d.useState)(null), [c, l] = (0, d.useState)(() => {
+function Ee({ hass: e, narrow: t, active: n }) {
+	let [r, i] = (0, d.useState)(null), [a, o] = (0, d.useState)(null), [s, c] = (0, d.useState)(null), [l, u] = (0, d.useState)(() => {
 		try {
 			let e = localStorage.getItem("ph_tab");
 			return me.includes(e) ? e : "overview";
 		} catch {
 			return "overview";
 		}
-	}), { t: u, locale: f } = fe(e.locale?.language ?? e.language, n?.language);
-	ve = f;
-	let m = () => {
-		s(null), e.connection.sendMessagePromise({ type: "malarenergi_powerhub/settings/get" }).then((e) => {
-			r(e.options), a(e.entry_id ?? null);
-		}).catch((e) => s(e?.message ?? String(e)));
+	}), { t: f, locale: m } = fe(e.locale?.language ?? e.language, r?.language);
+	ve = m;
+	let h = () => {
+		c(null), e.connection.sendMessagePromise({ type: "malarenergi_powerhub/settings/get" }).then((e) => {
+			i(e.options), o(e.entry_id ?? null);
+		}).catch((e) => c(e?.message ?? String(e)));
 	};
-	(0, d.useEffect)(m, []);
-	let h = (e) => {
-		l(e);
+	(0, d.useEffect)(h, [n]);
+	let g = (e) => {
+		u(e);
 		try {
 			localStorage.setItem("ph_tab", e);
 		} catch {}
-	}, { dev: g, ents: _, hubs: v } = xe(e, i), y = Se(e, g, v), b = {
+	}, { dev: _, ents: v, hubs: y } = xe(e, a), b = Se(e, _, y), ee = {
 		hass: e,
-		t: u,
-		locale: f,
+		t: f,
+		locale: m,
 		narrow: t
 	};
 	return /* @__PURE__ */ (0, p.jsxs)("div", {
 		className: `page ${t ? "narrow" : ""}`,
 		children: [/* @__PURE__ */ (0, p.jsxs)("header", { children: [/* @__PURE__ */ (0, p.jsx)("div", {
 			className: "brand",
-			children: /* @__PURE__ */ (0, p.jsx)("h1", { children: u.title })
+			children: /* @__PURE__ */ (0, p.jsx)("h1", { children: f.title })
 		}), /* @__PURE__ */ (0, p.jsx)("nav", {
 			className: "tabs",
 			children: me.map((e) => /* @__PURE__ */ (0, p.jsx)("button", {
-				className: c === e ? "on" : "",
-				onClick: () => h(e),
-				children: u[`tab_${e}`]
+				className: l === e ? "on" : "",
+				"aria-pressed": l === e,
+				onClick: () => g(e),
+				children: f[`tab_${e}`]
 			}, e))
-		})] }), _ ? o ? /* @__PURE__ */ (0, p.jsxs)("div", {
+		})] }), v ? s ? /* @__PURE__ */ (0, p.jsxs)("div", {
 			className: "card error row-between",
 			children: [/* @__PURE__ */ (0, p.jsxs)("span", { children: [
-				u.load_failed,
+				f.load_failed,
 				": ",
-				o
+				s
 			] }), /* @__PURE__ */ (0, p.jsx)("button", {
 				className: "btn",
-				onClick: m,
-				children: u.retry
+				onClick: h,
+				children: f.retry
 			})]
-		}) : n ? /* @__PURE__ */ (0, p.jsxs)(p.Fragment, { children: [c === "overview" && /* @__PURE__ */ (0, p.jsx)(T, {
-			...b,
-			ents: _,
-			bv: y,
-			opts: n
-		}), c === "settings" && /* @__PURE__ */ (0, p.jsx)(De, {
-			...b,
-			ents: _,
-			opts: n,
-			setOpts: r
+		}) : r ? /* @__PURE__ */ (0, p.jsxs)(p.Fragment, { children: [l === "overview" && /* @__PURE__ */ (0, p.jsx)(T, {
+			...ee,
+			ents: v,
+			bv: b,
+			opts: r
+		}), l === "settings" && /* @__PURE__ */ (0, p.jsx)(De, {
+			...ee,
+			ents: v,
+			opts: r,
+			setOpts: i
 		})] }) : /* @__PURE__ */ (0, p.jsx)("div", {
 			className: "card",
-			children: u.loading
+			children: f.loading
 		}) : /* @__PURE__ */ (0, p.jsx)("div", {
 			className: "card",
-			children: u.no_hub
+			children: f.no_hub
 		})]
 	});
 }
@@ -11121,9 +11122,9 @@ function De({ hass: e, t, ents: n, opts: r, setOpts: i }) {
 		}).then((e) => {
 			a === s.current && (i(e.options), o(t.saved), setTimeout(() => o(""), 1500));
 		}).catch((t) => {
-			o(t?.message ?? String(t)), e.connection.sendMessagePromise({ type: "malarenergi_powerhub/settings/get" }).then((e) => {
+			a === s.current && (o(t?.message ?? String(t)), e.connection.sendMessagePromise({ type: "malarenergi_powerhub/settings/get" }).then((e) => {
 				a === s.current && i(e.options);
-			}).catch(() => {});
+			}).catch(() => {}));
 		});
 	}, u = w(e, n, r), f = (e) => u.sources.includes(e), m = (t) => Object.values(e.states).filter((e) => e.entity_id.startsWith("sensor.") && t.includes(e.attributes?.unit_of_measurement)).map((e) => e.entity_id).sort(), h = m(Object.keys(he)), g = m(["%"]), _ = (n, i) => /* @__PURE__ */ (0, p.jsxs)("label", {
 		className: "setting",
@@ -11257,11 +11258,15 @@ var Oe = ":host{--me-bg:var(--primary-background-color,#f4f6f9);--me-card:var(--
 	root;
 	_hass;
 	_narrow = !1;
+	_active = null;
 	set hass(e) {
 		this._hass = e, this.render();
 	}
 	set narrow(e) {
 		this._narrow = e, this.render();
+	}
+	set panel(e) {
+		this._active = e?.config?.entry_id ?? null, this.render();
 	}
 	connectedCallback() {
 		if (this.root) return;
@@ -11278,7 +11283,8 @@ var Oe = ":host{--me-bg:var(--primary-background-color,#f4f6f9);--me-card:var(--
 	render() {
 		this.root && this._hass && this.root.render(/* @__PURE__ */ (0, p.jsx)(Ee, {
 			hass: this._hass,
-			narrow: this._narrow
+			narrow: this._narrow,
+			active: this._active
 		}));
 	}
 };
