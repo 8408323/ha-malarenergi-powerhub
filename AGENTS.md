@@ -1,4 +1,4 @@
-# Agent Instructions — ha-malarenergi-powerhub
+# Agent Instructions — ha-powerhub-cloud
 
 Home Assistant custom integration for the Bitvis PowerHub cloud API (Mälarenergi, Kraftringen and ~17 other energy companies; per-provider Flow backend, see `const.PROVIDERS`).
 See [README.md](README.md) for hardware/API context and [CONTRIBUTING.md](CONTRIBUTING.md) for branch/commit conventions.

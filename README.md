@@ -1,4 +1,7 @@
-# ha-malarenergi-powerhub
+# ha-powerhub-cloud
+
+> Formerly **ha-malarenergi-powerhub** — renamed since it supports many energy companies. Existing HACS installs keep
+> working (GitHub redirects the old URL); the integration's internal domain `malarenergi_powerhub` is unchanged.
 
 Home Assistant custom integration for the **PowerHub** — the HAN-port energy monitor made by [Bitvis AB](https://bitvis.se/) and sold by Swedish energy companies:
 
@@ -48,12 +51,12 @@ If you find this integration useful, you can buy me a coffee ☕
 
 ### HACS (recommended)
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=8408323&repository=ha-malarenergi-powerhub&category=integration)
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=8408323&repository=ha-powerhub-cloud&category=integration)
 
 Or manually:
 
 1. In HACS, go to **Integrations → ⋮ → Custom repositories**.
-2. Add `https://github.com/8408323/ha-malarenergi-powerhub` as an **Integration**.
+2. Add `https://github.com/8408323/ha-powerhub-cloud` as an **Integration**.
 3. Search for **PowerHub** and click **Download**.
 4. Restart Home Assistant.
 

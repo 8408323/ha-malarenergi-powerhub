@@ -22,7 +22,7 @@ This guide walks you through installing and configuring the PowerHub integration
 
 4. In the **Repository** field, enter:
    ```
-   https://github.com/8408323/ha-malarenergi-powerhub
+   https://github.com/8408323/ha-powerhub-cloud
    ```
 5. Set **Category** to `Integration`
 6. Click **Add**
