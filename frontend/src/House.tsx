@@ -1,4 +1,4 @@
-// Isometric house scene (adapted from the villa-energy panel): grid pole, the PowerHub at the meter and, for the sources
+// Isometric house scene (adapted from the villa-energy panel): the grid's cable cabinet, the PowerHub at the meter and, for the sources
 // the user ticked, physical objects (roof panels, battery cabinet, generator, wind turbine, garage with an EV) wired to
 // one inverter node. Pure SVG, back to front.
 
@@ -136,7 +136,7 @@ function Bolt({ x, y }: { x: number; y: number }) {
   return <path d={`M${x + 1} ${y - 8} L${x - 4} ${y + 1} H${x} L${x - 1} ${y + 8} L${x + 4} ${y - 1} H${x} Z`} fill="#c3ccd8" />;
 }
 
-const WIND_AT: V = [8.5, -1.1, 0];
+const WIND_AT: V = [8.0, -1.6, 0];
 
 export default function House({ v }: { v: HouseValues }) {
   const hasInv = v.sources.length > 0;
@@ -144,7 +144,7 @@ export default function House({ v }: { v: HouseValues }) {
   const max = Math.max(1e-9, ...[v.grid, v.house, v.inv, v.ev].map((x) => Math.abs(x ?? 0)));
   const W = 4.04; // wire plane, just in front of the front wall
   return (
-    <svg viewBox={v.hasEv ? "0 105 600 410" : "90 105 510 410"} className="house-scene" role="img" aria-label={v.ariaLabel}>
+    <svg viewBox={v.hasEv ? "0 105 610 430" : "90 105 520 430"} className="house-scene" role="img" aria-label={v.ariaLabel}>
       <defs>
         <linearGradient id="hs-wall" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#f4f7fb" /><stop offset="100%" stopColor="#dde4ee" />
@@ -154,13 +154,14 @@ export default function House({ v }: { v: HouseValues }) {
         </radialGradient>
       </defs>
       <ellipse cx={P([2, 3, 0])[0]} cy={P([2, 3, 0])[1]} rx={270} ry={120} fill="url(#hs-ground)" />
-      <polygon points={pts([[v.hasEv ? -5.2 : -1.6, has("wind") ? -1.8 : -0.4, 0], [has("wind") ? 9.2 : 8.6, has("wind") ? -1.8 : -0.4, 0], [has("wind") ? 9.2 : 8.6, 5.8, 0], [v.hasEv ? -5.2 : -1.6, 5.8, 0]])} className="hs-plot" />
+      <polygon points={pts([[v.hasEv ? -5.2 : -1.6, has("wind") ? -1.8 : -0.4, 0], [9.7, has("wind") ? -2.2 : -0.4, 0], [9.7, 5.8, 0], [v.hasEv ? -5.2 : -1.6, 5.8, 0]])} className="hs-plot" />
       {has("wind") && <WindTurbine at={WIND_AT} />}
       {v.hasEv ? <>{tree(-5, 0.6)}{tree(-4.4, -0.2)}</> : tree(-1.2, 0.2)}
 
-      {/* grid pole behind the house, right */}
-      <line x1={P([8.2, 0.6, 0])[0]} y1={P([8.2, 0.6, 0])[1]} x2={P([8.2, 0.6, 4.6])[0]} y2={P([8.2, 0.6, 4.6])[1]} stroke="#7a5a3a" strokeWidth={5} strokeLinecap="round" />
-      <line x1={P([8.2, 0.1, 4.3])[0]} y1={P([8.2, 0.1, 4.3])[1]} x2={P([8.2, 1.1, 4.3])[0]} y2={P([8.2, 1.1, 4.3])[1]} stroke="#7a5a3a" strokeWidth={4} strokeLinecap="round" />
+      {/* the grid feed: an underground cable from the street's cable cabinet (kabelskåp) to the meter. Underground,
+          so it never crosses the cables coming down from the roof */}
+      {box(8.7, 9.3, 1.2, 1.9, 0, 1.15, "#3f7d4f", "#2f6340", "#5a9a69")}
+      <polygon points={pts([[9.3, 1.35, 0.85], [9.3, 1.75, 0.85], [9.3, 1.75, 0.95], [9.3, 1.35, 0.95]])} fill="#f5d90a" />
       {v.hasEv && <g>
         <polygon points={pts([[-4, 4, 0], [0, 4, 0], [0, 4, 2.4], [-4, 4, 2.4]])} fill="url(#hs-wall)" stroke="#c3ccd8" />
         <polygon points={pts([[-3.5, 4, 0], [-0.6, 4, 0], [-0.6, 4, 1.95], [-3.5, 4, 1.95]])} fill="#2a3240" />
@@ -194,12 +195,6 @@ export default function House({ v }: { v: HouseValues }) {
       <polygon points={pts([[-0.35, 4.5, 2.85], [6.35, 4.5, 2.85], [6.35, 2, 5], [-0.35, 2, 5]])} className="hs-roof" />
       <polygon points={pts([[6.35, 4.5, 2.85], [6.35, 4.5, 2.7], [6.35, 2, 4.85], [6.35, 2, 5]])} fill="#1d2027" />
       {has("solar") && <SolarPanels />}
-      {/* source cables first, so the cabinets stand in front of them */}
-      {has("solar") && <Wire route={[[5.55, 4.38, 2.95], [5.55, W, 2.75], [5.55, W, 1.75]]} w={null} max={max} color={C.inv} />}
-      {has("battery") && <Wire route={[[6.08, 3.1, 0.75], [6.03, 3.95, 0.75], [5.65, W, 0.75]]} w={null} max={max} color={C.inv} />}
-      {has("generator") && <Wire route={[[6.12, 1.35, 0.4], [6.03, 1.35, 0.25], [6.03, 3.95, 0.25], [5.65, W, 0.55]]} w={null} max={max} color={C.inv} />}
-      {has("wind") && <Wire route={[[WIND_AT[0], WIND_AT[1] + 0.1, 0.05], [6.03, 0.05, 0.05], [6.03, 3.95, 0.12], [5.65, W, 0.5]]} w={null} max={max} color={C.inv} />}
-
       {has("generator") && <Generator />}
       {has("battery") && <BatteryCabinet soc={v.soc} />}
 
@@ -217,14 +212,20 @@ export default function House({ v }: { v: HouseValues }) {
       {!hasInv && tree(7.6, 3.4) /* that spot is the inverter label's and the cabinets' */}
 
       {/* flows: only grid import/export is measured by the PowerHub; the rest when the user picked sensors */}
-      <Wire route={[[8.2, 0.6, 4.3], [6.03, 1.0, 2.6], [6.03, W, 2.6], [4.15, W, 2.6], [4.15, W, 2.2]]} w={v.grid} max={max} color={C.grid} />
+      <Wire route={[[9.0, 1.91, 0.3], [9.0, 5.2, 0.02], [3.95, 5.2, 0.02], [3.95, W, 0.02], [3.95, W, 1.6]]} w={v.grid} max={max} color={C.grid} />
       <Wire route={[[3.45, W, 1.75], [3.38, W, 1.75], [3.38, W, 1.0], [2.36, W, 1.0]]} w={v.house} max={max} color={C.house} />
+      {/* one cable per source, each on its own lane into the inverter (separate entry points, no shared
+          segments), drawn on top so none is hidden: solar down the front wall, the others along the ground */}
+      {has("solar") && <Wire route={[[5.3, 4.12, 3.22], [5.3, 4.5, 2.88], [5.45, W, 2.75], [5.45, W, 1.75]]} w={null} max={max} color={C.inv} />}
+      {has("battery") && <Wire route={[[6.35, 3.66, 0.3], [6.35, 4.3, 0.02], [5.25, 4.3, 0.02], [5.25, W, 0.02], [5.25, W, 0.45]]} w={null} max={max} color={C.inv} />}
+      {has("generator") && <Wire route={[[6.9, 1.96, 0.3], [6.9, 4.5, 0.02], [5.0, 4.5, 0.02], [5.0, W, 0.02], [5.0, W, 0.45]]} w={null} max={max} color={C.inv} />}
+      {has("wind") && <Wire route={[[WIND_AT[0], WIND_AT[1] + 0.1, 0.02], [7.35, WIND_AT[1] + 0.1, 0.02], [7.35, 4.7, 0.02], [4.75, 4.7, 0.02], [4.75, W, 0.02], [4.75, W, 0.45]]} w={null} max={max} color={C.inv} />}
       {hasInv && <Wire route={[[4.55, W, 1.55], [4.35, W, 1.55], [4.35, W, 1.8], [4.15, W, 1.8]]} w={v.inv} max={max} color={C.inv} />}
-      {v.hasEv && <Wire route={[[3.6, W, 1.6], [3.6, W, 0.12], [-0.35, W, 0.12], [-0.35, W, 0.9]]} w={v.ev} max={max} color={C.ev} />}
+      {v.hasEv && <Wire route={[[3.55, W, 1.6], [3.55, W, 0.12], [-0.35, W, 0.12], [-0.35, W, 0.9]]} w={v.ev} max={max} color={C.ev} />}
 
-      <Tag at={[8.4, 0.6, 6.4]} title={v.labels.grid} value={v.text.grid} sub={v.text.gridSub} color={C.grid} />
+      <Tag at={[9.0, 1.55, 4.2]} title={v.labels.grid} value={v.text.grid} sub={v.text.gridSub} color={C.grid} />
       <Tag at={[2.4, 5.6, -0.7]} title={v.labels.house} value={v.text.house} color={C.house} />
-      {hasInv && <Tag at={[7.2, 4.6, 0.6]} title={v.labels.inverter} value={v.text.inv} sub={v.text.invSub} color={C.inv} align="start" />}
+      {hasInv && <Tag at={[6.8, 7.4, 0]} title={v.labels.inverter} value={v.text.inv} sub={v.text.invSub} color={C.inv} align="start" />}
       {v.hasEv && <Tag at={[-1.9, 5.4, -0.6]} title={v.labels.ev} value={v.text.ev} sub={v.text.evSub} color={C.ev} />}
     </svg>
   );
