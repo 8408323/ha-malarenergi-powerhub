@@ -137,8 +137,19 @@ function Bolt({ x, y }: { x: number; y: number }) {
 }
 
 const WIND_AT: V = [8.0, -1.6, 0];
-const POLE: V = [8.2, 0.6, 0];        // overhead: the pole behind the house
+const POLE: V = [8.2, 0.6, 0];        // overhead: the pole the line reaches the house from
+const POLE2: V = [11.0, 0.6, 0];       // ...and the one before it, so it reads as a line coming from the street
 const CAB: [number, number] = [4.0, 6.7];  // underground: the cable cabinet in front of the meter (x, front y)
+
+// a wooden pole with a cross-arm
+function pole(at: V) {
+  const [bx, by] = P(at), [tx, ty] = P([at[0], at[1], 4.4]);
+  const [ax, ay] = P([at[0], at[1] - 0.5, 4.1]), [cx, cy] = P([at[0], at[1] + 0.5, 4.1]);
+  return <g key={at.join()}>
+    <line x1={bx} y1={by} x2={tx} y2={ty} stroke="#7a5a3a" strokeWidth={5} strokeLinecap="round" />
+    <line x1={ax} y1={ay} x2={cx} y2={cy} stroke="#7a5a3a" strokeWidth={4} strokeLinecap="round" />
+  </g>;
+}
 
 export default function House({ v }: { v: HouseValues }) {
   const hasInv = v.sources.length > 0;
@@ -156,7 +167,7 @@ export default function House({ v }: { v: HouseValues }) {
         </radialGradient>
       </defs>
       <ellipse cx={P([2, 3, 0])[0]} cy={P([2, 3, 0])[1]} rx={270} ry={120} fill="url(#hs-ground)" />
-      <polygon points={pts([[v.hasEv ? -5.2 : -1.6, has("wind") ? -1.8 : -0.4, 0], [9.7, has("wind") ? -2.2 : -0.4, 0], [9.7, 5.8, 0], [v.hasEv ? -5.2 : -1.6, 5.8, 0]])} className="hs-plot" />
+      <polygon points={pts([[v.hasEv ? -5.2 : -1.6, has("wind") ? -1.8 : -0.4, 0], [v.underground ? 9.7 : 11.6, has("wind") ? -2.2 : -0.4, 0], [v.underground ? 9.7 : 11.6, 5.8, 0], [v.hasEv ? -5.2 : -1.6, 5.8, 0]])} className="hs-plot" />
       {has("wind") && <WindTurbine at={WIND_AT} />}
       {v.hasEv ? <>{tree(-5, 0.6)}{tree(-4.4, -0.2)}</> : tree(-1.2, 0.2)}
 
@@ -216,7 +227,7 @@ export default function House({ v }: { v: HouseValues }) {
       {!hasInv && tree(7.6, 3.4) /* that spot is the inverter label's and the cabinets' */}
 
       {/* flows: only grid import/export is measured by the PowerHub; the rest when the user picked sensors */}
-      <Wire route={v.underground ? [[CAB[0], CAB[1], 0.02], [CAB[0], W, 0.02], [CAB[0], W, 1.6]] : [[POLE[0], POLE[1], 3.95], [3.6, W, 2.35]]} w={v.grid} max={max} color={C.grid} />
+      <Wire route={v.underground ? [[CAB[0], CAB[1], 0.02], [CAB[0], W, 0.02], [CAB[0], W, 1.6]] : [[POLE2[0], POLE2[1], 3.95], [POLE[0], POLE[1], 3.95], [3.6, W, 2.35]]} w={v.grid} max={max} color={C.grid} />
       <Wire route={[[3.45, W, 1.75], [3.38, W, 1.75], [3.38, W, 1.0], [2.36, W, 1.0]]} w={v.house} max={max} color={C.house} />
       {/* one cable per source, each on its own lane into the inverter (separate entry points, no shared
           segments), drawn on top so none is hidden: solar down the front wall, the others along the ground */}
@@ -225,10 +236,7 @@ export default function House({ v }: { v: HouseValues }) {
       {has("generator") && <Wire route={[[6.9, 1.96, 0.3], [6.9, 4.5, 0.02], [5.0, 4.5, 0.02], [5.0, W, 0.02], [5.0, W, 0.45]]} w={null} max={max} color={C.inv} />}
       {has("wind") && <Wire route={[[WIND_AT[0], WIND_AT[1] + 0.1, 0.02], [7.35, WIND_AT[1] + 0.1, 0.02], [7.35, 4.7, 0.02], [4.75, 4.7, 0.02], [4.75, W, 0.02], [4.75, W, 0.45]]} w={null} max={max} color={C.inv} />}
       {/* the pole stands in front of the ground cables behind it, so it is drawn after them */}
-      {!v.underground && <g>
-        <line x1={P(POLE)[0]} y1={P(POLE)[1]} x2={P([POLE[0], POLE[1], 4.4])[0]} y2={P([POLE[0], POLE[1], 4.4])[1]} stroke="#7a5a3a" strokeWidth={5} strokeLinecap="round" />
-        <line x1={P([POLE[0], POLE[1] - 0.5, 4.1])[0]} y1={P([POLE[0], POLE[1] - 0.5, 4.1])[1]} x2={P([POLE[0], POLE[1] + 0.5, 4.1])[0]} y2={P([POLE[0], POLE[1] + 0.5, 4.1])[1]} stroke="#7a5a3a" strokeWidth={4} strokeLinecap="round" />
-      </g>}
+      {!v.underground && <>{pole(POLE2)}{pole(POLE)}</>}
       {hasInv && <Wire route={[[4.55, W, 1.55], [4.35, W, 1.55], [4.35, W, 1.8], [4.15, W, 1.8]]} w={v.inv} max={max} color={C.inv} />}
       {v.hasEv && <Wire route={[[3.55, W, 1.6], [3.55, W, 0.12], [-0.35, W, 0.12], [-0.35, W, 0.9]]} w={v.ev} max={max} color={C.ev} />}
 
