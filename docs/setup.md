@@ -136,7 +136,11 @@ From v0.4.0 the integration comes with its own dashboard. There is nothing to ad
 
 ![PowerHub dashboard](images/13_panel_overview.jpg)
 
-Open **Settings** in the dashboard (top right) to tick your local sources — solar, home battery, wind, generator/CHP, EV with V2H/V2G, a plain EV charger — and optionally pick sensors for them. Each ticked source appears as its own object in the overview picture, and the grid connection can be shown as an overhead line or an underground cable. Only administrators can change these settings; everyone else sees them read-only. The dashboard can be hidden from there for everyone, or just for yourself through Home Assistant's own sidebar editing — see the README.
+Open **Settings** in the dashboard (top right) to tick your local sources — solar, home battery, wind, generator/CHP, EV with V2H/V2G, a plain EV charger — and optionally pick sensors for them. Each ticked source appears as its own object in the overview picture, and the grid connection can be shown as an overhead line or an underground cable. Only administrators can change these settings; everyone else sees them read-only. The panel's **Show PowerHub in the sidebar** setting hides it for everyone (it stays reachable at `/powerhub`); to hide it just for yourself, use Home Assistant's own sidebar editing (long-press the sidebar title, or *Profile → Change the order and hide items from the sidebar*).
+
+### Using it together with the built-in Bitvis integration
+
+Home Assistant 2026.10+ ships the [Bitvis Power Hub](https://www.home-assistant.io/integrations/bitvis) integration, which reads the hub locally. The hub pushes its readings over **UDP port 58220**, so the hub and Home Assistant must be on the **same subnet**, or your router must forward that traffic to HA (VLANs and mDNS relays usually block it). When both integrations are set up, the hub shows up as two devices — one local, one cloud — and the panel uses the local real-time values (badge "Live (local)").
 
 ---
 
