@@ -95,12 +95,17 @@ async def async_setup_panel(hass: HomeAssistant) -> None:
             websocket_api.async_register_command(hass, ws_settings_get)
             websocket_api.async_register_command(hass, ws_settings_set)
             hass.data[KEY] = True
-        entry = _entry(hass)
-        state = (entry.entry_id if entry else None, _options(entry)["show_panel"] if entry else True)
+        if (entry := _entry(hass)) is None:  # nothing loaded (e.g. the last entry unloaded meanwhile)
+            async_remove_panel(hass)
+            return
+        state = (entry.entry_id, _options(entry)["show_panel"])
         if hass.data.get(KEY_PANEL, _NONE) == state:
             return
         async_remove_panel(hass)
         await _register(hass, state[1], state[0])
+        if _entry(hass) is None:  # the last entry unloaded while registering: don't leave a panel behind
+            frontend.async_remove_panel(hass, PANEL, warn_if_unknown=False)
+            return
         hass.data[KEY_PANEL] = state  # only once it exists: a failed registration is retried next time
 
 
@@ -122,13 +127,19 @@ def ws_settings_get(hass, connection, msg):
     )
 
 
-@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/settings/set", vol.Required("options"): dict})
+@websocket_api.websocket_command(
+    {vol.Required("type"): f"{DOMAIN}/settings/set", vol.Required("options"): dict, vol.Optional("entry_id"): str}
+)
 @websocket_api.require_admin
 @websocket_api.async_response
 async def ws_settings_set(hass, connection, msg):
     entry = _entry(hass)
     if entry is None:
         connection.send_error(msg["id"], "not_loaded", "PowerHub is not set up")
+        return
+    if msg.get("entry_id", entry.entry_id) != entry.entry_id:
+        # the panel showed another entry's settings; it reloads, the user re-applies
+        connection.send_error(msg["id"], "stale_entry", "Settings changed meanwhile; reload and try again")
         return
     old = _options(entry)
     clean = {k: v for k, v in msg["options"].items() if k in DEFAULT_OPTIONS and _valid(k, v)}

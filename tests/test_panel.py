@@ -44,7 +44,7 @@ async def test_setup_registers_once_and_honours_show_panel(tmp_path) -> None:
     assert ws.call_count == 2
 
 
-async def test_setup_without_entry_shows_panel(tmp_path) -> None:
+async def test_setup_without_loaded_entry_registers_no_panel(tmp_path) -> None:
     (tmp_path / "panel.js").write_text("x")
     hass = _hass()
     with (
@@ -53,7 +53,36 @@ async def test_setup_without_entry_shows_panel(tmp_path) -> None:
         patch(f"{MOD}.websocket_api.async_register_command"),
     ):
         await panel.async_setup_panel(hass)
-    assert reg.await_args.kwargs["sidebar_title"] == "PowerHub"
+    reg.assert_not_awaited()
+    assert panel.KEY_PANEL not in hass.data
+
+
+async def test_last_entry_unloading_during_registration_leaves_no_panel(tmp_path) -> None:
+    (tmp_path / "panel.js").write_text("x")
+    hass = _hass([_entry()])
+
+    async def unload_meanwhile(*args, **kwargs):
+        hass.data[DOMAIN].clear()
+
+    with (
+        patch(f"{MOD}.WWW", tmp_path),
+        patch(f"{MOD}.panel_custom.async_register_panel", new=AsyncMock(side_effect=unload_meanwhile)),
+        patch(f"{MOD}.websocket_api.async_register_command"),
+        patch(f"{MOD}.frontend.async_remove_panel") as rm,
+    ):
+        await panel.async_setup_panel(hass)
+    rm.assert_called_once()
+    assert panel.KEY_PANEL not in hass.data
+
+
+async def test_settings_set_rejects_a_stale_entry() -> None:
+    entry = _entry()
+    hass = _hass([entry])
+    conn = MagicMock()
+    await _set(hass, conn, {"id": 1, "options": {"show_panel": False}, "entry_id": "eid-other"})
+    conn.send_error.assert_called_once()
+    assert conn.send_error.call_args.args[1] == "stale_entry"
+    hass.config_entries.async_update_entry.assert_not_called()
 
 
 async def test_setup_skips_when_not_built(tmp_path) -> None:

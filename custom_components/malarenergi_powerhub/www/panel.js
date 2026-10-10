@@ -10880,7 +10880,8 @@ function Ee({ hass: e, narrow: t, active: n }) {
 			...ee,
 			ents: v,
 			opts: r,
-			setOpts: i
+			setOpts: i,
+			entryId: a
 		})] }) : /* @__PURE__ */ (0, p.jsx)("div", {
 			className: "card",
 			children: f.loading
@@ -11109,24 +11110,25 @@ function E({ on: e, set: t, disabled: n }) {
 		}), /* @__PURE__ */ (0, p.jsx)("span", { "aria-hidden": !0 })]
 	});
 }
-function De({ hass: e, t, ents: n, opts: r, setOpts: i }) {
-	let [a, o] = (0, d.useState)(""), s = (0, d.useRef)(0), c = !!e.user?.is_admin, l = (n) => {
+function De({ hass: e, t, ents: n, opts: r, setOpts: i, entryId: a }) {
+	let [o, s] = (0, d.useState)(""), c = (0, d.useRef)(0), l = !!e.user?.is_admin, u = (n) => {
 		i({
 			...r,
 			...n
 		});
-		let a = ++s.current;
+		let o = ++c.current;
 		e.connection.sendMessagePromise({
 			type: "malarenergi_powerhub/settings/set",
-			options: n
+			options: n,
+			...a ? { entry_id: a } : {}
 		}).then((e) => {
-			a === s.current && (i(e.options), o(t.saved), setTimeout(() => o(""), 1500));
+			o === c.current && (i(e.options), s(t.saved), setTimeout(() => o === c.current && s(""), 1500));
 		}).catch((t) => {
-			a === s.current && (o(t?.message ?? String(t)), e.connection.sendMessagePromise({ type: "malarenergi_powerhub/settings/get" }).then((e) => {
-				a === s.current && i(e.options);
+			o === c.current && (s(t?.message ?? String(t)), e.connection.sendMessagePromise({ type: "malarenergi_powerhub/settings/get" }).then((e) => {
+				o === c.current && i(e.options);
 			}).catch(() => {}));
 		});
-	}, u = w(e, n, r), f = (e) => u.sources.includes(e), m = (t) => Object.values(e.states).filter((e) => e.entity_id.startsWith("sensor.") && t.includes(e.attributes?.unit_of_measurement)).map((e) => e.entity_id).sort(), h = m(Object.keys(he)), g = m(["%"]), _ = (n, i) => /* @__PURE__ */ (0, p.jsxs)("label", {
+	}, f = w(e, n, r), m = (e) => f.sources.includes(e), h = (t) => Object.values(e.states).filter((e) => e.entity_id.startsWith("sensor.") && t.includes(e.attributes?.unit_of_measurement)).map((e) => e.entity_id).sort(), g = h(Object.keys(he)), _ = h(["%"]), v = (n, i) => /* @__PURE__ */ (0, p.jsxs)("label", {
 		className: "setting",
 		children: [
 			/* @__PURE__ */ (0, p.jsx)("span", { children: t[n] }),
@@ -11134,9 +11136,9 @@ function De({ hass: e, t, ents: n, opts: r, setOpts: i }) {
 				className: "pick",
 				list: `ph-${n}`,
 				defaultValue: r[n],
-				disabled: !c,
+				disabled: !l,
 				placeholder: "sensor.…",
-				onBlur: (e) => e.target.value.trim() !== r[n] && l({ [n]: e.target.value.trim() })
+				onBlur: (e) => e.target.value.trim() !== r[n] && u({ [n]: e.target.value.trim() })
 			}, r[n]),
 			/* @__PURE__ */ (0, p.jsx)("datalist", {
 				id: `ph-${n}`,
@@ -11150,7 +11152,7 @@ function De({ hass: e, t, ents: n, opts: r, setOpts: i }) {
 	return /* @__PURE__ */ (0, p.jsxs)("div", {
 		className: "settings-grid",
 		children: [
-			!c && /* @__PURE__ */ (0, p.jsx)("div", {
+			!l && /* @__PURE__ */ (0, p.jsx)("div", {
 				className: "card muted",
 				children: t.admin_only
 			}),
@@ -11164,9 +11166,9 @@ function De({ hass: e, t, ents: n, opts: r, setOpts: i }) {
 							className: "muted",
 							children: [" · ", t.from_hub]
 						})] }), /* @__PURE__ */ (0, p.jsx)(E, {
-							on: f(e),
-							disabled: !c,
-							set: (t) => l({ sources: t ? pe.filter((t) => t === e || f(t)) : u.sources.filter((t) => t !== e) })
+							on: m(e),
+							disabled: !l,
+							set: (t) => u({ sources: t ? pe.filter((t) => t === e || m(t)) : f.sources.filter((t) => t !== e) })
 						})]
 					}, e)),
 					/* @__PURE__ */ (0, p.jsxs)("label", {
@@ -11175,9 +11177,9 @@ function De({ hass: e, t, ents: n, opts: r, setOpts: i }) {
 							className: "muted",
 							children: [" · ", t.from_hub]
 						})] }), /* @__PURE__ */ (0, p.jsx)(E, {
-							on: u.ev,
-							disabled: !c,
-							set: (e) => l({ has_ev: e })
+							on: f.ev,
+							disabled: !l,
+							set: (e) => u({ has_ev: e })
 						})]
 					})
 				]
@@ -11186,21 +11188,21 @@ function De({ hass: e, t, ents: n, opts: r, setOpts: i }) {
 				className: "card",
 				children: [
 					/* @__PURE__ */ (0, p.jsxs)("h2", { children: [t.s_sensors, /* @__PURE__ */ (0, p.jsx)(we, { text: t.s_sensors_info })] }),
-					u.sources.some((e) => e !== "battery" && e !== "v2g") && _("production_power", h),
-					f("battery") && /* @__PURE__ */ (0, p.jsxs)(p.Fragment, { children: [
-						_("battery_power", h),
-						_("battery_soc", g),
+					f.sources.some((e) => e !== "battery" && e !== "v2g") && v("production_power", g),
+					m("battery") && /* @__PURE__ */ (0, p.jsxs)(p.Fragment, { children: [
+						v("battery_power", g),
+						v("battery_soc", _),
 						/* @__PURE__ */ (0, p.jsxs)("label", {
 							className: "setting",
 							children: [/* @__PURE__ */ (0, p.jsx)("span", { children: t.battery_invert }), /* @__PURE__ */ (0, p.jsx)(E, {
 								on: r.battery_invert,
-								disabled: !c,
-								set: (e) => l({ battery_invert: e })
+								disabled: !l,
+								set: (e) => u({ battery_invert: e })
 							})]
 						})
 					] }),
-					(u.ev || f("v2g")) && _("ev_power", h),
-					!u.sources.length && !u.ev && /* @__PURE__ */ (0, p.jsx)("div", {
+					(f.ev || m("v2g")) && v("ev_power", g),
+					!f.sources.length && !f.ev && /* @__PURE__ */ (0, p.jsx)("div", {
 						className: "muted",
 						children: t.s_sources_info
 					})
@@ -11215,8 +11217,8 @@ function De({ hass: e, t, ents: n, opts: r, setOpts: i }) {
 						children: [/* @__PURE__ */ (0, p.jsx)("span", { children: t.s_lang }), /* @__PURE__ */ (0, p.jsxs)("select", {
 							className: "pick",
 							value: r.language,
-							disabled: !c,
-							onChange: (e) => l({ language: e.target.value }),
+							disabled: !l,
+							onChange: (e) => u({ language: e.target.value }),
 							children: [/* @__PURE__ */ (0, p.jsx)("option", {
 								value: "auto",
 								children: t.lang_auto
@@ -11237,15 +11239,15 @@ function De({ hass: e, t, ents: n, opts: r, setOpts: i }) {
 							})
 						] }), /* @__PURE__ */ (0, p.jsx)(E, {
 							on: r.show_panel,
-							disabled: !c,
-							set: (e) => l({ show_panel: e })
+							disabled: !l,
+							set: (e) => u({ show_panel: e })
 						})]
 					}),
 					/* @__PURE__ */ (0, p.jsx)("div", {
 						className: "muted",
 						role: "status",
 						"aria-live": "polite",
-						children: a
+						children: o
 					})
 				]
 			})

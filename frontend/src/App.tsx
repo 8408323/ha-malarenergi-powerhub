@@ -119,7 +119,7 @@ export default function App({ hass, narrow, active }: { hass: any; narrow: boole
         : err ? <div className="card error row-between"><span>{t.load_failed}: {err}</span><button className="btn" onClick={load}>{t.retry}</button></div>
         : !opts ? <div className="card">{t.loading}</div> : <>
         {tab === "overview" && <Overview {...ctx} ents={ents} bv={bv} opts={opts} />}
-        {tab === "settings" && <Settings {...ctx} ents={ents} opts={opts} setOpts={setOpts} />}
+        {tab === "settings" && <Settings {...ctx} ents={ents} opts={opts} setOpts={setOpts} entryId={entryId} />}
       </>}
     </div>
   );
@@ -259,15 +259,15 @@ function Toggle({ on, set, disabled }: { on: boolean; set: (v: boolean) => void;
   return <span className="switch"><input type="checkbox" checked={on} disabled={disabled} onChange={(e) => set(e.target.checked)} /><span aria-hidden /></span>;
 }
 
-function Settings({ hass, t, ents, opts, setOpts }: Ctx & { ents: Ents; opts: Options; setOpts: (o: Options) => void }) {
+function Settings({ hass, t, ents, opts, setOpts, entryId }: Ctx & { ents: Ents; opts: Options; setOpts: (o: Options) => void; entryId: string | null }) {
   const [msg, setMsg] = useState("");
   const seq = useRef(0);  // only the latest save's response may set the options (older ones would revert it)
   const admin = !!hass.user?.is_admin;
   const save = (patch: Partial<Options>) => {
     setOpts({ ...opts, ...patch });  // optimistic; a failed save reloads what the server actually has
     const id = ++seq.current;
-    hass.connection.sendMessagePromise({ type: "malarenergi_powerhub/settings/set", options: patch })
-      .then((r: any) => { if (id !== seq.current) return; setOpts(r.options); setMsg(t.saved); setTimeout(() => setMsg(""), 1500); })
+    hass.connection.sendMessagePromise({ type: "malarenergi_powerhub/settings/set", options: patch, ...(entryId ? { entry_id: entryId } : {}) })
+      .then((r: any) => { if (id !== seq.current) return; setOpts(r.options); setMsg(t.saved); setTimeout(() => id === seq.current && setMsg(""), 1500); })
       .catch((e: any) => {
         if (id !== seq.current) return;  // a newer save already decided what's shown
         setMsg(e?.message ?? String(e));
