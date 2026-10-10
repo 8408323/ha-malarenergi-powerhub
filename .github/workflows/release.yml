@@ -156,7 +156,7 @@ jobs:
             messages: [{
               role: "user",
               content: (
-                "You are writing GitHub release notes for the Home Assistant custom integration \"Mälarenergi PowerHub\" (a HACS integration), version " + $v + ".\n\n" +
+                "You are writing GitHub release notes for the Home Assistant custom integration \"PowerHub Cloud\" (a HACS integration for the Bitvis PowerHub, sold by many Swedish energy companies), version " + $v + ".\n\n" +
                 "Below are the commit subjects since the previous release. Write concise, user-facing release notes in Markdown.\n" +
                 "- Group changes under short headings such as Features, Fixes, Docs, Internal — omit any group with no entries.\n" +
                 "- Rewrite terse commit subjects into clear, user-facing bullet points; drop pure noise like version bumps or CI plumbing.\n" +
