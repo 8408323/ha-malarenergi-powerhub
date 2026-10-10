@@ -4,7 +4,7 @@
 </head><body><malarenergi-powerhub-panel id="p"></malarenergi-powerhub-panel>
 <script type="module">
 // gallery.html shows every source configuration side by side.
-// Synthetic data. Flags: ?lang=en&narrow=1&sources=solar,battery,wind,generator,v2g,other&ev=1&sensors=1&bitvis=0&export=1&fail=1&partial=1
+// Synthetic data. Flags: ?lang=en&narrow=1&sources=solar,battery,wind,generator,v2g,other&ev=1&sensors=1&bitvis=0&export=1&fail=1&partial=1&grid=underground
 import "/src/main.tsx";
 import mock from "/dev/mock.json";
 const q = new URLSearchParams(location.search), on = (k, d = "0") => (q.get(k) ?? d) === "1";
@@ -16,7 +16,7 @@ const s = on("sensors");
 if ((q.get("sources") ?? "").includes("v2g")) states["sensor.wallbox_power"].state = "-1200";
 let options = { show_panel: true, language: "auto", sources: (q.get("sources") ?? "solar").split(",").filter(Boolean), has_ev: on("ev"),
   production_power: s ? "sensor.inverter_pv_power" : "", battery_power: s ? "sensor.inverter_battery_power" : "",
-  battery_soc: s ? "sensor.battery_soc" : "", battery_invert: false, ev_power: s ? "sensor.wallbox_power" : "" };
+  battery_soc: s ? "sensor.battery_soc" : "", battery_invert: false, ev_power: s ? "sensor.wallbox_power" : "", grid_feed: q.get("grid") || "overhead" };
 if (on("partial")) Object.assign(options, { battery_power: "", ev_power: "" });
 const p = document.getElementById("p");
 p.narrow = innerWidth < 600 || on("narrow");

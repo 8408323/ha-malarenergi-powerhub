@@ -54,7 +54,7 @@ function Tag({ at, title, value, sub, color, align = "middle" }:
 // Wire values in kW, + along the route as written; null = not measured, so the cable is drawn but nothing flows.
 export type HouseValues = {
   live: boolean; grid: number | null; house: number | null; inv: number | null; ev: number | null;
-  sources: Source[]; hasEv: boolean; soc: number | null;  // sources: the production node's, no v2g
+  sources: Source[]; hasEv: boolean; soc: number | null; underground: boolean;  // sources: the production node's, no v2g
   text: { grid: string; gridSub: string; house: string; inv: string; invSub: string; ev: string; evSub: string };
   labels: { grid: string; house: string; inverter: string; ev: string; powerhub: string };
   ariaLabel: string;
@@ -83,7 +83,7 @@ function tree(x: number, y: number) {
 const roof = (u: number, t: number): V => [u, 4.5 - 2.5 * t, 2.85 + 2.15 * t];
 
 function SolarPanels() {
-  const cols = [0.5, 1.75, 3.0, 4.25], rows = [0.16, 0.52];
+  const cols = [0.5, 1.75, 3.0, 4.25], rows = [0.04, 0.4];
   return <g>{rows.flatMap((t) => cols.map((u) => {
     const q = [roof(u, t), roof(u + 1.12, t), roof(u + 1.12, t + 0.32), roof(u, t + 0.32)];
     const lift = (v: V): V => [v[0], v[1], v[2] + 0.05];
@@ -137,6 +137,8 @@ function Bolt({ x, y }: { x: number; y: number }) {
 }
 
 const WIND_AT: V = [8.0, -1.6, 0];
+const POLE: V = [8.2, 0.6, 0];        // overhead: the pole behind the house
+const CAB: [number, number] = [4.0, 6.7];  // underground: the cable cabinet in front of the meter (x, front y)
 
 export default function House({ v }: { v: HouseValues }) {
   const hasInv = v.sources.length > 0;
@@ -158,10 +160,12 @@ export default function House({ v }: { v: HouseValues }) {
       {has("wind") && <WindTurbine at={WIND_AT} />}
       {v.hasEv ? <>{tree(-5, 0.6)}{tree(-4.4, -0.2)}</> : tree(-1.2, 0.2)}
 
-      {/* the grid feed: an underground cable from the street's cable cabinet (kabelskåp) to the meter. Underground,
-          so it never crosses the cables coming down from the roof */}
-      {box(8.7, 9.3, 1.2, 1.9, 0, 1.15, "#3f7d4f", "#2f6340", "#5a9a69")}
-      <polygon points={pts([[9.3, 1.35, 0.85], [9.3, 1.75, 0.85], [9.3, 1.75, 0.95], [9.3, 1.35, 0.95]])} fill="#f5d90a" />
+      {/* the grid feed, as the user picked: an overhead line from a pole behind the house, or an underground cable
+          from the street's cable cabinet (kabelskåp) in front of it */}
+      {!v.underground && <g>
+        <line x1={P(POLE)[0]} y1={P(POLE)[1]} x2={P([POLE[0], POLE[1], 4.4])[0]} y2={P([POLE[0], POLE[1], 4.4])[1]} stroke="#7a5a3a" strokeWidth={5} strokeLinecap="round" />
+        <line x1={P([POLE[0], POLE[1] - 0.5, 4.1])[0]} y1={P([POLE[0], POLE[1] - 0.5, 4.1])[1]} x2={P([POLE[0], POLE[1] + 0.5, 4.1])[0]} y2={P([POLE[0], POLE[1] + 0.5, 4.1])[1]} stroke="#7a5a3a" strokeWidth={4} strokeLinecap="round" />
+      </g>}
       {v.hasEv && <g>
         <polygon points={pts([[-4, 4, 0], [0, 4, 0], [0, 4, 2.4], [-4, 4, 2.4]])} fill="url(#hs-wall)" stroke="#c3ccd8" />
         <polygon points={pts([[-3.5, 4, 0], [-0.6, 4, 0], [-0.6, 4, 1.95], [-3.5, 4, 1.95]])} fill="#2a3240" />
@@ -209,23 +213,27 @@ export default function House({ v }: { v: HouseValues }) {
         <circle cx={P([4.85, W, 0.75])[0]} cy={P([4.85, W, 0.75])[1]} r={2.2} fill="#2ec27e" />
         {has("other") && <Bolt x={P([5.25, W, 0.8])[0]} y={P([5.25, W, 0.8])[1]} />}
       </g>}
+      {v.underground && <g>
+        {box(CAB[0] - 0.3, CAB[0] + 0.3, CAB[1], CAB[1] + 0.6, 0, 1.15, "#3f7d4f", "#2f6340", "#5a9a69")}
+        <polygon points={pts([[CAB[0] - 0.2, CAB[1] + 0.6, 0.85], [CAB[0] + 0.2, CAB[1] + 0.6, 0.85], [CAB[0] + 0.2, CAB[1] + 0.6, 0.95], [CAB[0] - 0.2, CAB[1] + 0.6, 0.95]])} fill="#f5d90a" />
+      </g>}
       {!hasInv && tree(7.6, 3.4) /* that spot is the inverter label's and the cabinets' */}
 
       {/* flows: only grid import/export is measured by the PowerHub; the rest when the user picked sensors */}
-      <Wire route={[[9.0, 1.91, 0.3], [9.0, 5.2, 0.02], [3.95, 5.2, 0.02], [3.95, W, 0.02], [3.95, W, 1.6]]} w={v.grid} max={max} color={C.grid} />
+      <Wire route={v.underground ? [[CAB[0], CAB[1], 0.02], [CAB[0], W, 0.02], [CAB[0], W, 1.6]] : [[POLE[0], POLE[1], 3.95], [3.6, W, 2.35]]} w={v.grid} max={max} color={C.grid} />
       <Wire route={[[3.45, W, 1.75], [3.38, W, 1.75], [3.38, W, 1.0], [2.36, W, 1.0]]} w={v.house} max={max} color={C.house} />
       {/* one cable per source, each on its own lane into the inverter (separate entry points, no shared
           segments), drawn on top so none is hidden: solar down the front wall, the others along the ground */}
-      {has("solar") && <Wire route={[[5.3, 4.12, 3.22], [5.3, 4.5, 2.88], [5.45, W, 2.75], [5.45, W, 1.75]]} w={null} max={max} color={C.inv} />}
+      {has("solar") && <Wire route={[[5.35, W, 2.84], [5.35, W, 1.75]]} w={null} max={max} color={C.inv} />}
       {has("battery") && <Wire route={[[6.35, 3.66, 0.3], [6.35, 4.3, 0.02], [5.25, 4.3, 0.02], [5.25, W, 0.02], [5.25, W, 0.45]]} w={null} max={max} color={C.inv} />}
       {has("generator") && <Wire route={[[6.9, 1.96, 0.3], [6.9, 4.5, 0.02], [5.0, 4.5, 0.02], [5.0, W, 0.02], [5.0, W, 0.45]]} w={null} max={max} color={C.inv} />}
       {has("wind") && <Wire route={[[WIND_AT[0], WIND_AT[1] + 0.1, 0.02], [7.35, WIND_AT[1] + 0.1, 0.02], [7.35, 4.7, 0.02], [4.75, 4.7, 0.02], [4.75, W, 0.02], [4.75, W, 0.45]]} w={null} max={max} color={C.inv} />}
       {hasInv && <Wire route={[[4.55, W, 1.55], [4.35, W, 1.55], [4.35, W, 1.8], [4.15, W, 1.8]]} w={v.inv} max={max} color={C.inv} />}
       {v.hasEv && <Wire route={[[3.55, W, 1.6], [3.55, W, 0.12], [-0.35, W, 0.12], [-0.35, W, 0.9]]} w={v.ev} max={max} color={C.ev} />}
 
-      <Tag at={[9.0, 1.55, 4.2]} title={v.labels.grid} value={v.text.grid} sub={v.text.gridSub} color={C.grid} />
-      <Tag at={[2.4, 5.6, -0.7]} title={v.labels.house} value={v.text.house} color={C.house} />
-      {hasInv && <Tag at={[6.8, 7.4, 0]} title={v.labels.inverter} value={v.text.inv} sub={v.text.invSub} color={C.inv} align="start" />}
+      <Tag at={v.underground ? [CAB[0] + 0.5, CAB[1] + 1.4, -0.6] : [POLE[0] + 0.2, POLE[1], 6.2]} title={v.labels.grid} value={v.text.grid} sub={v.text.gridSub} color={C.grid} />
+      <Tag at={v.underground ? [2.37, 6.27, 0] : [2.4, 5.6, -0.7]} title={v.labels.house} value={v.text.house} color={C.house} align={v.underground ? "end" : "middle"} />
+      {hasInv && <Tag at={[8.2, 6.2, 0]} title={v.labels.inverter} value={v.text.inv} sub={v.text.invSub} color={C.inv} align="start" />}
       {v.hasEv && <Tag at={[-1.9, 5.4, -0.6]} title={v.labels.ev} value={v.text.ev} sub={v.text.evSub} color={C.ev} />}
     </svg>
   );
