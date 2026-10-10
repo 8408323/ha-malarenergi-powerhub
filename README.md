@@ -1,49 +1,8 @@
 # ha-powerhub-cloud
 
-> Formerly **ha-malarenergi-powerhub** — renamed since it supports many energy companies. Existing HACS installs keep
-> working (GitHub redirects the old URL); the integration's internal domain `malarenergi_powerhub` is unchanged.
-
-Home Assistant custom integration for the **PowerHub** — the HAN-port energy monitor made by [Bitvis AB](https://bitvis.se/) and sold by Swedish energy companies:
-
-| Energy company | Status |
-|---|---|
-| [Mälarenergi](https://www.malarenergi.se/el/elavtal/powerhub/) | Tested |
-| Boo Energi | Confirmed working by a user |
-| Bjäre Kraft, Borås Elhandel, Dala Energi, Falu Energi, Kinnekulle Energi, Kraftringen, Kvänum Energi, Landskrona Energi, Norrtälje Energi, Nossebro Energi, Skånska Energi, Södra Hallands Kraft, Tranås Energi, Trelleborgs Energi, Vaggeryds Energi, Vänerenergi, Varbergsortens Elkraft | Bitvis backend with BankID login exists; untested — please report! |
-
-Another company not listed? Type its name in the setup dialog (lowercase, no spaces, å/ä/ö → a/a/o) and open an issue so it can be added.
-
-## Works together with the built-in Bitvis Power Hub integration
-
-Since **Home Assistant 2026.10** HA ships a [Bitvis Power Hub](https://www.home-assistant.io/integrations/bitvis) integration that reads the meter **locally** (UDP push on your LAN, no login). Use both:
-
-| | Built-in `bitvis` (local) | This integration (cloud) |
-|---|---|---|
-| Real-time power, per-phase voltage/current, meter energy totals | ✅ best source — use for the Energy dashboard | 1-minute power and currents |
-| Spot price, agreement, price model/zone | | ✅ |
-| Monthly insights, year-to-date, baseload | | ✅ |
-| Fuse/power limits, notification settings, sharing | | ✅ |
-
-Both identify the hub by its MAC address, but HA keeps one device per integration, so the hub shows up as two devices — one local, one cloud. (On HA versions before 2026.8, if another integration such as a router's device tracker already claims the hub's MAC, the cloud device simply doesn't get the MAC.)
-
-**Network requirement for the local integration:** the hub and Home Assistant must be on the **same subnet**, or your router must **forward UDP port 58220** traffic from the hub to HA (Bitvis' requirement). The hub appears to *broadcast* its readings, and broadcasts don't cross VLANs, so a plain "allow" firewall rule or an mDNS proxy alone is not enough — you need real UDP broadcast relaying/forwarding to HA, or put the hub on HA's network (e.g. UniFi *Virtual Network Override* on the hub's client page), or give HA an interface on the hub's VLAN. This integration (cloud) works regardless.
-
-> Running both side by side hasn't been tested yet — the maintainer's hub is on a separate IoT VLAN. If you run both, please report how it goes in an issue.
+Home Assistant custom integration for the **PowerHub** — the HAN-port energy monitor made by [Bitvis AB](https://bitvis.se/) and sold by Swedish energy companies (Mälarenergi, Kraftringen, Boo Energi and [16 more](#supported-energy-companies)).
 
 > **Status**: Working prototype — BankID auth + cloud API implemented.
-
-## Hardware
-
-| Property | Value |
-|---|---|
-| Manufacturer | Bitvis AB (OEM for the energy companies above) |
-| SoC | Espressif ESP32 (OUI `94:54:C5`) |
-| Connectivity | Wi-Fi 2.4 GHz |
-| HAN port | RJ45 (Norwegian standard, P1/IEC 62056-21) |
-| Meter | Kaifa MA304 |
-| Cloud backend | Bitvis "Flow" platform — `<company>.prod.flow.bitv.is` |
-
-The hub has no open TCP ports; it **pushes** meter readings over UDP on the LAN (what the built-in `bitvis` integration reads) and to Bitvis's cloud. This integration uses the same REST API as the energy companies' PowerHub apps.
 
 ## Support
 
@@ -91,7 +50,19 @@ See the **[full setup guide](docs/setup.md) (including the dashboard)** for step
 
 See the **[user manual](docs/user_manual.md)** for the full entity list and usage.
 
-## Dashboard panel
+## Details
+
+### Supported energy companies
+
+| Energy company | Status |
+|---|---|
+| [Mälarenergi](https://www.malarenergi.se/el/elavtal/powerhub/) | Tested |
+| Boo Energi | Confirmed working by a user |
+| Bjäre Kraft, Borås Elhandel, Dala Energi, Falu Energi, Kinnekulle Energi, Kraftringen, Kvänum Energi, Landskrona Energi, Norrtälje Energi, Nossebro Energi, Skånska Energi, Södra Hallands Kraft, Tranås Energi, Trelleborgs Energi, Vaggeryds Energi, Vänerenergi, Varbergsortens Elkraft | Bitvis backend with BankID login exists; untested — please report! |
+
+Another company not listed? Type its name in the setup dialog (lowercase, no spaces, å/ä/ö → a/a/o) and open an issue so it can be added.
+
+### Dashboard panel
 
 **How to get it:** nothing to add or configure. Once the integration is set up (v0.4.0 or later), a **PowerHub**
 entry appears in Home Assistant's left sidebar for every user. Right after updating through HACS, restart Home
@@ -118,15 +89,52 @@ The panel source is in `frontend/` (React + Vite); `npm ci && npm run build` wri
 `custom_components/malarenergi_powerhub/www/panel.js`, which is committed. `npm run dev` opens a preview with
 synthetic data (`frontend/index.html` lists the URL flags).
 
-## Authentication
+### Works together with the built-in Bitvis Power Hub integration
+
+Since **Home Assistant 2026.10** HA ships a [Bitvis Power Hub](https://www.home-assistant.io/integrations/bitvis) integration that reads the meter **locally** (UDP push on your LAN, no login). Use both:
+
+| | Built-in `bitvis` (local) | This integration (cloud) |
+|---|---|---|
+| Real-time power, per-phase voltage/current, meter energy totals | ✅ best source — use for the Energy dashboard | 1-minute power and currents |
+| Spot price, agreement, price model/zone | | ✅ |
+| Monthly insights, year-to-date, baseload | | ✅ |
+| Fuse/power limits, notification settings, sharing | | ✅ |
+
+Both identify the hub by its MAC address, but HA keeps one device per integration, so the hub shows up as two devices — one local, one cloud. (On HA versions before 2026.8, if another integration such as a router's device tracker already claims the hub's MAC, the cloud device simply doesn't get the MAC.)
+
+#### Network requirement for the local integration
+
+ the hub and Home Assistant must be on the **same subnet**, or your router must **forward UDP port 58220** traffic from the hub to HA (Bitvis' requirement). The hub appears to *broadcast* its readings, and broadcasts don't cross VLANs, so a plain "allow" firewall rule or an mDNS proxy alone is not enough — you need real UDP broadcast relaying/forwarding to HA, or put the hub on HA's network (e.g. UniFi *Virtual Network Override* on the hub's client page), or give HA an interface on the hub's VLAN. This integration (cloud) works regardless.
+
+> Running both side by side hasn't been tested yet — the maintainer's hub is on a separate IoT VLAN. If you run both, please report how it goes in an issue.
+
+### Hardware
+
+| Property | Value |
+|---|---|
+| Manufacturer | Bitvis AB (OEM for the energy companies above) |
+| SoC | Espressif ESP32 (OUI `94:54:C5`) |
+| Connectivity | Wi-Fi 2.4 GHz |
+| HAN port | RJ45 (Norwegian standard, P1/IEC 62056-21) |
+| Meter | Kaifa MA304 |
+| Cloud backend | Bitvis "Flow" platform — `<company>.prod.flow.bitv.is` |
+
+The hub has no open TCP ports; it **pushes** meter readings over UDP on the LAN (what the built-in `bitvis` integration reads) and to Bitvis's cloud. This integration uses the same REST API as the energy companies' PowerHub apps.
+
+### Authentication
 
 Login uses **Swedish BankID** (same as your energy company's PowerHub app). During setup a QR code is displayed in the HA config flow — scan it with the BankID app on your phone.
 
 The integration stores the JWT Bearer token in the HA config entry. When the token expires, HA triggers a re-auth flow automatically.
 
-## Entities
+### Entities
 
 The integration exposes ~40 entities — sensors, binary sensors, switches, numbers and selects. The full reference (entity IDs, units, writable controls, services) is in the [user manual](docs/user_manual.md).
+
+### Repository name
+
+Formerly **ha-malarenergi-powerhub** — renamed since it supports many energy companies. Existing HACS installs keep
+working (GitHub redirects the old URL); the integration's internal domain `malarenergi_powerhub` is unchanged.
 
 ## Development
 
