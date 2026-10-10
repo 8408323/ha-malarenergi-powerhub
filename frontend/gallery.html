@@ -1,0 +1,42 @@
+<!doctype html><html><head><meta charset="utf-8"><title>PowerHub — overview picture per source</title><style>
+body{margin:0;padding:20px;background:#111;color:#e1e1e1;font:14px system-ui,sans-serif}
+h1{font-size:20px;margin:0 0 4px}p{margin:0 0 16px;color:#9b9b9b}
+.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(560px,1fr));gap:16px}
+figure{margin:0;background:#1c1c1c;border-radius:12px;overflow:hidden}figcaption{padding:8px 12px;font-weight:600}
+iframe{width:100%;height:470px;border:0;display:block}
+</style></head><body>
+<h1>Overview picture — one tile per source configuration</h1>
+<p>Dev preview with synthetic data (index.html flags). Each tile is the real panel.</p>
+<div class="g" id="g"></div>
+<script>
+// [caption, index.html query]
+const cases = [
+  ["No local sources", "sources="],
+  ["Solar panels", "sources=solar"],
+  ["Home battery", "sources=battery&sensors=1"],
+  ["Solar + battery", "sources=solar,battery&sensors=1"],
+  ["Wind turbine", "sources=wind"],
+  ["Generator / CHP", "sources=generator"],
+  ["Other", "sources=other"],
+  ["EV charger (charging only)", "sources=&ev=1&sensors=1"],
+  ["EV with V2H/V2G", "sources=v2g&sensors=1"],
+  ["Everything", "sources=solar,battery,wind,generator,v2g,other&sensors=1"],
+  ["Everything, exporting", "sources=solar,battery,wind,generator,v2g,other&sensors=1&export=1"],
+];
+const g = document.getElementById("g");
+for (const [c, q] of cases) g.insertAdjacentHTML("beforeend",
+  `<figure><figcaption>${c}</figcaption><iframe src="index.html?lang=en&${q}"></iframe></figure>`);
+// show only the overview picture card of each panel (same origin, so reach into its shadow root)
+for (const f of g.querySelectorAll("iframe")) f.addEventListener("load", () => {
+  const t = setInterval(() => {
+    const root = f.contentDocument?.querySelector("malarenergi-powerhub-panel")?.shadowRoot;
+    const card = root?.querySelector(".flow-card");
+    if (!card) return;
+    clearInterval(t);
+    const st = f.contentDocument.createElement("style");
+    st.textContent = ".kpis,.side,.tabs,.brand,.flow-card .card-head{display:none!important}.grid-overview{display:block!important}";
+    root.append(st);
+    f.contentDocument.body.style.background = "#1c1c1c";
+  }, 100);
+});
+</script></body></html>
