@@ -32,11 +32,12 @@
 Full TCP port scan (ports 1–65535) run from Windows via PowerShell parallel runspaces.
 **Result: NO open TCP ports found on the device.**
 
-**Conclusion: The PowerHub is a cloud-only device.** It has no local HTTP server or API.
-It communicates exclusively **outbound** to the Bitvis cloud over HTTPS/TLS.
-Local setup is done via **Bluetooth** (BLE), after which the device operates fully cloud-connected.
+**Conclusion: the PowerHub has no local server or API** — nothing on the LAN can query or control it. It talks
+**outbound** to the Bitvis cloud over HTTPS/TLS; local setup is done via **Bluetooth** (BLE).
 
-No mDNS/Zeroconf services announced. Confirmed cloud-only.
+It does, however, **push** meter readings over **UDP port 58220** on its LAN and announces `_powerhub._udp.local.` via
+mDNS (seen by Home Assistant's built-in `bitvis` integration, 2026.10+, which only listens). Our original scan looked
+for listening TCP services, so it missed this outbound push; the hub was also on a separate VLAN from the scanner.
 
 ## Device Protocol
 

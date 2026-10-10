@@ -22,7 +22,7 @@ This guide walks you through installing and configuring the PowerHub integration
 
 4. In the **Repository** field, enter:
    ```
-   https://github.com/8408323/ha-malarenergi-powerhub
+   https://github.com/8408323/ha-powerhub-cloud
    ```
 5. Set **Category** to `Integration`
 6. Click **Add**
@@ -127,6 +127,16 @@ Configuration entities (writable fuse/power limits, facility metadata, notificat
 Diagnostic entities (Wi-Fi signal, firmware version, HAN port state, uptime) are grouped in the **Diagnostic** section:
 
 ![PowerHub device — diagnostics tab](images/11_device_diagnostics.png)
+
+---
+
+## Step 8 — Open the PowerHub dashboard
+
+From v0.4.0 the integration comes with its own dashboard. There is nothing to add: as soon as the integration is set up, **PowerHub** appears in the left sidebar for every user. After **updating** from an older version, first **restart Home Assistant** (the new code only loads on restart), then reload the browser page (on the phone app: pull down to refresh, or restart the app) so it picks up the new sidebar entry.
+
+![PowerHub dashboard](images/13_panel_overview.jpg)
+
+Open **Settings** in the dashboard (top right) to tick your local sources — solar, home battery, wind, generator/CHP, EV with V2H/V2G, a plain EV charger — and optionally pick sensors for them. Only administrators can change these settings; everyone else sees them read-only. The dashboard can be hidden from there for everyone, or just for yourself through Home Assistant's own sidebar editing — see the README.
 
 ---
 

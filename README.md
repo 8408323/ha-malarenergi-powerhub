@@ -1,4 +1,7 @@
-# ha-malarenergi-powerhub
+# ha-powerhub-cloud
+
+> Formerly **ha-malarenergi-powerhub** — renamed since it supports many energy companies. Existing HACS installs keep
+> working (GitHub redirects the old URL); the integration's internal domain `malarenergi_powerhub` is unchanged.
 
 Home Assistant custom integration for the **PowerHub** — the HAN-port energy monitor made by [Bitvis AB](https://bitvis.se/) and sold by Swedish energy companies:
 
@@ -21,7 +24,11 @@ Since **Home Assistant 2026.10** HA ships a [Bitvis Power Hub](https://www.home-
 | Monthly insights, year-to-date, baseload | | ✅ |
 | Fuse/power limits, notification settings, sharing | | ✅ |
 
-Both identify the hub by its MAC address, but HA keeps one device per integration, so the hub shows up as two devices — one local, one cloud. (On HA versions before 2026.8, if another integration such as a router's device tracker already claims the hub's MAC, the cloud device simply doesn't get the MAC.) The local integration needs the hub and HA on the same subnet (or UDP port 58220 and mDNS forwarded between them).
+Both identify the hub by its MAC address, but HA keeps one device per integration, so the hub shows up as two devices — one local, one cloud. (On HA versions before 2026.8, if another integration such as a router's device tracker already claims the hub's MAC, the cloud device simply doesn't get the MAC.)
+
+**Network requirement for the local integration:** the hub and Home Assistant must be on the **same subnet**, or your router must **forward UDP port 58220** traffic from the hub to HA (Bitvis' requirement). The hub appears to *broadcast* its readings, and broadcasts don't cross VLANs, so a plain "allow" firewall rule or an mDNS proxy alone is not enough — you need real UDP broadcast relaying/forwarding to HA, or put the hub on HA's network (e.g. UniFi *Virtual Network Override* on the hub's client page), or give HA an interface on the hub's VLAN. This integration (cloud) works regardless.
+
+> Running both side by side hasn't been tested yet — the maintainer's hub is on a separate IoT VLAN. If you run both, please report how it goes in an issue.
 
 > **Status**: Working prototype — BankID auth + cloud API implemented.
 
@@ -48,12 +55,12 @@ If you find this integration useful, you can buy me a coffee ☕
 
 ### HACS (recommended)
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=8408323&repository=ha-malarenergi-powerhub&category=integration)
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=8408323&repository=ha-powerhub-cloud&category=integration)
 
 Or manually:
 
 1. In HACS, go to **Integrations → ⋮ → Custom repositories**.
-2. Add `https://github.com/8408323/ha-malarenergi-powerhub` as an **Integration**.
+2. Add `https://github.com/8408323/ha-powerhub-cloud` as an **Integration**.
 3. Search for **PowerHub** and click **Download**.
 4. Restart Home Assistant.
 
@@ -69,7 +76,7 @@ Or manually:
 3. Choose your energy company.
 4. Scan the BankID QR code that appears with the BankID app.
 
-See the **[full setup guide](docs/setup.md)** for step-by-step instructions with screenshots.
+See the **[full setup guide](docs/setup.md) (including the dashboard)** for step-by-step instructions with screenshots.
 
 ## Features
 
@@ -85,6 +92,11 @@ See the **[full setup guide](docs/setup.md)** for step-by-step instructions with
 See the **[user manual](docs/user_manual.md)** for the full entity list and usage.
 
 ## Dashboard panel
+
+**How to get it:** nothing to add or configure. Once the integration is set up (v0.4.0 or later), a **PowerHub**
+entry appears in Home Assistant's left sidebar for every user. Right after updating through HACS, restart Home
+Assistant and reload the browser page (in the phone app: pull to refresh) so the new sidebar entry shows up. You can
+also open it directly at `/powerhub`. Only administrators can change its settings.
 
 A **PowerHub** sidebar panel shows grid import/export as an animated house picture, phase load against the main
 fuse, today's energy, prices and device status. If Home Assistant's built-in **Bitvis** integration is set up for
