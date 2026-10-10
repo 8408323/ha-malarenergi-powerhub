@@ -84,6 +84,28 @@ See the **[full setup guide](docs/setup.md)** for step-by-step instructions with
 
 See the **[user manual](docs/user_manual.md)** for the full entity list and usage.
 
+## Dashboard panel
+
+A **PowerHub** sidebar panel shows grid import/export as an animated house picture, phase load against the main
+fuse, today's energy, prices and device status. If Home Assistant's built-in **Bitvis** integration is set up for
+the same hub, the panel uses its local real-time values (badge "Live (local)"); otherwise the 1-minute cloud values.
+
+The PowerHub only measures the grid connection, so it can't tell where exported power comes from. Under
+**Settings** in the panel you tick your local sources (solar, home battery, wind, generator/CHP, EV with V2H/V2G,
+other) and whether you have a plain EV charger. Production sources are drawn as one node with an icon each; a V2G
+car can feed the house from the garage. Optionally pick a combined production-power sensor, battery sensors and an
+EV power sensor so their values appear in the picture. The panel's language follows Home Assistant by default
+(English, Svenska, Norsk, Dansk, Suomi, Íslenska; others fall back to English) and can be set there too.
+The panel's **Show PowerHub in the sidebar** setting hides it for everyone (it stays reachable at `/powerhub`); to hide
+it just for yourself, use Home Assistant's own sidebar editing (long-press the sidebar title, or Profile → *Change the
+order and hide items from the sidebar*).
+
+![Panel](docs/images/13_panel_overview.jpg)
+
+The panel source is in `frontend/` (React + Vite); `npm ci && npm run build` writes
+`custom_components/malarenergi_powerhub/www/panel.js`, which is committed. `npm run dev` opens a preview with
+synthetic data (`frontend/index.html` lists the URL flags).
+
 ## Authentication
 
 Login uses **Swedish BankID** (same as your energy company's PowerHub app). During setup a QR code is displayed in the HA config flow — scan it with the BankID app on your phone.

@@ -3,10 +3,10 @@
   "name": "PowerHub (Mälarenergi, Kraftringen and other Bitvis energy companies)",
   "codeowners": ["@8408323"],
   "config_flow": true,
-  "dependencies": [],
+  "dependencies": ["http", "frontend", "panel_custom", "websocket_api"],
   "documentation": "https://github.com/8408323/ha-malarenergi-powerhub",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/8408323/ha-malarenergi-powerhub/issues",
   "requirements": [],
-  "version": "0.3.2"
+  "version": "0.4.0"
 }

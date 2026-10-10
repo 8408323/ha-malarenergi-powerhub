@@ -28,6 +28,13 @@ from custom_components.malarenergi_powerhub.const import (
 # ── helpers ────────────────────────────────────────────────────────────────────
 
 
+@pytest.fixture(autouse=True)
+def _no_panel():
+    """The sidebar panel has its own tests (test_panel.py)."""
+    with patch("custom_components.malarenergi_powerhub.async_setup_panel", new=AsyncMock()) as setup:
+        yield setup
+
+
 def _make_entry(facility_id: str, token: str = "tok", entry_id: str = "eid-1") -> MagicMock:
     entry = MagicMock()
     entry.entry_id = entry_id
@@ -265,6 +272,13 @@ async def test_async_unload_entry_removes_services_when_domain_empty() -> None:
     removed = {c.args[1] for c in hass.services.async_remove.call_args_list}
     assert SERVICE_CREATE_INVITATION in removed
     assert SERVICE_DELETE_INVITATION in removed
+
+
+async def test_async_setup_entry_registers_panel(_no_panel) -> None:
+    hass = _make_setup_hass()
+    coord, notif = _make_coordinators()
+    await _setup_and_get_handlers(hass, _make_entry("fac-1"), coord, notif)
+    _no_panel.assert_awaited_once_with(hass)
 
 
 async def test_async_unload_entry_keeps_services_when_entries_remain() -> None:

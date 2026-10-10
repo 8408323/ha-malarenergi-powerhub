@@ -1,0 +1,485 @@
+{
+"entities": {
+"sensor.powerhub_power_import": {
+"entity_id": "sensor.powerhub_power_import",
+"platform": "malarenergi_powerhub",
+"device_id": "dev-hub",
+"translation_key": "power_import"
+},
+"sensor.powerhub_power_export": {
+"entity_id": "sensor.powerhub_power_export",
+"platform": "malarenergi_powerhub",
+"device_id": "dev-hub",
+"translation_key": "power_export"
+},
+"sensor.powerhub_current_l1": {
+"entity_id": "sensor.powerhub_current_l1",
+"platform": "malarenergi_powerhub",
+"device_id": "dev-hub",
+"translation_key": "current_l1"
+},
+"sensor.powerhub_current_l2": {
+"entity_id": "sensor.powerhub_current_l2",
+"platform": "malarenergi_powerhub",
+"device_id": "dev-hub",
+"translation_key": "current_l2"
+},
+"sensor.powerhub_current_l3": {
+"entity_id": "sensor.powerhub_current_l3",
+"platform": "malarenergi_powerhub",
+"device_id": "dev-hub",
+"translation_key": "current_l3"
+},
+"sensor.powerhub_import_today": {
+"entity_id": "sensor.powerhub_import_today",
+"platform": "malarenergi_powerhub",
+"device_id": "dev-hub",
+"translation_key": "import_today"
+},
+"sensor.powerhub_export_today": {
+"entity_id": "sensor.powerhub_export_today",
+"platform": "malarenergi_powerhub",
+"device_id": "dev-hub",
+"translation_key": "export_today"
+},
+"sensor.powerhub_spot_price": {
+"entity_id": "sensor.powerhub_spot_price",
+"platform": "malarenergi_powerhub",
+"device_id": "dev-hub",
+"translation_key": "spot_price"
+},
+"sensor.powerhub_avg_price": {
+"entity_id": "sensor.powerhub_avg_price",
+"platform": "malarenergi_powerhub",
+"device_id": "dev-hub",
+"translation_key": "avg_price_this_month"
+},
+"sensor.powerhub_market_avg_price": {
+"entity_id": "sensor.powerhub_market_avg_price",
+"platform": "malarenergi_powerhub",
+"device_id": "dev-hub",
+"translation_key": "market_avg_price_this_month"
+},
+"sensor.powerhub_baseload": {
+"entity_id": "sensor.powerhub_baseload",
+"platform": "malarenergi_powerhub",
+"device_id": "dev-hub",
+"translation_key": "baseload_power"
+},
+"sensor.powerhub_power_limit": {
+"entity_id": "sensor.powerhub_power_limit",
+"platform": "malarenergi_powerhub",
+"device_id": "dev-hub",
+"translation_key": "power_limit"
+},
+"sensor.powerhub_wifi_rssi": {
+"entity_id": "sensor.powerhub_wifi_rssi",
+"platform": "malarenergi_powerhub",
+"device_id": "dev-hub",
+"translation_key": "wifi_rssi"
+},
+"sensor.powerhub_uptime": {
+"entity_id": "sensor.powerhub_uptime",
+"platform": "malarenergi_powerhub",
+"device_id": "dev-hub",
+"translation_key": "uptime"
+},
+"sensor.powerhub_sw_version": {
+"entity_id": "sensor.powerhub_sw_version",
+"platform": "malarenergi_powerhub",
+"device_id": "dev-hub",
+"translation_key": "sw_version"
+},
+"sensor.powerhub_han_port_state": {
+"entity_id": "sensor.powerhub_han_port_state",
+"platform": "malarenergi_powerhub",
+"device_id": "dev-hub",
+"translation_key": "han_port_state"
+},
+"sensor.powerhub_latest_notification": {
+"entity_id": "sensor.powerhub_latest_notification",
+"platform": "malarenergi_powerhub",
+"device_id": "dev-hub",
+"translation_key": "latest_notification"
+},
+"select.powerhub_fuse_size": {
+"entity_id": "select.powerhub_fuse_size",
+"platform": "malarenergi_powerhub",
+"device_id": "dev-hub",
+"translation_key": "fuse_size"
+},
+"switch.powerhub_has_solar": {
+"entity_id": "switch.powerhub_has_solar",
+"platform": "malarenergi_powerhub",
+"device_id": "dev-hub",
+"translation_key": "has_solar"
+},
+"switch.powerhub_has_battery": {
+"entity_id": "switch.powerhub_has_battery",
+"platform": "malarenergi_powerhub",
+"device_id": "dev-hub",
+"translation_key": "has_battery"
+},
+"select.powerhub_ev_type": {
+"entity_id": "select.powerhub_ev_type",
+"platform": "malarenergi_powerhub",
+"device_id": "dev-hub",
+"translation_key": "ev_type"
+},
+"sensor.bitvis_power_import": {
+"entity_id": "sensor.bitvis_power_import",
+"platform": "bitvis",
+"device_id": "dev-bitvis",
+"translation_key": "power_active_import"
+},
+"sensor.bitvis_power_export": {
+"entity_id": "sensor.bitvis_power_export",
+"platform": "bitvis",
+"device_id": "dev-bitvis",
+"translation_key": "power_active_export"
+},
+"sensor.bitvis_phase_current_l1": {
+"entity_id": "sensor.bitvis_phase_current_l1",
+"platform": "bitvis",
+"device_id": "dev-bitvis",
+"translation_key": "phase_current"
+},
+"sensor.bitvis_phase_voltage_l1": {
+"entity_id": "sensor.bitvis_phase_voltage_l1",
+"platform": "bitvis",
+"device_id": "dev-bitvis",
+"translation_key": "phase_voltage"
+},
+"sensor.bitvis_phase_current_l2": {
+"entity_id": "sensor.bitvis_phase_current_l2",
+"platform": "bitvis",
+"device_id": "dev-bitvis",
+"translation_key": "phase_current"
+},
+"sensor.bitvis_phase_voltage_l2": {
+"entity_id": "sensor.bitvis_phase_voltage_l2",
+"platform": "bitvis",
+"device_id": "dev-bitvis",
+"translation_key": "phase_voltage"
+},
+"sensor.bitvis_phase_current_l3": {
+"entity_id": "sensor.bitvis_phase_current_l3",
+"platform": "bitvis",
+"device_id": "dev-bitvis",
+"translation_key": "phase_current"
+},
+"sensor.bitvis_phase_voltage_l3": {
+"entity_id": "sensor.bitvis_phase_voltage_l3",
+"platform": "bitvis",
+"device_id": "dev-bitvis",
+"translation_key": "phase_voltage"
+},
+"sensor.other_hub_power_import": {
+"entity_id": "sensor.other_hub_power_import",
+"platform": "bitvis",
+"device_id": "dev-other",
+"translation_key": "power_active_import"
+}
+},
+"states": {
+"sensor.powerhub_power_import": {
+"entity_id": "sensor.powerhub_power_import",
+"state": "2.43",
+"attributes": {
+"friendly_name": "sensor.powerhub_power_import",
+"unit_of_measurement": "kW"
+}
+},
+"sensor.powerhub_power_export": {
+"entity_id": "sensor.powerhub_power_export",
+"state": "0",
+"attributes": {
+"friendly_name": "sensor.powerhub_power_export",
+"unit_of_measurement": "kW"
+}
+},
+"sensor.powerhub_current_l1": {
+"entity_id": "sensor.powerhub_current_l1",
+"state": "7.2",
+"attributes": {
+"friendly_name": "sensor.powerhub_current_l1",
+"unit_of_measurement": "A"
+}
+},
+"sensor.powerhub_current_l2": {
+"entity_id": "sensor.powerhub_current_l2",
+"state": "3.1",
+"attributes": {
+"friendly_name": "sensor.powerhub_current_l2",
+"unit_of_measurement": "A"
+}
+},
+"sensor.powerhub_current_l3": {
+"entity_id": "sensor.powerhub_current_l3",
+"state": "4.4",
+"attributes": {
+"friendly_name": "sensor.powerhub_current_l3",
+"unit_of_measurement": "A"
+}
+},
+"sensor.powerhub_import_today": {
+"entity_id": "sensor.powerhub_import_today",
+"state": "14.6",
+"attributes": {
+"friendly_name": "sensor.powerhub_import_today",
+"unit_of_measurement": "kWh"
+}
+},
+"sensor.powerhub_export_today": {
+"entity_id": "sensor.powerhub_export_today",
+"state": "3.2",
+"attributes": {
+"friendly_name": "sensor.powerhub_export_today",
+"unit_of_measurement": "kWh"
+}
+},
+"sensor.powerhub_spot_price": {
+"entity_id": "sensor.powerhub_spot_price",
+"state": "48.7",
+"attributes": {
+"friendly_name": "sensor.powerhub_spot_price",
+"unit_of_measurement": "\u00f6re/kWh"
+}
+},
+"sensor.powerhub_avg_price": {
+"entity_id": "sensor.powerhub_avg_price",
+"state": "61.2",
+"attributes": {
+"friendly_name": "sensor.powerhub_avg_price",
+"unit_of_measurement": "\u00f6re/kWh"
+}
+},
+"sensor.powerhub_market_avg_price": {
+"entity_id": "sensor.powerhub_market_avg_price",
+"state": "57.9",
+"attributes": {
+"friendly_name": "sensor.powerhub_market_avg_price",
+"unit_of_measurement": "\u00f6re/kWh"
+}
+},
+"sensor.powerhub_baseload": {
+"entity_id": "sensor.powerhub_baseload",
+"state": "0.42",
+"attributes": {
+"friendly_name": "sensor.powerhub_baseload",
+"unit_of_measurement": "kW"
+}
+},
+"sensor.powerhub_power_limit": {
+"entity_id": "sensor.powerhub_power_limit",
+"state": "11",
+"attributes": {
+"friendly_name": "sensor.powerhub_power_limit",
+"unit_of_measurement": "kW"
+}
+},
+"sensor.powerhub_wifi_rssi": {
+"entity_id": "sensor.powerhub_wifi_rssi",
+"state": "-61",
+"attributes": {
+"friendly_name": "sensor.powerhub_wifi_rssi",
+"unit_of_measurement": "dBm"
+}
+},
+"sensor.powerhub_uptime": {
+"entity_id": "sensor.powerhub_uptime",
+"state": "412345",
+"attributes": {
+"friendly_name": "sensor.powerhub_uptime",
+"unit_of_measurement": "s"
+}
+},
+"sensor.powerhub_sw_version": {
+"entity_id": "sensor.powerhub_sw_version",
+"state": "1.8.2",
+"attributes": {
+"friendly_name": "sensor.powerhub_sw_version"
+}
+},
+"sensor.powerhub_han_port_state": {
+"entity_id": "sensor.powerhub_han_port_state",
+"state": "OPEN",
+"attributes": {
+"friendly_name": "sensor.powerhub_han_port_state"
+}
+},
+"sensor.powerhub_latest_notification": {
+"entity_id": "sensor.powerhub_latest_notification",
+"state": "unknown",
+"attributes": {
+"friendly_name": "sensor.powerhub_latest_notification"
+}
+},
+"select.powerhub_fuse_size": {
+"entity_id": "select.powerhub_fuse_size",
+"state": "A20",
+"attributes": {
+"friendly_name": "select.powerhub_fuse_size"
+}
+},
+"switch.powerhub_has_solar": {
+"entity_id": "switch.powerhub_has_solar",
+"state": "on",
+"attributes": {
+"friendly_name": "switch.powerhub_has_solar"
+}
+},
+"switch.powerhub_has_battery": {
+"entity_id": "switch.powerhub_has_battery",
+"state": "off",
+"attributes": {
+"friendly_name": "switch.powerhub_has_battery"
+}
+},
+"select.powerhub_ev_type": {
+"entity_id": "select.powerhub_ev_type",
+"state": "NONE",
+"attributes": {
+"friendly_name": "select.powerhub_ev_type"
+}
+},
+"sensor.bitvis_power_import": {
+"entity_id": "sensor.bitvis_power_import",
+"state": "2.381",
+"attributes": {
+"friendly_name": "sensor.bitvis_power_import",
+"unit_of_measurement": "kW"
+}
+},
+"sensor.bitvis_power_export": {
+"entity_id": "sensor.bitvis_power_export",
+"state": "0",
+"attributes": {
+"friendly_name": "sensor.bitvis_power_export",
+"unit_of_measurement": "kW"
+}
+},
+"sensor.bitvis_phase_current_l1": {
+"entity_id": "sensor.bitvis_phase_current_l1",
+"state": "7.05",
+"attributes": {
+"friendly_name": "Renamed phase sensor",
+"unit_of_measurement": "A"
+}
+},
+"sensor.bitvis_phase_voltage_l1": {
+"entity_id": "sensor.bitvis_phase_voltage_l1",
+"state": "231.2",
+"attributes": {
+"friendly_name": "Renamed phase sensor",
+"unit_of_measurement": "V"
+}
+},
+"sensor.bitvis_phase_current_l2": {
+"entity_id": "sensor.bitvis_phase_current_l2",
+"state": "3.02",
+"attributes": {
+"friendly_name": "Renamed phase sensor",
+"unit_of_measurement": "A"
+}
+},
+"sensor.bitvis_phase_voltage_l2": {
+"entity_id": "sensor.bitvis_phase_voltage_l2",
+"state": "229.8",
+"attributes": {
+"friendly_name": "Renamed phase sensor",
+"unit_of_measurement": "V"
+}
+},
+"sensor.bitvis_phase_current_l3": {
+"entity_id": "sensor.bitvis_phase_current_l3",
+"state": "4.37",
+"attributes": {
+"friendly_name": "Renamed phase sensor",
+"unit_of_measurement": "A"
+}
+},
+"sensor.bitvis_phase_voltage_l3": {
+"entity_id": "sensor.bitvis_phase_voltage_l3",
+"state": "232.4",
+"attributes": {
+"friendly_name": "Renamed phase sensor",
+"unit_of_measurement": "V"
+}
+},
+"sensor.inverter_pv_power": {
+"entity_id": "sensor.inverter_pv_power",
+"state": "3120",
+"attributes": {
+"friendly_name": "Inverter PV power",
+"unit_of_measurement": "W"
+}
+},
+"sensor.inverter_battery_power": {
+"entity_id": "sensor.inverter_battery_power",
+"state": "-850",
+"attributes": {
+"friendly_name": "Battery power",
+"unit_of_measurement": "W"
+}
+},
+"sensor.battery_soc": {
+"entity_id": "sensor.battery_soc",
+"state": "64",
+"attributes": {
+"friendly_name": "Battery SoC",
+"unit_of_measurement": "%"
+}
+},
+"sensor.wallbox_power": {
+"entity_id": "sensor.wallbox_power",
+"state": "0",
+"attributes": {
+"friendly_name": "Wallbox power",
+"unit_of_measurement": "W"
+}
+},
+"sensor.other_hub_power_import": {
+"entity_id": "sensor.other_hub_power_import",
+"state": "9.99",
+"attributes": {
+"unit_of_measurement": "kW"
+}
+}
+},
+"devices": {
+"dev-hub": {
+"config_entries": [
+"eid-1"
+],
+"connections": [
+[
+"mac",
+"02:00:00:00:00:01"
+]
+]
+},
+"dev-bitvis": {
+"config_entries": [
+"bitvis-entry"
+],
+"connections": [
+[
+"mac",
+"02:00:00:00:00:01"
+]
+]
+},
+"dev-other": {
+"config_entries": [
+"bitvis-entry-2"
+],
+"connections": [
+[
+"mac",
+"02:00:00:00:00:02"
+]
+]
+}
+}
+}
