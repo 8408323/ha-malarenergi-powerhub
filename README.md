@@ -65,14 +65,14 @@ Full entity list: **[user manual](docs/user_manual.md)**.
 |---|---|
 | [Mälarenergi](https://www.malarenergi.se/el/elavtal/powerhub/) | ✅ Tested |
 | [Boo Energi](https://www.booenergi.se/) | ✅ Confirmed by a user |
-| [Bjäre Kraft](https://www.bjarekraft.se/), [Borås Elhandel](https://boraselhandel.se/), [Dala Energi](https://dalaenergi.se/), [Falu Energi & Vatten](https://fev.se/), [Kinnekulle Energi](https://kinnekulleenergi.se/), [Kraftringen](https://www.kraftringen.se/), [Kvänum Energi](https://kvanumenergi.se/), [Landskrona Energi](https://landskronaenergi.se/), [Norrtälje Energi](https://www.norrtaljeenergi.se/), [Nossebro Energi](https://nossebroenergi.se/), [Skånska Energi](https://www.skanska-energi.se/), [Södra Hallands Kraft](https://www.sodrahallandskraft.se/), [Tranås Energi](https://tranasenergi.se/), [Trelleborgs Energi](https://trelleborgsenergi.se/), [Vaggeryds Energi](https://www.vaggerydsenergi.se/), [VänerEnergi](https://vanerenergi.se/), [Varbergsortens Elkraft](https://vbgelkraft.se/) | Available, untested — please report! |
+| [Bjäre Kraft](https://www.bjarekraft.se/privat/el/energiappen/bjaere-kraft-power-hub), [Borås Elhandel](https://boraselhandel.se/), [Dala Energi](https://dalaenergi.se/), [Falu Energi & Vatten](https://fev.se/), [Kinnekulle Energi](https://kinnekulleenergi.se/), [Kraftringen](https://www.kraftringen.se/), [Kvänum Energi](https://kvanumenergi.se/), [Landskrona Energi](https://landskronaenergi.se/), [Norrtälje Energi](https://www.norrtaljeenergi.se/), [Nossebro Energi](https://nossebroenergi.se/), [Skånska Energi](https://www.skanska-energi.se/), [Södra Hallands Kraft](https://www.sodrahallandskraft.se/), [Tranås Energi](https://tranasenergi.se/), [Trelleborgs Energi](https://trelleborgsenergi.se/), [Vaggeryds Energi](https://www.vaggerydsenergi.se/), [VänerEnergi](https://vanerenergi.se/), [Varbergsortens Elkraft](https://vbgelkraft.se/) | Available, untested — please report! |
 
 Company missing? Type its name in the setup dialog (lowercase, no spaces, å/ä/ö → a/a/o) and open an issue.
 
 ## Built-in Bitvis integration
 
 Since **Home Assistant 2026.10**, the built-in [Bitvis Power Hub](https://www.home-assistant.io/integrations/bitvis)
-integration reads the meter **locally** (needs the hub on the same subnet as HA). Use it for real-time power and
+integration reads the meter **locally** (the hub and HA must share a subnet, or UDP 58220 must be forwarded to HA — see the [setup guide](docs/setup.md#using-it-together-with-the-built-in-bitvis-integration)). Use it for real-time power and
 the Energy dashboard, and this integration for prices, insights, limits and settings — the panel picks up the
 local values automatically.
 
