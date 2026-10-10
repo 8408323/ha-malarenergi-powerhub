@@ -69,7 +69,7 @@ Or manually:
 3. Choose your energy company.
 4. Scan the BankID QR code that appears with the BankID app.
 
-See the **[full setup guide](docs/setup.md)** for step-by-step instructions with screenshots.
+See the **[full setup guide](docs/setup.md) (including the dashboard)** for step-by-step instructions with screenshots.
 
 ## Features
 
@@ -85,6 +85,11 @@ See the **[full setup guide](docs/setup.md)** for step-by-step instructions with
 See the **[user manual](docs/user_manual.md)** for the full entity list and usage.
 
 ## Dashboard panel
+
+**How to get it:** nothing to add or configure. Once the integration is set up (v0.4.0 or later), a **PowerHub**
+entry appears in Home Assistant's left sidebar for every user. Right after updating through HACS, restart Home
+Assistant and reload the browser page (in the phone app: pull to refresh) so the new sidebar entry shows up. You can
+also open it directly at `/powerhub`. Only administrators can change its settings.
 
 A **PowerHub** sidebar panel shows grid import/export as an animated house picture, phase load against the main
 fuse, today's energy, prices and device status. If Home Assistant's built-in **Bitvis** integration is set up for

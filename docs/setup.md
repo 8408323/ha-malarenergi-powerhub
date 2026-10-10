@@ -130,6 +130,16 @@ Diagnostic entities (Wi-Fi signal, firmware version, HAN port state, uptime) are
 
 ---
 
+## Step 8 — Open the PowerHub dashboard
+
+From v0.4.0 the integration comes with its own dashboard. There is nothing to add: as soon as the integration is set up, **PowerHub** appears in the left sidebar for every user. If it doesn't show up right after updating, reload the browser page (on the phone app: pull down to refresh, or restart the app) so it picks up the new sidebar entry.
+
+![PowerHub dashboard](images/13_panel_overview.jpg)
+
+Open **Settings** in the dashboard (top right) to tick your local sources — solar, home battery, wind, generator/CHP, EV with V2H/V2G, a plain EV charger — and optionally pick sensors for them. Only administrators can change these settings; everyone else sees them read-only. The dashboard can be hidden from there for everyone, or just for yourself through Home Assistant's own sidebar editing — see the README.
+
+---
+
 ## Re-authentication
 
 The JWT token issued by BankID expires after some time. When it does, Home Assistant will show a notification:
