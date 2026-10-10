@@ -1,0 +1,53 @@
+<!doctype html><html><head><meta charset="utf-8"><title>PowerHub icon</title>
+<!-- Source of the brand icon (three.js). Open in a browser, then crop/size with PIL as described in the commit "3D brand icon". -->
+<style>body{margin:0;background:repeating-conic-gradient(#ddd 0 25%,#fff 0 50%) 0 0/24px 24px}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}</script></head><body>
+<script type="module">
+import * as THREE from "three";
+import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+
+const size = Number(new URLSearchParams(location.search).get("size") || 1024);
+const r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+r.setPixelRatio(1); r.setSize(size, size); r.setClearColor(0x000000, 0);
+r.shadowMap.enabled = true; r.shadowMap.type = THREE.VSMShadowMap;
+r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 0.9;
+document.body.appendChild(r.domElement);
+
+const scene = new THREE.Scene();
+scene.environment = new THREE.PMREMGenerator(r).fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.45;
+const cam = new THREE.OrthographicCamera(-2.1, 2.1, 2.1, -2.1, 0.1, 50);
+cam.position.set(4.6, 2.9, 5.4); cam.lookAt(0.05, 0.92, 0);
+
+const mat = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.42, clearcoat: 0.6, clearcoatRoughness: 0.25, ...o });
+const add = (geo, m, x = 0, y = 0, z = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = o.receiveShadow = true; scene.add(o); return o; };
+
+// house body
+add(new RoundedBoxGeometry(2.0, 1.35, 1.6, 8, 0.12), mat(0xe9eef5, { roughness: 0.55, clearcoat: 0.2 }), 0, 0.675, 0);
+// roof: extruded gable with overhang
+const g = new THREE.Shape(); g.moveTo(-1.13, 0); g.lineTo(0, 0.78); g.lineTo(1.13, 0); g.lineTo(-1.13, 0);
+const roof = add(new THREE.ExtrudeGeometry(g, { depth: 1.72, bevelEnabled: true, bevelSize: 0.05, bevelThickness: 0.05, bevelSegments: 4 }),
+  mat(0x2f54d6, { roughness: 0.38, clearcoat: 0.3 }), 0, 1.33, -0.86);
+// windows on the side wall
+const glass = mat(0x3daee9, { roughness: 0.1, clearcoat: 1, emissive: 0x1d8fd0, emissiveIntensity: 0.35 });
+add(new RoundedBoxGeometry(0.05, 0.38, 0.42, 4, 0.03), glass, 1.01, 0.8, -0.32);
+add(new RoundedBoxGeometry(0.05, 0.38, 0.42, 4, 0.03), glass, 1.01, 0.8, 0.32);
+// lightning bolt, the hero, on the front wall
+const b = new THREE.Shape();
+[[0.10, 0.62], [-0.30, -0.06], [-0.04, -0.06], [-0.16, -0.62], [0.30, 0.12], [0.04, 0.12], [0.18, 0.62]]
+  .forEach(([x, y], i) => (i ? b.lineTo(x, y) : b.moveTo(x, y)));
+add(new THREE.ExtrudeGeometry(b, { depth: 0.12, bevelEnabled: true, bevelSize: 0.03, bevelThickness: 0.03, bevelSegments: 5 }),
+  mat(0xffa600, { emissive: 0xff7a00, emissiveIntensity: 0.55, roughness: 0.28 }), -0.02, 0.68, 0.8).scale.set(0.82, 0.82, 1);
+// soft contact shadow on an invisible floor
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(12, 12), new THREE.ShadowMaterial({ opacity: 0.28 }));
+floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+
+const key = new THREE.DirectionalLight(0xffffff, 2.6); key.position.set(-2.5, 8, 4.5); key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048); key.shadow.radius = 14; key.shadow.blurSamples = 24; Object.assign(key.shadow.camera, { left: -4, right: 4, top: 4, bottom: -4 });
+scene.add(key, new THREE.AmbientLight(0xffffff, 0.25));
+
+r.render(scene, cam);
+window.save = async (name) => fetch(`/save?name=${name}`, { method: "POST", body: r.domElement.toDataURL("image/png") }).then((x) => x.status);
+window.ready = true;
+</script></body></html>
