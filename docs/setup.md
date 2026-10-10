@@ -136,7 +136,7 @@ From v0.4.0 the integration comes with its own dashboard. There is nothing to ad
 
 ![PowerHub dashboard](images/13_panel_overview.jpg)
 
-Open **Settings** in the dashboard (top right) to tick your local sources — solar, home battery, wind, generator/CHP, EV with V2H/V2G, a plain EV charger — and optionally pick sensors for them. Only administrators can change these settings; everyone else sees them read-only. The dashboard can be hidden from there for everyone, or just for yourself through Home Assistant's own sidebar editing — see the README.
+Open **Settings** in the dashboard (top right) to tick your local sources — solar, home battery, wind, generator/CHP, EV with V2H/V2G, a plain EV charger — and optionally pick sensors for them. Each ticked source appears as its own object in the overview picture, and the grid connection can be shown as an overhead line or an underground cable. Only administrators can change these settings; everyone else sees them read-only. The dashboard can be hidden from there for everyone, or just for yourself through Home Assistant's own sidebar editing — see the README.
 
 ---
 
