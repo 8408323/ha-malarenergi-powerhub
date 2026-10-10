@@ -1,9 +1,12 @@
 """Crop the three.js render to a padded square and build icon/logo PNGs (light + dark text)."""
+
 import sys
 from pathlib import Path
+
 from PIL import Image, ImageDraw, ImageFont
 
-raw, out = Path(sys.argv[1]), Path(sys.argv[2]); out.mkdir(parents=True, exist_ok=True)
+raw, out = Path(sys.argv[1]), Path(sys.argv[2])
+out.mkdir(parents=True, exist_ok=True)
 FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 im = Image.open(raw).convert("RGBA")
 box = im.getchannel("A").point(lambda a: 255 if a > 10 else 0).getbbox()

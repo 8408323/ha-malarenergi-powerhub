@@ -1,5 +1,9 @@
 """Static server for the icon page; POST /save?name=x.png stores a base64 data URL body in out/."""
-import base64, http.server, sys, urllib.parse
+
+import base64
+import http.server
+import sys
+import urllib.parse
 from pathlib import Path
 
 ROOT = Path(sys.argv[1])
