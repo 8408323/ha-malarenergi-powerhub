@@ -104,7 +104,7 @@ Both identify the hub by its MAC address, but HA keeps one device per integratio
 
 #### Network requirement for the local integration
 
- the hub and Home Assistant must be on the **same subnet**, or your router must **forward UDP port 58220** traffic from the hub to HA (Bitvis' requirement). The hub appears to *broadcast* its readings, and broadcasts don't cross VLANs, so a plain "allow" firewall rule or an mDNS proxy alone is not enough — you need real UDP broadcast relaying/forwarding to HA, or put the hub on HA's network (e.g. UniFi *Virtual Network Override* on the hub's client page), or give HA an interface on the hub's VLAN. This integration (cloud) works regardless.
+The hub and Home Assistant must be on the **same subnet**, or your router must **forward UDP port 58220** traffic from the hub to HA (Bitvis' requirement). The hub appears to *broadcast* its readings, and broadcasts don't cross VLANs, so a plain "allow" firewall rule or an mDNS proxy alone is not enough — you need real UDP broadcast relaying/forwarding to HA, or put the hub on HA's network (e.g. UniFi *Virtual Network Override* on the hub's client page), or give HA an interface on the hub's VLAN. This integration (cloud) works regardless.
 
 > Running both side by side hasn't been tested yet — the maintainer's hub is on a separate IoT VLAN. If you run both, please report how it goes in an issue.
 
