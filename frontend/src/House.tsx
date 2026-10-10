@@ -162,10 +162,6 @@ export default function House({ v }: { v: HouseValues }) {
 
       {/* the grid feed, as the user picked: an overhead line from a pole behind the house, or an underground cable
           from the street's cable cabinet (kabelskåp) in front of it */}
-      {!v.underground && <g>
-        <line x1={P(POLE)[0]} y1={P(POLE)[1]} x2={P([POLE[0], POLE[1], 4.4])[0]} y2={P([POLE[0], POLE[1], 4.4])[1]} stroke="#7a5a3a" strokeWidth={5} strokeLinecap="round" />
-        <line x1={P([POLE[0], POLE[1] - 0.5, 4.1])[0]} y1={P([POLE[0], POLE[1] - 0.5, 4.1])[1]} x2={P([POLE[0], POLE[1] + 0.5, 4.1])[0]} y2={P([POLE[0], POLE[1] + 0.5, 4.1])[1]} stroke="#7a5a3a" strokeWidth={4} strokeLinecap="round" />
-      </g>}
       {v.hasEv && <g>
         <polygon points={pts([[-4, 4, 0], [0, 4, 0], [0, 4, 2.4], [-4, 4, 2.4]])} fill="url(#hs-wall)" stroke="#c3ccd8" />
         <polygon points={pts([[-3.5, 4, 0], [-0.6, 4, 0], [-0.6, 4, 1.95], [-3.5, 4, 1.95]])} fill="#2a3240" />
@@ -190,7 +186,7 @@ export default function House({ v }: { v: HouseValues }) {
         <polygon key={i} points={pts([[a, 4, 1.25], [b, 4, 1.25], [b, 4, 2.3], [a, 4, 2.3]])} className="hs-window" />
       ))}
       <polygon points={pts([[1.4, 4, 0], [2.3, 4, 0], [2.3, 4, 2.0], [1.4, 4, 2.0]])} fill="#8a6a4a" />
-      <polygon points={pts([[1.25, 4.5, 0], [2.45, 4.5, 0], [2.45, 4.5, 0.18], [1.25, 4.5, 0.18]])} fill="#cfd6df" />
+      {box(1.25, 2.45, 4.0, 4.45, 0, 0.14, "#cfd6df", "#b7c2d1", "#e3e8ef")}
       {[0.9, 2.3].map((y0, i) => (
         <polygon key={i} points={pts([[6, y0, 1.25], [6, y0 + 0.8, 1.25], [6, y0 + 0.8, 2.2], [6, y0, 2.2]])} className="hs-window side" />
       ))}
@@ -228,6 +224,11 @@ export default function House({ v }: { v: HouseValues }) {
       {has("battery") && <Wire route={[[6.35, 3.66, 0.3], [6.35, 4.3, 0.02], [5.25, 4.3, 0.02], [5.25, W, 0.02], [5.25, W, 0.45]]} w={null} max={max} color={C.inv} />}
       {has("generator") && <Wire route={[[6.9, 1.96, 0.3], [6.9, 4.5, 0.02], [5.0, 4.5, 0.02], [5.0, W, 0.02], [5.0, W, 0.45]]} w={null} max={max} color={C.inv} />}
       {has("wind") && <Wire route={[[WIND_AT[0], WIND_AT[1] + 0.1, 0.02], [7.35, WIND_AT[1] + 0.1, 0.02], [7.35, 4.7, 0.02], [4.75, 4.7, 0.02], [4.75, W, 0.02], [4.75, W, 0.45]]} w={null} max={max} color={C.inv} />}
+      {/* the pole stands in front of the ground cables behind it, so it is drawn after them */}
+      {!v.underground && <g>
+        <line x1={P(POLE)[0]} y1={P(POLE)[1]} x2={P([POLE[0], POLE[1], 4.4])[0]} y2={P([POLE[0], POLE[1], 4.4])[1]} stroke="#7a5a3a" strokeWidth={5} strokeLinecap="round" />
+        <line x1={P([POLE[0], POLE[1] - 0.5, 4.1])[0]} y1={P([POLE[0], POLE[1] - 0.5, 4.1])[1]} x2={P([POLE[0], POLE[1] + 0.5, 4.1])[0]} y2={P([POLE[0], POLE[1] + 0.5, 4.1])[1]} stroke="#7a5a3a" strokeWidth={4} strokeLinecap="round" />
+      </g>}
       {hasInv && <Wire route={[[4.55, W, 1.55], [4.35, W, 1.55], [4.35, W, 1.8], [4.15, W, 1.8]]} w={v.inv} max={max} color={C.inv} />}
       {v.hasEv && <Wire route={[[3.55, W, 1.6], [3.55, W, 0.12], [-0.35, W, 0.12], [-0.35, W, 0.9]]} w={v.ev} max={max} color={C.ev} />}
 

@@ -9544,47 +9544,6 @@ function ce({ v: e }) {
 			}),
 			n("wind") && /* @__PURE__ */ (0, p.jsx)(ae, { at: se }),
 			e.hasEv ? /* @__PURE__ */ (0, p.jsxs)(p.Fragment, { children: [C(-5, .6), C(-4.4, -.2)] }) : C(-1.2, .2),
-			!e.underground && /* @__PURE__ */ (0, p.jsxs)("g", { children: [/* @__PURE__ */ (0, p.jsx)("line", {
-				x1: _(T)[0],
-				y1: _(T)[1],
-				x2: _([
-					T[0],
-					T[1],
-					4.4
-				])[0],
-				y2: _([
-					T[0],
-					T[1],
-					4.4
-				])[1],
-				stroke: "#7a5a3a",
-				strokeWidth: 5,
-				strokeLinecap: "round"
-			}), /* @__PURE__ */ (0, p.jsx)("line", {
-				x1: _([
-					T[0],
-					T[1] - .5,
-					4.1
-				])[0],
-				y1: _([
-					T[0],
-					T[1] - .5,
-					4.1
-				])[1],
-				x2: _([
-					T[0],
-					T[1] + .5,
-					4.1
-				])[0],
-				y2: _([
-					T[0],
-					T[1] + .5,
-					4.1
-				])[1],
-				stroke: "#7a5a3a",
-				strokeWidth: 4,
-				strokeLinecap: "round"
-			})] }),
 			e.hasEv && /* @__PURE__ */ (0, p.jsxs)("g", { children: [
 				/* @__PURE__ */ (0, p.jsx)("polygon", {
 					points: v([
@@ -9904,31 +9863,7 @@ function ce({ v: e }) {
 				]),
 				fill: "#8a6a4a"
 			}),
-			/* @__PURE__ */ (0, p.jsx)("polygon", {
-				points: v([
-					[
-						1.25,
-						4.5,
-						0
-					],
-					[
-						2.45,
-						4.5,
-						0
-					],
-					[
-						2.45,
-						4.5,
-						.18
-					],
-					[
-						1.25,
-						4.5,
-						.18
-					]
-				]),
-				fill: "#cfd6df"
-			}),
+			S(1.25, 2.45, 4, 4.45, 0, .14, "#cfd6df", "#b7c2d1", "#e3e8ef"),
 			[.9, 2.3].map((e, t) => /* @__PURE__ */ (0, p.jsx)("polygon", {
 				points: v([
 					[
@@ -10375,6 +10310,47 @@ function ce({ v: e }) {
 				max: r,
 				color: b.inv
 			}),
+			!e.underground && /* @__PURE__ */ (0, p.jsxs)("g", { children: [/* @__PURE__ */ (0, p.jsx)("line", {
+				x1: _(T)[0],
+				y1: _(T)[1],
+				x2: _([
+					T[0],
+					T[1],
+					4.4
+				])[0],
+				y2: _([
+					T[0],
+					T[1],
+					4.4
+				])[1],
+				stroke: "#7a5a3a",
+				strokeWidth: 5,
+				strokeLinecap: "round"
+			}), /* @__PURE__ */ (0, p.jsx)("line", {
+				x1: _([
+					T[0],
+					T[1] - .5,
+					4.1
+				])[0],
+				y1: _([
+					T[0],
+					T[1] - .5,
+					4.1
+				])[1],
+				x2: _([
+					T[0],
+					T[1] + .5,
+					4.1
+				])[0],
+				y2: _([
+					T[0],
+					T[1] + .5,
+					4.1
+				])[1],
+				stroke: "#7a5a3a",
+				strokeWidth: 4,
+				strokeLinecap: "round"
+			})] }),
 			t && /* @__PURE__ */ (0, p.jsx)(x, {
 				route: [
 					[
