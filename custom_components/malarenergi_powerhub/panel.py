@@ -35,6 +35,7 @@ DEFAULT_OPTIONS: dict = {
     "battery_power": "",
     "battery_soc": "",
     "battery_invert": False,  # some inverters report + as charging; the panel expects + = discharging
+    "grid_feed": "overhead",  # how the overview picture draws the grid connection: overhead line or underground cable
     "ev_power": "",
 }
 
@@ -58,6 +59,8 @@ def _valid(key: str, value) -> bool:
     default = DEFAULT_OPTIONS[key]
     if key == "language":
         return value in LANGS
+    if key == "grid_feed":
+        return value in ("overhead", "underground")
     if key == "sources":
         return value is None or (isinstance(value, list) and all(v in SOURCES for v in value))
     if isinstance(default, str):

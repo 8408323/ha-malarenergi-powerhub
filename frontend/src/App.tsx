@@ -4,7 +4,7 @@ import { LANG_NAMES, T, pick } from "./i18n";
 
 type Options = {
   show_panel: boolean; language: string; sources: Source[] | null; has_ev: boolean | null;
-  production_power: string; battery_power: string; battery_soc: string; battery_invert: boolean; ev_power: string;
+  production_power: string; battery_power: string; battery_soc: string; battery_invert: boolean; ev_power: string; grid_feed: "overhead" | "underground";
 };
 type Ctx = { hass: any; t: T; locale: string; narrow: boolean };
 type Ents = Record<string, string>;  // translation_key -> entity_id
@@ -198,7 +198,7 @@ function Overview({ hass, t, locale, narrow, ents, bv, opts }: Ctx & { ents: Ent
             <span className={`chip ${local ? "ok" : ""}`}>{local ? t.live_local : t.live_cloud}<Info text={local ? t.live_local_info : t.live_cloud_info} /></span>
           </div>
           <House v={{
-            live: !!local, grid, house: houseFlow, inv, ev, sources: node, hasEv, soc,
+            live: !!local, grid, house: houseFlow, inv, ev, sources: node, hasEv, soc, underground: opts.grid_feed === "underground",
             text: {
               grid: kwTxt(grid), gridSub,
               house, inv: kwTxt(inv), invSub: parts || t.not_measured,
@@ -316,6 +316,11 @@ function Settings({ hass, t, ents, opts, setOpts, entryId }: Ctx & { ents: Ents;
       </section>
       <section className="card">
         <h2>{t.s_panel}</h2>
+        <label className="setting"><span>{t.grid_feed}</span>
+          <select className="pick" value={opts.grid_feed ?? "overhead"} disabled={!admin} onChange={(e) => save({ grid_feed: e.target.value as Options["grid_feed"] })}>
+            <option value="overhead">{t.grid_overhead}</option>
+            <option value="underground">{t.grid_underground}</option>
+          </select></label>
         <label className="setting"><span>{t.s_lang}</span>
           <select className="pick" value={opts.language} disabled={!admin} onChange={(e) => save({ language: e.target.value })}>
             <option value="auto">{t.lang_auto}</option>

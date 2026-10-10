@@ -294,3 +294,9 @@ async def test_reconcile_when_active_entry_changes_with_same_visibility(tmp_path
         hass.data[DOMAIN].pop("eid-1")
         await panel.async_setup_panel(hass)
     assert [c.kwargs["config"] for c in reg.await_args_list] == [{"entry_id": "eid-1"}, {"entry_id": "eid-2"}]
+
+
+def test_grid_feed_validation() -> None:
+    assert panel._valid("grid_feed", "overhead") and panel._valid("grid_feed", "underground")
+    assert not panel._valid("grid_feed", "satellite") and not panel._valid("grid_feed", None)
+    assert panel.DEFAULT_OPTIONS["grid_feed"] == "overhead"
