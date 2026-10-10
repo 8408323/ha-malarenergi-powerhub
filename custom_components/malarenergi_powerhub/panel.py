@@ -34,8 +34,8 @@ DEFAULT_OPTIONS: dict = {
     "production_power": "",
     "battery_power": "",
     "battery_soc": "",
-    "battery_invert": False,
-    "grid_feed": "overhead",  # how the overview picture draws the grid connection: overhead line or underground cable  # some inverters report + as charging; the panel expects + = discharging
+    "battery_invert": False,  # some inverters report + as charging; the panel expects + = discharging
+    "grid_feed": "overhead",  # how the overview picture draws the grid connection: overhead line or underground cable
     "ev_power": "",
 }
 
